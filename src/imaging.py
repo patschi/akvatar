@@ -29,6 +29,10 @@ Image.MAX_IMAGE_PIXELS = 50_000_000
 # Resolve the avatar storage root from config
 AVATAR_ROOT = Path(app_cfg['avatar_storage_path'])
 
+# Pre-compute frequently used values from config at import time
+MAX_SIZE = max(img_cfg['sizes'])
+_avatar_base_url = app_cfg['public_avatar_url']
+
 # File extensions the upload endpoint will accept
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
@@ -80,17 +84,26 @@ def generate_filename() -> str:
     return name
 
 
-def process_image(image: Image.Image, filename_base: str) -> dict[str, dict[str, str]]:
+def ensure_size_directories() -> None:
+    """Create all size sub-directories under AVATAR_ROOT. Called once at startup."""
+    for size in img_cfg['sizes']:
+        (AVATAR_ROOT / f'{size}x{size}').mkdir(parents=True, exist_ok=True)
+    log.debug('Ensured size directories under %s.', AVATAR_ROOT)
+
+
+def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dict[str, str]], int]:
     """
     Resize `image` to every configured square size and save in every configured format.
 
-    Returns a nested dict: `{'WxH': {'ext': 'full_public_url', ...}, ...}`
+    Returns a tuple of:
+      - nested dict: `{'WxH': {'ext': 'full_public_url', ...}, ...}`
+      - total_bytes: combined size of all saved files
     """
     log.info('Starting image processing for %r.', filename_base)
     results: dict[str, dict[str, str]] = {}
     sizes = img_cfg['sizes']
     formats = img_cfg['formats']
-    avatar_base_url = app_cfg['public_avatar_url']
+    total_bytes = 0
 
     for size in sizes:
         key = f'{size}x{size}'
@@ -98,9 +111,10 @@ def process_image(image: Image.Image, filename_base: str) -> dict[str, dict[str,
         resized = image.resize((size, size), Image.LANCZOS)
         results[key] = {}
 
-        # Ensure the size sub-directory exists
         size_dir = AVATAR_ROOT / key
-        size_dir.mkdir(parents=True, exist_ok=True)
+
+        # Pre-convert RGB once per size if needed (for JPEG)
+        resized_rgb = resized.convert('RGB') if resized.mode == 'RGBA' else resized
 
         for fmt in formats:
             ext = fmt.lower()
@@ -108,8 +122,7 @@ def process_image(image: Image.Image, filename_base: str) -> dict[str, dict[str,
             log.debug('Saving %s as %s.', key, ext.upper())
 
             if ext in ('jpg', 'jpeg'):
-                # JPEG cannot store alpha – drop it
-                (resized.convert('RGB') if resized.mode == 'RGBA' else resized).save(
+                resized_rgb.save(
                     out_path, format='JPEG', quality=img_cfg['jpeg_quality'], optimize=True,
                 )
             elif ext == 'png':
@@ -117,11 +130,13 @@ def process_image(image: Image.Image, filename_base: str) -> dict[str, dict[str,
             elif ext == 'webp':
                 resized.save(out_path, format='WEBP', quality=img_cfg['webp_quality'], method=6)
 
-            results[key][ext] = f'{avatar_base_url}/{key}/{filename_base}.{ext}'
-            log.info('Saved %s/%s.%s (%s) – %d bytes.', key, filename_base, ext, ext.upper(), out_path.stat().st_size)
+            file_size = out_path.stat().st_size
+            total_bytes += file_size
+            results[key][ext] = f'{_avatar_base_url}/{key}/{filename_base}.{ext}'
+            log.info('Saved %s/%s.%s (%s) – %d bytes.', key, filename_base, ext, ext.upper(), file_size)
 
-    log.info('Image processing complete – %d sizes x %d formats.', len(sizes), len(formats))
-    return results
+    log.info('Image processing complete – %d sizes x %d formats, %d bytes total.', len(sizes), len(formats), total_bytes)
+    return results, total_bytes
 
 
 def cleanup_avatar_files(filename_base: str) -> None:

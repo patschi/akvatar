@@ -15,7 +15,7 @@ from src.config import app_cfg, web_cfg, branding_cfg
 from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
-from src.imaging import AVATAR_ROOT
+from src.imaging import AVATAR_ROOT, ensure_size_directories
 
 log = logging.getLogger('app')
 
@@ -54,8 +54,9 @@ def create_app() -> Flask:
 
     log.debug('Flask app created (max upload = %d MB).', app_cfg['max_upload_size_mb'])
 
-    # Ensure the avatar storage directory tree exists
+    # Ensure the avatar storage directory tree exists (root + all size sub-dirs)
     AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
+    ensure_size_directories()
     log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
 
     # -- Reverse proxy support ---------------------------------------------
@@ -92,7 +93,7 @@ def create_app() -> Flask:
             'brand_name': _brand_name,
             't': t,
             'lang': locale.split('_')[0],
-            'i18n': get_js_translations(),
+            'i18n': get_js_translations(locale),
         }
 
     # -- HTTP response headers & logging ------------------------------------

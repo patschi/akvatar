@@ -67,7 +67,7 @@ ENV CONFIG_PATH="/app/data/config/config.yml"
 
 # Add a healthcheck using the httpscheck tool from microcheck
 COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
-HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:9999/healthz"]
+HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:5000/healthz"]
 
 # Expose the port that the app listens on
 EXPOSE 5000

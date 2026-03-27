@@ -23,10 +23,13 @@ from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
-    check_magic_bytes, generate_filename, process_image, cleanup_avatar_files,
+    MAX_SIZE, check_magic_bytes, generate_filename, process_image, cleanup_avatar_files,
 )
 from src.authentik_api import update_avatar_url
 from src.ldap_client import update_thumbnail as update_ad_thumbnail, is_enabled as ldap_is_enabled
+
+# Cache LDAP enabled state at module level (config is immutable after startup)
+_ldap_enabled = ldap_is_enabled()
 
 log = logging.getLogger('routes')
 
@@ -77,8 +80,7 @@ def dashboard():
     """Serve the authenticated avatar upload / crop page."""
     user = session['user']
     log.debug('Serving dashboard for user %r.', user['username'])
-    max_size = max(img_cfg['sizes'])
-    return render_template('dashboard.html', user=user, ldap_enabled=ldap_is_enabled(), max_size=max_size)
+    return render_template('dashboard.html', user=user, ldap_enabled=_ldap_enabled, max_size=MAX_SIZE)
 
 
 # ---------------------------------------------------------------------------
@@ -209,12 +211,7 @@ def api_upload():
         steps.append({'step': t('step_filename'), 'status': 'success'})
 
         # -- Step 10: Resize & save --------------------------------------------
-        urls = process_image(image, filename_base)
-        total_bytes = sum(
-            (AVATAR_ROOT / f'{size}x{size}' / f'{filename_base}.{fmt.lower()}').stat().st_size
-            for size in img_cfg['sizes']
-            for fmt in img_cfg['formats']
-        )
+        urls, total_bytes = process_image(image, filename_base)
         if total_bytes >= 1_048_576:
             size_label = f'{total_bytes / 1_048_576:.1f} MB'
         else:
@@ -238,7 +235,7 @@ def api_upload():
             has_failure = True
 
         # -- Step 12: Update AD (if enabled) -----------------------------------
-        if ldap_is_enabled():
+        if _ldap_enabled:
             try:
                 thumb_path = AVATAR_ROOT / f'{ad_thumb_size}x{ad_thumb_size}' / f'{filename_base}.jpg'
                 log.debug('Reading AD thumbnail from %s.', thumb_path)

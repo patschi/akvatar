@@ -12,7 +12,7 @@ from flask import session, request
 
 log = logging.getLogger('i18n')
 
-SUPPORTED_LOCALES = ('en_US', 'de_DE')
+SUPPORTED_LOCALES = frozenset(('en_US', 'de_DE'))
 DEFAULT_LOCALE = 'en_US'
 
 # ---------------------------------------------------------------------------
@@ -179,13 +179,21 @@ def t(key: str, **kwargs) -> str:
     return text
 
 
-def get_js_translations() -> dict[str, str]:
-    """Return the subset of translations needed by client-side JavaScript."""
-    locale = get_locale()
-    strings = TRANSLATIONS.get(locale, TRANSLATIONS[DEFAULT_LOCALE])
-    js_keys = (
-        'step_crop', 'step_compress', 'step_upload',
-        'upload_processing', 'upload_button',
-        'result_success', 'result_retry', 'result_error', 'result_network_error',
-    )
-    return {k: strings[k] for k in js_keys}
+_JS_KEYS = (
+    'step_crop', 'step_compress', 'step_upload',
+    'upload_processing', 'upload_button',
+    'result_success', 'result_retry', 'result_error', 'result_network_error',
+)
+
+# Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)
+_JS_TRANSLATIONS: dict[str, dict[str, str]] = {
+    locale: {k: strings[k] for k in _JS_KEYS}
+    for locale, strings in TRANSLATIONS.items()
+}
+
+
+def get_js_translations(locale: str | None = None) -> dict[str, str]:
+    """Return the pre-computed subset of translations needed by client-side JavaScript."""
+    if locale is None:
+        locale = get_locale()
+    return _JS_TRANSLATIONS.get(locale, _JS_TRANSLATIONS[DEFAULT_LOCALE])
