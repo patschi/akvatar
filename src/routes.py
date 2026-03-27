@@ -14,7 +14,9 @@ import logging
 from datetime import datetime, timezone
 
 from PIL import Image, ImageOps
-from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template
+from pathlib import Path
+
+from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template, Response
 
 from src.config import ldap_cfg, img_cfg, ak_cfg, dry_run
 from src.i18n import t
@@ -30,14 +32,18 @@ log = logging.getLogger('routes')
 
 routes_bp = Blueprint('routes', __name__)
 
+# Load robots.txt into memory once at import time
+_ROBOTS_TXT = Path(__file__).resolve().parent.parent / 'static' / 'robots.txt'
+_ROBOTS_CONTENT = _ROBOTS_TXT.read_text(encoding='utf-8')
+
 
 # ---------------------------------------------------------------------------
 # robots.txt – block all search engine crawling
 # ---------------------------------------------------------------------------
 @routes_bp.route('/robots.txt')
 def robots_txt():
-    """Serve robots.txt from the static directory at the site root."""
-    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
+    """Serve robots.txt from memory."""
+    return Response(_ROBOTS_CONTENT, mimetype='text/plain')
 
 
 # ---------------------------------------------------------------------------
