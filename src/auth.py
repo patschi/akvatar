@@ -14,6 +14,7 @@ from flask import Blueprint, redirect, url_for, session, render_template
 from authlib.integrations.flask_client import OAuth
 
 from src.config import oidc_cfg
+from src.i18n import resolve_oidc_locale
 
 log = logging.getLogger('auth')
 
@@ -84,6 +85,12 @@ def auth_callback():
         'email':    userinfo.get('email', ''),
         'avatar':   userinfo.get('picture', ''),
     }
+
+    # Resolve locale from OIDC claim
+    oidc_locale_raw = userinfo.get('locale', '')
+    session['locale'] = resolve_oidc_locale(oidc_locale_raw)
+    log.debug('OIDC locale claim: %r -> resolved to %r.', oidc_locale_raw, session['locale'])
+
     log.info('User %r logged in successfully.', session['user']['username'])
     log.debug('Session user data: %s', session['user'])
     return redirect(url_for('routes.dashboard'))

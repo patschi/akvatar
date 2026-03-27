@@ -17,6 +17,7 @@ from PIL import Image, ImageOps
 from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template
 
 from src.config import ldap_cfg, img_cfg, ak_cfg, dry_run
+from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
@@ -176,12 +177,12 @@ def api_upload():
             log.debug('Converting image mode %s -> RGBA.', image.mode)
             image = image.convert('RGBA')
 
-        steps.append({'step': 'Image validated & loaded', 'status': 'success', 'detail': 'Image metadata removed'})
+        steps.append({'step': t('step_validated'), 'status': 'success', 'detail': t('step_validated_detail')})
         log.info('Image loaded – mode=%s, size=%dx%d.', image.mode, image.width, image.height)
 
         # -- Step 9: Generate filename -----------------------------------------
         filename_base = generate_filename()
-        steps.append({'step': 'Filename generated', 'status': 'success'})
+        steps.append({'step': t('step_filename'), 'status': 'success'})
 
         # -- Step 10: Resize & save --------------------------------------------
         urls = process_image(image, filename_base)
@@ -194,7 +195,7 @@ def api_upload():
             size_label = f'{total_bytes / 1_048_576:.1f} MB'
         else:
             size_label = f'{total_bytes / 1024:.0f} KB'
-        steps.append({'step': 'Image processed & saved in all sizes/formats', 'status': 'success', 'detail': f'{len(img_cfg["sizes"])} sizes, {len(img_cfg["formats"])} formats, {size_label} total'})
+        steps.append({'step': t('step_processed'), 'status': 'success', 'detail': t('step_processed_detail', sizes=len(img_cfg['sizes']), formats=len(img_cfg['formats']), total=size_label)})
 
         ak_size = ak_cfg.get('avatar_size', 1024)
         log.debug('Using %dx%d JPG for Authentik avatar URL (from authentik_api.avatar_size).', ak_size, ak_size)
@@ -206,10 +207,10 @@ def api_upload():
         try:
             update_avatar_url(user['username'], canonical_url)
             status = 'dry-run' if dry_run else 'success'
-            steps.append({'step': 'Profile synced', 'status': status})
+            steps.append({'step': t('step_profile_synced'), 'status': status})
         except Exception as exc:
             log.exception('Failed to update Authentik avatar.')
-            steps.append({'step': 'Profile synced', 'status': 'failed'})
+            steps.append({'step': t('step_profile_synced'), 'status': 'failed'})
             has_failure = True
 
         # -- Step 12: Update AD (if enabled) -----------------------------------
@@ -220,10 +221,10 @@ def api_upload():
                 jpeg_bytes = thumb_path.read_bytes()
                 update_ad_thumbnail(user['username'], jpeg_bytes)
                 status = 'dry-run' if dry_run else 'success'
-                steps.append({'step': 'Active Directory thumbnailPhoto updated', 'status': status})
+                steps.append({'step': t('step_ad_updated'), 'status': status})
             except Exception as exc:
                 log.exception('Failed to update AD thumbnailPhoto.')
-                steps.append({'step': 'Active Directory thumbnailPhoto updated', 'status': 'failed'})
+                steps.append({'step': t('step_ad_updated'), 'status': 'failed'})
                 has_failure = True
 
         # -- Rollback saved files on any backend failure -----------------------
@@ -251,5 +252,5 @@ def api_upload():
 
     except Exception as exc:
         log.exception('Upload processing failed.')
-        steps.append({'step': 'Processing', 'status': 'failed', 'detail': str(exc)})
+        steps.append({'step': t('step_processing_failed'), 'status': 'failed', 'detail': str(exc)})
         return jsonify({'steps': steps, 'error': str(exc)}), 500

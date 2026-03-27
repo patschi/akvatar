@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="darkreader-lock" />
   <meta name="color-scheme" content="dark" />
-  <title>{{ brand_name }} – Logged out</title>
+  <title>{{ brand_name }} – {{ t('title_logged_out') }}</title>
 
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
@@ -27,11 +27,11 @@
     <div class="card login-card">
       <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
 
-      <h1>Logout successful</h1>
-      <p class="subtitle">You have been signed out. See you next time!</p>
+      <h1>{{ t('logout_heading') }}</h1>
+      <p class="subtitle">{{ t('logout_subtitle') }}</p>
 
       <a href="{{ url_for('routes.login_page') }}" class="btn-primary btn-login">
-        Back to login
+        {{ t('logout_button') }}
       </a>
     </div>
   </main>

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="darkreader-lock" />
   <meta name="color-scheme" content="dark" />
-  <title>{{ brand_name }} – Dashboard</title>
+  <title>{{ brand_name }} – {{ t('title_dashboard') }}</title>
 
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
@@ -32,7 +32,7 @@
     <span class="user-info">
       {{ user.name or user.username }}
       &middot;
-      <a href="{{ url_for('auth.logout') }}">Log out</a>
+      <a href="{{ url_for('auth.logout') }}">{{ t('nav_logout') }}</a>
     </span>
   </nav>
 
@@ -63,16 +63,13 @@
       <hr id="profileDivider" class="divider" />
 
       <div id="uploadSection">
-        <h1>Update your profile picture</h1>
-        <p class="subtitle">
-          Select an image, crop it to a square, and hit <strong>Upload</strong>.
-          Your avatar will be updated across our system automatically.
-        </p>
+        <h1>{{ t('upload_heading') }}</h1>
+        <p class="subtitle">{{ t('upload_subtitle') | safe }}</p>
 
         <!-- File picker -->
         <div id="filePicker">
           <label class="file-label" for="fileInput">
-            Choose image&hellip;
+            {{ t('upload_choose') }}
             <input
               type="file"
               id="fileInput"
@@ -90,7 +87,7 @@
 
         <!-- Upload button (hidden until an image is chosen) -->
         <button id="uploadBtn" class="btn-primary hidden" disabled>
-          Upload &amp; Update Avatar
+          {{ t('upload_button') }}
         </button>
       </div>
 
@@ -98,7 +95,7 @@
       <!-- Progress panel                                                  -->
       <!-- ============================================================== -->
       <div id="progressPanel" class="progress-panel hidden">
-        <h2>Progress</h2>
+        <h2>{{ t('progress_heading') }}</h2>
         <ul id="progressList" class="progress-list"></ul>
         <div id="resultMessage"></div>
       </div>
@@ -112,6 +109,7 @@
     // Server-provided constants (respects base_path / reverse proxy prefix)
     const UPLOAD_URL = "{{ url_for('routes.api_upload') }}";
     const MAX_SIZE   = {{ max_size }};
+    const I18N       = {{ i18n | tojson }};
 
     const uploadSection  = document.getElementById("uploadSection");
     const filePicker     = document.getElementById("filePicker");
@@ -188,7 +186,7 @@
       if (!cropper) return;
 
       uploadBtn.disabled = true;
-      uploadBtn.textContent = "Processing\u2026";
+      uploadBtn.textContent = I18N.upload_processing;
       filePicker.classList.add("hidden");
       cropperWrapper.classList.add("hidden");
       progressPanel.classList.remove("hidden");
@@ -196,17 +194,17 @@
       resultMessage.innerHTML = "";
 
       // Client step: crop & resize to server's maximum dimension
-      addStep("Cropping image in browser", "pending");
+      addStep(I18N.step_crop, "pending");
       const canvas = cropper.getCroppedCanvas({
         width: MAX_SIZE, height: MAX_SIZE,
         imageSmoothingEnabled: true,
         imageSmoothingQuality: "high",
       });
       progressList.lastChild.remove();
-      addStep("Cropping image in browser", "success");
+      addStep(I18N.step_crop, "success");
 
       // Client step: compress (WebP preferred, JPEG fallback)
-      addStep("Compressing image in browser", "pending");
+      addStep(I18N.step_compress, "pending");
       let blob = await new Promise((r) => canvas.toBlob(r, "image/webp", 0.85));
       let ext = "webp";
       if (!blob || blob.type !== "image/webp") {
@@ -214,10 +212,10 @@
         ext = "jpg";
       }
       progressList.lastChild.remove();
-      addStep("Compressing image in browser", "success", `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
+      addStep(I18N.step_compress, "success", `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
 
       // Client step: upload
-      addStep("Uploading to server", "pending");
+      addStep(I18N.step_upload, "pending");
       const fd = new FormData();
       fd.append("file", blob, `avatar.${ext}`);
 
@@ -226,7 +224,7 @@
         const data = await resp.json();
         progressList.lastChild.remove();
         // Upload itself succeeded if the server responded with steps
-        addStep("Uploading to server", data.steps ? "success" : "failed");
+        addStep(I18N.step_upload, data.steps ? "success" : "failed");
 
         if (data.steps) {
           for (const s of data.steps) addStep(s.step, s.status, s.detail || "");
@@ -237,10 +235,10 @@
           uploadSection.classList.add("hidden");
           document.getElementById("profileDivider").classList.add("hidden");
           progressPanel.style.marginTop = "0";
-          progressPanel.style.paddingTop = "0";
+          progressPanel.style.paddingTop = "10";
           resultMessage.innerHTML =
-            '<p class="result-success">Avatar updated successfully!</p>' +
-            '<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">Change avatar again</button>';
+            `<p class="result-success">${I18N.result_success}</p>` +
+            `<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
           // Refresh the profile avatar shown at the top of the page
           const avatarEl = document.querySelector(".profile-avatar");
           if (avatarEl && data.avatar_url) {
@@ -250,17 +248,17 @@
           }
         } else {
           resultMessage.innerHTML =
-            '<p class="result-error">Could not update your avatar. Please try again later.</p>';
+            `<p class="result-error">${I18N.result_error}</p>`;
           uploadBtn.disabled = false;
-          uploadBtn.textContent = "Upload & Update Avatar";
+          uploadBtn.textContent = I18N.upload_button;
         }
       } catch (err) {
         progressList.lastChild.remove();
-        addStep("Uploading to server", "failed", err.message);
+        addStep(I18N.step_upload, "failed", err.message);
         resultMessage.innerHTML =
-          '<p class="result-error">Could not reach the server. Please check your connection and try again.</p>';
+          `<p class="result-error">${I18N.result_network_error}</p>`;
         uploadBtn.disabled = false;
-        uploadBtn.textContent = "Upload & Update Avatar";
+        uploadBtn.textContent = I18N.upload_button;
       }
     });
   </script>

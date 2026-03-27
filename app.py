@@ -12,6 +12,7 @@ from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.config import app_cfg, web_cfg, branding_cfg
+from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
 from src.imaging import AVATAR_ROOT
@@ -81,12 +82,18 @@ def create_app() -> Flask:
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
     log.debug('Blueprints registered.')
 
-    # -- Branding context processor ----------------------------------------
+    # -- Template context processor -----------------------------------------
     _brand_name = branding_cfg.get('name', 'Avatar Updater')
 
     @app.context_processor
-    def _inject_branding():
-        return {'brand_name': _brand_name}
+    def _inject_globals():
+        locale = get_locale()
+        return {
+            'brand_name': _brand_name,
+            't': t,
+            'lang': locale.split('_')[0],
+            'i18n': get_js_translations(),
+        }
 
     # -- HTTP request logging (non-static assets at DEBUG level) -----------
     @app.after_request
