@@ -1,29 +1,26 @@
 # Authentik Avatar Updater
 
-A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats, and then pushed to **Authentik** (via API) and optionally to **Microsoft Active Directory** (via LDAP).
-
-> **Platform support:** Linux only. Windows is not supported.
+A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to **Microsoft Active Directory/LDAP Server**.
 
 ## Features
 
 - **OpenID Connect login** via Authentik (scopes: `openid profile email`)
+- **Multiple Languages**: Automatically retrieved through OIDC `locale` attribute in `profile` scope. Currently supported English (default), German.
 - **Client-side cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs) (bundled locally, no external CDN)
 - **Multi-size output** -- 1024, 648, 512, 256, 128, 64 (configurable)
-- **Multi-format output** -- JPEG, PNG, WebP
+- **Multi-format output** -- JPEG, PNG, WebP (configurable)
 - **Unguessable filenames** (`uuid4` + `token_urlsafe` + nanosecond timestamp)
-- **Authentik API** -- sets `attributes.avatar-url` on the user object
-- **Active Directory LDAP** -- writes `thumbnailPhoto` (optional, toggle in config)
-- **Step-by-step progress** shown in the browser with success/fail/skipped indicators
+- **Authentik API** -- sets `attributes.avatar-url` on the user object (configurable)
+- **LDAP Server** -- writes `thumbnailPhoto` (optional, toggle in config)
 - **JSON metadata** -- saves upload metadata (username, timestamp, sizes) per avatar
 - **Configurable branding** -- customise the application name in the UI
-- **Configurable logging** with multiple levels (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 - **Reverse proxy / subfolder support** -- respects `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Prefix`
 - **Optional TLS** -- serve HTTPS directly from the built-in server
 - **Distroless Docker image** for minimal attack surface
 
 ## Project structure
 
-```
+```text
 authentik-avatar-updater/
 ├── app.py                  # Entry point & Flask app factory
 ├── requirements.txt        # Python dependencies

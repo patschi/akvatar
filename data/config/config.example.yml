@@ -33,9 +33,10 @@ app:
   # Number of avatar sets to keep per user. Older uploads are automatically
   # deleted after each successful upload. Set to 0 to keep all (no cleanup).
   avatar_retention_count: 2
-  # How often (in hours) to check for orphaned avatars belonging to users that
-  # no longer exist in Authentik and delete them. Set to 0 to disable.
-  orphan_cleanup_interval_hours: 24
+  # Cron schedule for orphan avatar cleanup (removes avatars of users that no
+  # longer exist in Authentik).  Uses standard 5-field crontab syntax.
+  # Set to "" (empty string) to disable.  Default: "0 2 * * *" (daily at 2 AM).
+  cleanup_interval: "0 2 * * *"
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
 

@@ -4,11 +4,10 @@ cleanup.py – Orphan avatar cleanup.
 Removes avatar files that belong to users who no longer exist in Authentik.
 
 How user matching works:
-  - Each upload writes a .meta.json with the OIDC `preferred_username` claim
-    stored in the `username` field.
-  - Authentik's core users API returns the same `username` value (since
-    Authentik is both the OIDC provider and the API source).
-  - A direct string-equality check determines whether the user still exists.
+  - Each upload writes a .meta.json with the Authentik PK stored in the
+    ``user_pk`` field.
+  - Authentik's core users API returns the same PK for every active user.
+  - A direct integer-equality check determines whether the user still exists.
 
 Safety:
   - If the Authentik API returns zero active users (e.g. due to an expired
@@ -19,12 +18,15 @@ Safety:
 
 This module is used in two ways:
   1. Automatically via a background daemon thread started in app.py.
-  2. Manually via `python cleanup.py` at the project root.
+  2. Manually via ``python cleanup.py`` at the project root.
 """
 
 import logging
 import threading
 import time
+from datetime import datetime, timezone
+
+from croniter import croniter
 
 from src.config import app_cfg, dry_run
 from src.imaging import get_all_avatar_metadata, cleanup_avatar_files
@@ -32,9 +34,9 @@ from src.authentik_api import list_all_user_pks
 
 log = logging.getLogger('cleanup')
 
-# How often the background thread runs (0 = disabled).
+# Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
-_interval_hours = app_cfg.get('orphan_cleanup_interval_hours', 24)
+_cron_expr = str(app_cfg.get('cleanup_interval', '0 2 * * *')).strip()
 
 
 def run_orphan_cleanup() -> int:
@@ -99,19 +101,22 @@ def run_orphan_cleanup() -> int:
 # Background daemon thread
 # ---------------------------------------------------------------------------
 
-def _cleanup_loop(interval_seconds: float) -> None:
+def _cleanup_loop() -> None:
     """
-    Run orphan cleanup repeatedly at a fixed interval.
+    Sleep until the next cron-scheduled time, run cleanup, repeat.
 
     Called as the target of a daemon thread — it exits automatically when the
     main process shuts down.
     """
-    # Delay the first run to let the app fully initialise (OIDC discovery,
-    # blueprint registration, etc.) before hitting the Authentik API.
-    log.debug('Cleanup thread sleeping 60 s before first run...')
-    time.sleep(60)
+    cron = croniter(_cron_expr, datetime.now(timezone.utc))
 
     while True:
+        next_run = cron.get_next(datetime)
+        now = datetime.now(timezone.utc)
+        delay = max((next_run - now).total_seconds(), 0)
+        log.debug('Next cleanup scheduled at %s (in %.0f s).', next_run.isoformat(), delay)
+        time.sleep(delay)
+
         try:
             run_orphan_cleanup()
         except Exception:
@@ -119,27 +124,26 @@ def _cleanup_loop(interval_seconds: float) -> None:
             # cleanup thread permanently.
             log.exception('Orphan cleanup iteration failed.')
 
-        log.debug('Next orphan cleanup in %d seconds.', interval_seconds)
-        time.sleep(interval_seconds)
-
 
 def start_cleanup_thread() -> None:
     """
-    Start the background orphan cleanup thread if the configured interval is > 0.
+    Start the background orphan cleanup thread if a cron schedule is configured.
 
     Uses a daemon thread so it is automatically terminated when the main
     process exits — no explicit shutdown logic needed.
     """
-    if _interval_hours <= 0:
-        log.info('Orphan cleanup is disabled (orphan_cleanup_interval_hours = 0).')
+    if not _cron_expr:
+        log.info('Orphan cleanup is disabled (cleanup_interval is empty).')
         return
 
-    interval_seconds = _interval_hours * 3600
+    if not croniter.is_valid(_cron_expr):
+        log.error('Invalid cron expression %r for cleanup_interval – cleanup is disabled.', _cron_expr)
+        return
+
     thread = threading.Thread(
         target=_cleanup_loop,
-        args=(interval_seconds,),
         name='orphan-cleanup',
         daemon=True,
     )
     thread.start()
-    log.info('Orphan cleanup thread started (interval: every %g hour(s)).', _interval_hours)
+    log.info('Orphan cleanup thread started (schedule: %s).', _cron_expr)
