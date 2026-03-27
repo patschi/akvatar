@@ -37,6 +37,7 @@ log = logging.getLogger('cleanup')
 # Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
 _cron_expr = str(app_cfg.get('cleanup_interval', '0 2 * * *')).strip()
+_run_on_startup = bool(app_cfg.get('cleanup_on_startup', False))
 
 
 def run_orphan_cleanup() -> int:
@@ -108,6 +109,14 @@ def _cleanup_loop() -> None:
     Called as the target of a daemon thread — it exits automatically when the
     main process shuts down.
     """
+    if _run_on_startup:
+        log.info('cleanup_on_startup is enabled – running cleanup in 60 s.')
+        time.sleep(60)
+        try:
+            run_orphan_cleanup()
+        except Exception:
+            log.exception('Startup orphan cleanup failed.')
+
     cron = croniter(_cron_expr, datetime.now(timezone.utc))
 
     while True:
