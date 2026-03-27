@@ -44,8 +44,10 @@ app:
 
 # --- Webserver ---
 webserver:
+  # Number of gunicorn worker processes (only used in production / Docker).
+  workers: 2
   # TLS certificate and private key paths for HTTPS.
-  # When set, the built-in server uses HTTPS on the same port.
+  # When set, the server uses HTTPS on the same port.
   # Leave empty to run plain HTTP (a warning will be logged at startup).
   tls_cert: ""
   tls_key: ""

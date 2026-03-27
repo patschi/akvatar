@@ -59,7 +59,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED="1"
 
 # Copy application code and healthcheck binary (explicit files only — no .dockerignore needed)
-COPY app.py cleanup.py ./
+COPY app.py cleanup.py run.py ./
 COPY src/ src/
 COPY static/ static/
 
@@ -69,10 +69,6 @@ HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:5000/
 EXPOSE 5000
 VOLUME ["/app/data/user-avatars", "/app/data/config"]
 
-# Run the app via gunicorn for production use.
-# Distroless images use the ENTRYPOINT array form (no shell).
-ENTRYPOINT ["python", "-m", "gunicorn", \
-            "--bind", "0.0.0.0:5000", \
-            "--workers", "2", \
-            "--access-logfile", "-", \
-            "app:create_app()"]
+# Launch via run.py which reads config.yml and starts gunicorn with --preload.
+# A Python script is used because distroless images have no shell.
+ENTRYPOINT ["python", "run.py"]
