@@ -65,6 +65,11 @@ VOLUME ["/app/data/user-avatars"]
 # (or set CONFIG_PATH env var to override)
 ENV CONFIG_PATH="/app/data/config/config.yml"
 
+# Add a healthcheck using the httpscheck tool from microcheck
+COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
+HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:9999/healthz"]
+
+# Expose the port that the app listens on
 EXPOSE 5000
 
 # Run the app via gunicorn for production use.

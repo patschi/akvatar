@@ -47,6 +47,15 @@ def robots_txt():
 
 
 # ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+@routes_bp.route('/healthz')
+def healthz():
+    """Lightweight health probe for load balancers and orchestrators."""
+    return Response('OK', mimetype='text/plain')
+
+
+# ---------------------------------------------------------------------------
 # Public login page
 # ---------------------------------------------------------------------------
 @routes_bp.route('/')
