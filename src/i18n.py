@@ -180,7 +180,12 @@ def t(key: str, **kwargs) -> str:
 
 
 _JS_KEYS = (
+    # Client-side step labels
     'step_crop', 'step_compress', 'step_upload',
+    # Server-side step labels (needed to pre-render waiting steps before SSE arrives)
+    'step_validated', 'step_filename', 'step_processed',
+    'step_profile_synced', 'step_ad_updated',
+    # UI strings
     'upload_processing', 'upload_button',
     'result_success', 'result_retry', 'result_error', 'result_network_error',
 )

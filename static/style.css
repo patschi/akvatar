@@ -308,6 +308,16 @@ body {
   font-size: 0.95rem;
 }
 
+/* --- Step spinner (active / in-progress step) ----------------------- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.step.active .step-icon {
+  animation: spin 0.75s linear infinite;
+  transform-origin: center;
+}
+
 /* --- Utility -------------------------------------------------------- */
 .hidden {
   display: none !important;

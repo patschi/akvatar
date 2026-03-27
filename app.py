@@ -7,6 +7,7 @@ and subfolder middleware, and starts the development server when run directly.
 
 import os
 import logging
+from urllib.parse import urlparse
 
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -67,13 +68,14 @@ def create_app() -> Flask:
     log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
 
     # -- Subfolder support -------------------------------------------------
-    # If base_path is set, apply a SCRIPT_NAME prefix so the app can be
-    # hosted at e.g. /avatar without the reverse proxy needing to set
-    # X-Forwarded-Prefix.
-    base_path = web_cfg.get('base_path', '').rstrip('/')
-    if base_path:
-        app.wsgi_app = PrefixMiddleware(app.wsgi_app, base_path)
-        log.info('PrefixMiddleware applied – app is served under %r.', base_path)
+    # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
+    # "https://portal.example.com/avatar-update").  Applies PrefixMiddleware
+    # so the app can be hosted at a subpath without the reverse proxy needing
+    # to set X-Forwarded-Prefix.
+    _public_path = urlparse(app_cfg.get('public_base_url', '')).path.rstrip('/')
+    if _public_path:
+        app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
+        log.info('PrefixMiddleware applied – app is served under %r.', _public_path)
 
     # Initialise OIDC / OAuth
     init_oauth(app)

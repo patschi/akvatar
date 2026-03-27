@@ -107,10 +107,11 @@
   <!-- Client-side logic                                                   -->
   <!-- ================================================================== -->
   <script>
-    // Server-provided constants (respects base_path / reverse proxy prefix)
-    const UPLOAD_URL = "{{ url_for('routes.api_upload') }}";
-    const MAX_SIZE   = {{ max_size }};
-    const I18N       = {{ i18n | tojson }};
+    // Server-provided constants (respects public_base_url path / reverse proxy prefix)
+    const UPLOAD_URL   = "{{ url_for('routes.api_upload') }}";
+    const MAX_SIZE     = {{ max_size }};
+    const I18N         = {{ i18n | tojson }};
+    const LDAP_ENABLED = {{ ldap_enabled | tojson }};
 
     const uploadSection  = document.getElementById("uploadSection");
     const filePicker     = document.getElementById("filePicker");
@@ -161,23 +162,44 @@
     });
 
     // ------------------------------------------------------------------
-    // Helper: append a step row to the progress list
+    // Step icons (keyed by status)
+    // ------------------------------------------------------------------
+    const STEP_ICONS = {
+      success:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#4ade80" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      failed:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#f87171" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg>',
+      skipped:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5"/><path d="M7 10h6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/></svg>',
+      "dry-run":'<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#60a5fa" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      pending:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
+      active:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/></svg>',
+    };
+
+    // ------------------------------------------------------------------
+    // Helper: build inner HTML for a step row
+    // ------------------------------------------------------------------
+    function buildStepHTML(label, status, detail) {
+      const icon = STEP_ICONS[status] || STEP_ICONS.pending;
+      return `<span class="step-icon">${icon}</span>` +
+             `<span class="step-label">${label}</span>` +
+             (detail ? `<span class="step-detail">${detail}</span>` : "");
+    }
+
+    // ------------------------------------------------------------------
+    // Helper: append a new step row to the progress list; returns the <li>
     // ------------------------------------------------------------------
     function addStep(label, status, detail) {
       const li = document.createElement("li");
       li.className = `step ${status}`;
-      const icons = {
-        success:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#4ade80" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        failed:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#f87171" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg>',
-        skipped:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5"/><path d="M7 10h6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/></svg>',
-        "dry-run":'<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#60a5fa" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-        pending:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
-      };
-      li.innerHTML =
-        `<span class="step-icon">${icons[status] || icons.pending}</span>` +
-        `<span class="step-label">${label}</span>` +
-        (detail ? `<span class="step-detail">${detail}</span>` : "");
+      li.innerHTML = buildStepHTML(label, status, detail);
       progressList.appendChild(li);
+      return li;
+    }
+
+    // ------------------------------------------------------------------
+    // Helper: update an existing step row in place
+    // ------------------------------------------------------------------
+    function setStepStatus(li, label, status, detail) {
+      li.className = `step ${status}`;
+      li.innerHTML = buildStepHTML(label, status, detail);
     }
 
     // ------------------------------------------------------------------
@@ -239,6 +261,19 @@
         progressList.lastChild.remove();
         addStep(I18N.step_upload, "success");
 
+        // Pre-render all server-side steps as pending so the user can see
+        // what is coming, then immediately mark the first one as active.
+        const serverStepLabels = [
+          I18N.step_validated,
+          I18N.step_filename,
+          I18N.step_processed,
+          I18N.step_profile_synced,
+          ...(LDAP_ENABLED ? [I18N.step_ad_updated] : []),
+        ];
+        const serverStepEls = serverStepLabels.map(label => addStep(label, "pending"));
+        let stepIdx = 0;
+        setStepStatus(serverStepEls[0], serverStepLabels[0], "active");
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -260,11 +295,26 @@
                 if (event.done) {
                   finalData = event;
                 } else if (event.step) {
-                  addStep(event.step, event.status, event.detail || "");
+                  // Update the current pre-rendered row (or append if unexpected)
+                  if (stepIdx < serverStepEls.length) {
+                    setStepStatus(serverStepEls[stepIdx], event.step, event.status, event.detail || "");
+                  } else {
+                    addStep(event.step, event.status, event.detail || "");
+                  }
+                  stepIdx++;
+                  // Advance spinner to the next waiting step
+                  if (stepIdx < serverStepEls.length) {
+                    setStepStatus(serverStepEls[stepIdx], serverStepLabels[stepIdx], "active");
+                  }
                 }
               }
             }
           }
+        }
+
+        // Mark any remaining pre-rendered steps as skipped (e.g. on early failure)
+        for (let i = stepIdx; i < serverStepEls.length; i++) {
+          setStepStatus(serverStepEls[i], serverStepLabels[i], "skipped");
         }
 
         // Handle final result

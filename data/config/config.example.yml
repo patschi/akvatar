@@ -22,8 +22,10 @@ app:
   max_upload_size_mb: 20
   # Where processed avatars are stored on disk (relative or absolute path)
   avatar_storage_path: "data/user-avatars"
-  # Public base URL where the app is reachable (used for OIDC redirects, etc.)
-  # Must NOT have a trailing slash
+  # Public base URL where the app is reachable.
+  # The path component is used to host the app under a subfolder automatically
+  # (e.g. "https://portal.example.com/avatar" serves the app under /avatar).
+  # Must NOT have a trailing slash.
   public_base_url: "https://avatar.example.com"
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
@@ -33,10 +35,6 @@ app:
 
 # --- Webserver ---
 webserver:
-  # Base URL path when hosting behind a reverse proxy under a subfolder
-  # e.g. "/avatar" to serve at https://example.com/avatar/
-  # Leave empty for root deployment. Must NOT have a trailing slash.
-  base_path: ""
   # TLS certificate and private key paths for HTTPS.
   # When set, the built-in server uses HTTPS on the same port.
   # Leave empty to run plain HTTP (a warning will be logged at startup).
