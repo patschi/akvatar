@@ -1,26 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!--
-    Favicon – simplified version of the logo.
-    Works well at 16x16 and 32x32.
-  -->
   <defs>
-    <linearGradient id="fbg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#4338ca"/>
+    <linearGradient id="fbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a3f99"/>
+      <stop offset="100%" stop-color="#2878e6"/>
     </linearGradient>
-    <clipPath id="fclip">
-      <rect width="32" height="32" rx="7"/>
+    <clipPath id="fmask">
+      <rect width="32" height="32" rx="8"/>
     </clipPath>
   </defs>
-
-  <rect width="32" height="32" rx="7" fill="url(#fbg)"/>
-
-  <g clip-path="url(#fclip)">
-    <circle cx="16" cy="12.5" r="5" fill="rgba(255,255,255,0.92)"/>
-    <ellipse cx="16" cy="31" rx="10" ry="8.5" fill="rgba(255,255,255,0.92)"/>
+  <rect width="32" height="32" rx="8" fill="url(#fbg)"/>
+  <g clip-path="url(#fmask)">
+    <circle cx="16" cy="11.5" r="5" fill="rgba(255,255,255,0.93)"/>
+    <ellipse cx="16" cy="30" rx="9.5" ry="8" fill="rgba(255,255,255,0.93)"/>
   </g>
-
-  <circle cx="25" cy="25" r="6" fill="#22c55e" stroke="#4338ca" stroke-width="1"/>
-  <polyline points="25,22 25,27.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-  <polyline points="22.8,24.2 25,22 27.2,24.2" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="25" cy="25" r="5.5" fill="#0f1119"/>
+  <circle cx="25" cy="25" r="4.5" fill="white"/>
+  <circle cx="25" cy="25" r="2.8" fill="#1e60c4"/>
+  <circle cx="25" cy="25" r="1.1" fill="white"/>
 </svg>

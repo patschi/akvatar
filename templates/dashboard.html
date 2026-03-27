@@ -69,7 +69,7 @@
 
         <!-- File picker -->
         <div id="filePicker">
-          <label class="file-label" for="fileInput">
+          <label class="btn file-label" for="fileInput">
             {{ t('upload_choose') }}
             <input
               type="file"
@@ -87,7 +87,7 @@
         </div>
 
         <!-- Upload button (hidden until an image is chosen) -->
-        <button id="uploadBtn" class="btn-primary hidden" disabled>
+        <button id="uploadBtn" class="btn btn-block hidden" disabled>
           {{ t('upload_button') }}
         </button>
       </div>
@@ -326,7 +326,7 @@
           progressPanel.style.paddingTop = "10";
           resultMessage.innerHTML =
             `<p class="result-success">${I18N.result_success}</p>` +
-            `<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
+            `<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
           // Refresh the profile avatar shown at the top of the page
           const avatarEl = document.querySelector(".profile-avatar");
           if (avatarEl && avatarEl.tagName === "IMG") {
