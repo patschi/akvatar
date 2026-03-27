@@ -120,4 +120,4 @@ if __name__ == '__main__':
     port = web_cfg.get('port', 5000)
 
     log.info('Webserver starting on %s://%s:%s (debug=%s).', scheme, host, port, debug)
-    app.run(host=web_cfg['host'], port=web_cfg['port'], debug=debug, ssl_context=ssl_context)
+    app.run(host=host, port=port, debug=debug, ssl_context=ssl_context)
