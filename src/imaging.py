@@ -183,7 +183,7 @@ def cleanup_avatar_files(filename_base: str) -> None:
 
     Iterates every configured size × format combination and deletes the
     corresponding file.  Used both for rollback on upload failure and for
-    retention / orphan cleanup.
+    retention cleanup.
     """
     log.debug('Cleaning up avatar files for %s.', filename_base)
     sizes = img_cfg['sizes']
@@ -262,7 +262,7 @@ def get_all_avatar_metadata() -> list[dict]:
     """
     Read and return every .meta.json file from AVATAR_ROOT.
 
-    Used by the orphan cleanup job to compare on-disk avatar ownership
+    Used by the cleanup job to compare on-disk avatar ownership
     against the set of active Authentik users.
     """
     entries = []

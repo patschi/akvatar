@@ -1,11 +1,10 @@
 """
 config.py – Load YAML configuration and set up application-wide logging.
 
-Reads config.yml (or the path given by the CONFIG_PATH env var) once at import time
-so every other module can simply `from src.config import cfg`.
+Reads config.yml once at import time so every other module can simply
+`from src.config import cfg`.
 """
 
-import os
 import sys
 import logging
 
@@ -14,7 +13,7 @@ import yaml
 # ---------------------------------------------------------------------------
 # Load configuration
 # ---------------------------------------------------------------------------
-CONFIG_PATH = os.environ.get('CONFIG_PATH', 'data/config/config.yml')
+CONFIG_PATH = 'data/config/config.yml'
 
 try:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as _f:

@@ -1,5 +1,5 @@
 """
-cleanup.py – Manual trigger for orphan avatar cleanup.
+cleanup.py – Manual trigger for avatar cleanup.
 
 Run with:  python cleanup.py
 
@@ -10,8 +10,8 @@ automatically in a background thread when the app is running).
 
 import sys
 
-from src.cleanup import run_orphan_cleanup
+from src.cleanup import run_cleanup
 
 if __name__ == '__main__':
-    run_orphan_cleanup()
+    run_cleanup()
     sys.exit(0)

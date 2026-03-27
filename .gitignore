@@ -1,4 +1,4 @@
-# ===== Python =====
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -8,25 +8,16 @@ dist/
 build/
 *.whl
 
-# ===== Virtual environments =====
+# Virtual environments
 .venv/
-venv/
-ENV/
 
-# ===== IDE / Editor =====
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# ===== OS =====
+# OS
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# ===== App runtime data =====
-data/user-avatars/
+# App runtime data
+data/
 
-# ===== Secrets (never commit) =====
+# Secrets (never commit)
 config.yml

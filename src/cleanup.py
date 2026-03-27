@@ -1,5 +1,5 @@
 """
-cleanup.py – Orphan avatar cleanup.
+cleanup.py – Avatar cleanup.
 
 Removes avatar files that belong to users who no longer exist in Authentik.
 
@@ -40,7 +40,7 @@ _cron_expr = str(app_cfg.get('cleanup_interval', '0 2 * * *')).strip()
 _run_on_startup = bool(app_cfg.get('cleanup_on_startup', False))
 
 
-def run_orphan_cleanup() -> int:
+def run_cleanup() -> int:
     """
     Compare avatar metadata on disk against active Authentik users and delete
     any avatar sets whose owner no longer exists.
@@ -51,7 +51,7 @@ def run_orphan_cleanup() -> int:
     Returns the number of avatar sets removed (or that would be removed in
     dry-run mode).
     """
-    log.info('Starting orphan avatar cleanup...')
+    log.info('Starting avatar cleanup...')
 
     # Fetch the full set of active user PKs from Authentik.
     try:
@@ -82,18 +82,17 @@ def run_orphan_cleanup() -> int:
             log.debug('user_pk=%s still active – keeping avatar set %s.', user_pk, filename)
             continue
 
-        # User not found among active Authentik users — this avatar set is orphaned.
         if dry_run:
-            log.info('[DRY-RUN] Would remove orphaned avatar set %s (user_pk=%s).', filename, user_pk)
+            log.info('[DRY-RUN] Would remove avatar set %s (user_pk=%s).', filename, user_pk)
         else:
-            log.info('Removing orphaned avatar set %s (user_pk=%s no longer active).', filename, user_pk)
+            log.info('Removing avatar set %s (user_pk=%s no longer active).', filename, user_pk)
             cleanup_avatar_files(filename)
         removed += 1
 
     if removed:
-        log.info('Orphan cleanup complete: %s %d avatar set(s).', 'would remove' if dry_run else 'removed', removed)
+        log.info('Cleanup complete: %s %d avatar set(s).', 'would remove' if dry_run else 'removed', removed)
     else:
-        log.info('Orphan cleanup complete: no orphaned avatars found.')
+        log.info('Cleanup complete: no stale avatars found.')
 
     return removed
 
@@ -113,9 +112,9 @@ def _cleanup_loop() -> None:
         log.info('cleanup_on_startup is enabled – running cleanup in 60 s.')
         time.sleep(60)
         try:
-            run_orphan_cleanup()
+            run_cleanup()
         except Exception:
-            log.exception('Startup orphan cleanup failed.')
+            log.exception('Startup cleanup failed.')
 
     cron = croniter(_cron_expr, datetime.now(timezone.utc))
 
@@ -127,22 +126,22 @@ def _cleanup_loop() -> None:
         time.sleep(delay)
 
         try:
-            run_orphan_cleanup()
+            run_cleanup()
         except Exception:
             # Log and continue — a transient API failure should not kill the
             # cleanup thread permanently.
-            log.exception('Orphan cleanup iteration failed.')
+            log.exception('Cleanup iteration failed.')
 
 
 def start_cleanup_thread() -> None:
     """
-    Start the background orphan cleanup thread if a cron schedule is configured.
+    Start the background cleanup thread if a cron schedule is configured.
 
     Uses a daemon thread so it is automatically terminated when the main
     process exits — no explicit shutdown logic needed.
     """
     if not _cron_expr:
-        log.info('Orphan cleanup is disabled (cleanup_interval is empty).')
+        log.info('Cleanup is disabled (cleanup_interval is empty).')
         return
 
     if not croniter.is_valid(_cron_expr):
@@ -151,8 +150,8 @@ def start_cleanup_thread() -> None:
 
     thread = threading.Thread(
         target=_cleanup_loop,
-        name='orphan-cleanup',
+        name='cleanup',
         daemon=True,
     )
     thread.start()
-    log.info('Orphan cleanup thread started (schedule: %s).', _cron_expr)
+    log.info('Cleanup thread started (schedule: %s).', _cron_expr)

@@ -60,7 +60,7 @@ class PrefixMiddleware:
 
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder='src/templates')
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
 
@@ -127,7 +127,7 @@ def create_app() -> Flask:
 if __name__ == '__main__':
     app = create_app()
 
-    # Start the background orphan cleanup thread (respects config interval; 0 = disabled)
+    # Start the background cleanup thread (respects config interval; 0 = disabled)
     start_cleanup_thread()
 
     flask_debug = os.environ.get('FLASK_DEBUG', '0') == '1'

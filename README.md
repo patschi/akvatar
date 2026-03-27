@@ -1,6 +1,6 @@
 # Authentik Avatar Updater
 
-A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to an **LDAP Server** (Microsoft Active Directory is the primary and only tested target, but any standards-compliant LDAP server should work).
+A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to an **LDAP Server** (only tested Microsoft Active Directory, but any standards-compliant LDAP server should work).
 
 ## Features
 
@@ -168,7 +168,7 @@ Example nginx snippet:
 
 ```nginx
 location /avatar/ {
-    proxy_pass http://127.0.0.1:5000/;
+    proxy_pass                         http://127.0.0.1:5000/;
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
@@ -206,38 +206,26 @@ openssl req -x509 -newkey rsa:3072 -nodes -keyout key.pem -out cert.pem -days 36
 
 ## Running with Docker
 
-### Build the image
-
-```bash
-docker build -t avatar-updater .
-```
-
 ### Run the container
 
 ```bash
 docker run -d \
   --name avatar-updater \
   -p 5000:5000 \
-  -v /path/to/your/config.yml:/app/data/config/config.yml:ro \
-  -v avatar-data:/app/data/user-avatars \
-  avatar-updater
+  -v ak-avatar-config:/app/data/config:ro \
+  -v ak-avatar-data:/app/data/user-avatars \
+  ghcr.io/patschi/ak-avatar-updater:latest
 ```
 
-- Mount your `config.yml` at `/app/data/config/config.yml` (or set `CONFIG_PATH` env var)
+- Mount a volume at `/app/data/config` with a read-only bind for the configuration file (`config.yml`)
 - Mount a volume at `/app/data/user-avatars` for persistent avatar storage
-
-### Override config path
-
-```bash
-docker run -e CONFIG_PATH=/etc/avatar/config.yml ...
-```
 
 ### Docker Compose
 
 ```yml
 services:
   avatar-updater:
-    build: .
+    image: ghcr.io/patschi/ak-avatar-updater:latest
     container_name: avatar-updater
     restart: unless-stopped
     security_opt:
@@ -245,11 +233,12 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./data/config/config.yml:/app/data/config/config.yml:ro
-      - avatar-data:/app/data/user-avatars
+      - ak-avatar-config:/app/data/config:ro
+      - ak-avatar-data:/app/data/user-avatars
 
 volumes:
-  avatar-data:
+  ak-avatar-data:
+  ak-avatar-config:
 ```
 
 Start with:
@@ -283,7 +272,7 @@ See the comments in [`config.example.yml`](data/config/config.example.yml) for a
 
 ## How it works
 
-1. User visits the app and clicks **Sign in with Authentik**
+1. User visits the app and clicks **Sign in**
 2. OIDC redirect -> Authentik login -> callback stores user info in session
 3. Dashboard shows the user's current name and profile picture
 4. User picks an image -> Cropper.js enforces a square crop in the browser

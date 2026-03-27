@@ -98,7 +98,7 @@ def list_all_user_pks() -> set[int]:
     Paginate through Authentik's core users API and return the PK of every
     active user.
 
-    Used by the orphan cleanup job: any avatar metadata whose ``user_pk``
+    Used by the cleanup job: any avatar metadata whose ``user_pk``
     is not in this set belongs to a deleted/deactivated user.
     """
     pks: set[int] = set()
