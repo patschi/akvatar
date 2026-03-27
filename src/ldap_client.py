@@ -42,10 +42,15 @@ def is_enabled() -> bool:
     return _enabled
 
 
-def update_thumbnail(username: str, jpeg_bytes: bytes) -> None:
+def update_thumbnail(ldap_uniq: str, jpeg_bytes: bytes) -> None:
     """
-    Connect to Active Directory and replace the `thumbnailPhoto` attribute for the user whose
-    configured username attribute matches `username`.
+    Connect to Active Directory and replace the ``thumbnailPhoto`` attribute
+    for the user whose ``objectSid`` matches the given ``ldap_uniq``.
+
+    ``ldap_uniq`` is the SID string stored in Authentik's user attributes
+    (e.g. ``S-1-5-21-466132232-558606507-1367596332-3607``).  Using the SID
+    instead of ``sAMAccountName`` guarantees a 100 % unique match that
+    survives username renames.
 
     Raises ValueError if the user is not found or the image exceeds the size limit.
     Raises RuntimeError on LDAP modify failure.
@@ -55,7 +60,7 @@ def update_thumbnail(username: str, jpeg_bytes: bytes) -> None:
         return
 
     if dry_run:
-        log.info('[DRY-RUN] Would update AD thumbnailPhoto for user %r (%d bytes).', username, len(jpeg_bytes))
+        log.info('[DRY-RUN] Would update AD thumbnailPhoto for objectSid=%s (%d bytes).', ldap_uniq, len(jpeg_bytes))
         return
 
     log.debug('Connecting to AD server %s:%s (SSL=%s, skip_cert_verify=%s).', ldap_cfg['server'], ldap_cfg['port'], ldap_cfg.get('use_ssl', False), _skip_verify)
@@ -65,18 +70,19 @@ def update_thumbnail(username: str, jpeg_bytes: bytes) -> None:
     try:
         log.debug('LDAP bind successful as %r.', ldap_cfg['bind_dn'])
 
-        # Search for the user
-        escaped = ldap3.utils.conv.escape_filter_chars(username)
-        search_filter = f'({ldap_cfg["username_attribute"]}={escaped})'
+        # Search for the user by their SID — this is immutable and globally
+        # unique within the AD forest, unlike sAMAccountName which can change.
+        escaped = ldap3.utils.conv.escape_filter_chars(ldap_uniq)
+        search_filter = f'(objectSid={escaped})'
         log.debug('Searching %s with filter %s.', ldap_cfg['search_base'], search_filter)
 
         conn.search(search_base=ldap_cfg['search_base'], search_filter=search_filter, attributes=['distinguishedName'])
 
         if not conn.entries:
-            raise ValueError(f'AD user {username!r} not found under {ldap_cfg["search_base"]}')
+            raise ValueError(f'AD user with objectSid={ldap_uniq!r} not found under {ldap_cfg["search_base"]}')
 
         user_dn = conn.entries[0].entry_dn
-        log.info('Found AD user DN: %s', user_dn)
+        log.info('Found AD user DN: %s (objectSid=%s)', user_dn, ldap_uniq)
 
         # Enforce the AD thumbnail size limit
         if len(jpeg_bytes) > _max_thumbnail_bytes:
@@ -90,6 +96,6 @@ def update_thumbnail(username: str, jpeg_bytes: bytes) -> None:
         if conn.result['result'] != 0:
             raise RuntimeError(f'LDAP modify failed: {conn.result}')
 
-        log.info('AD thumbnailPhoto updated for %r.', username)
+        log.info('AD thumbnailPhoto updated for objectSid=%s.', ldap_uniq)
     finally:
         conn.unbind()

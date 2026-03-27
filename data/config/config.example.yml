@@ -30,6 +30,12 @@ app:
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
   public_avatar_url: "https://avatar.example.com/user-avatars"
+  # Number of avatar sets to keep per user. Older uploads are automatically
+  # deleted after each successful upload. Set to 0 to keep all (no cleanup).
+  avatar_retention_count: 2
+  # How often (in hours) to check for orphaned avatars belonging to users that
+  # no longer exist in Authentik and delete them. Set to 0 to disable.
+  orphan_cleanup_interval_hours: 24
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
 
@@ -79,8 +85,6 @@ ldap:
   bind_password: "CHANGE-ME"
   # Base DN to search for user objects
   search_base: "DC=example,DC=com"
-  # LDAP attribute that matches the OIDC username
-  username_attribute: "sAMAccountName"
   # Maximum thumbnail size in KB that AD accepts (default 100 KB)
   max_thumbnail_kb: 100
   # Which generated image size (px) to use for the AD thumbnailPhoto JPEG.

@@ -5,6 +5,7 @@ Handles secure, unguessable filename generation, resizing to all configured
 square sizes, and saving in every configured format (jpg, png, webp).
 """
 
+import json
 import logging
 from pathlib import Path
 from time import time_ns
@@ -173,7 +174,14 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
 
 
 def cleanup_avatar_files(filename_base: str) -> None:
-    """Remove all generated avatar files for the given filename base (used on rollback after a backend failure)."""
+    """
+    Remove all generated image files and the metadata JSON for one avatar set.
+
+    Iterates every configured size × format combination and deletes the
+    corresponding file.  Used both for rollback on upload failure and for
+    retention / orphan cleanup.
+    """
+    log.debug('Cleaning up avatar files for %s.', filename_base)
     sizes = img_cfg['sizes']
     formats = img_cfg['formats']
     removed = 0
@@ -184,12 +192,81 @@ def cleanup_avatar_files(filename_base: str) -> None:
             try:
                 path.unlink(missing_ok=True)
                 removed += 1
+                log.debug('Deleted %s.', path)
             except OSError as exc:
                 log.warning('Failed to remove %s during cleanup: %s', path, exc)
     # Also remove the metadata file if present
     meta_path = AVATAR_ROOT / f'{filename_base}.meta.json'
     try:
         meta_path.unlink(missing_ok=True)
+        log.debug('Deleted metadata %s.', meta_path)
     except OSError:
         pass
-    log.info('Cleanup: removed %d avatar files for %s.', removed, filename_base)
+    log.info('Cleanup: removed %d file(s) + metadata for %s.', removed, filename_base)
+
+
+def cleanup_old_avatars(user_pk: int, keep: int) -> int:
+    """
+    Enforce per-user avatar retention by deleting the oldest uploads beyond
+    the ``keep`` threshold.  Called after every successful upload.
+
+    Matches metadata files by ``user_pk`` (the Authentik integer primary key),
+    which is immutable even if the username is renamed.
+
+    Returns the number of avatar sets removed.
+    Does nothing if ``keep`` is 0 (unlimited retention).
+    """
+    if keep <= 0:
+        log.debug('Retention cleanup skipped (keep=0, unlimited).')
+        return 0
+
+    log.debug('Retention check for user_pk=%s (keep=%d).', user_pk, keep)
+
+    # Scan all metadata files and collect those belonging to this user.
+    entries: list[tuple[str, str]] = []  # (uploaded_at, filename_base)
+    for meta_path in AVATAR_ROOT.glob('*.meta.json'):
+        try:
+            meta = json.loads(meta_path.read_text(encoding='utf-8'))
+            if meta.get('user_pk') == user_pk:
+                entries.append((meta.get('uploaded_at', ''), meta['filename']))
+        except (OSError, json.JSONDecodeError, KeyError) as exc:
+            log.warning('Skipping unreadable metadata file %s: %s', meta_path, exc)
+
+    log.debug('Found %d avatar set(s) for user_pk=%s.', len(entries), user_pk)
+
+    if len(entries) <= keep:
+        log.debug('Within retention limit – nothing to delete.')
+        return 0
+
+    # ISO 8601 timestamps sort lexicographically, so a simple string sort
+    # gives us chronological order without parsing dates.
+    entries.sort(key=lambda e: e[0], reverse=True)
+    to_delete = entries[keep:]
+
+    removed = 0
+    for uploaded_at, filename_base in to_delete:
+        log.info('Retention cleanup: removing avatar set %s (uploaded %s) for user_pk=%s.',
+                 filename_base, uploaded_at, user_pk)
+        cleanup_avatar_files(filename_base)
+        removed += 1
+
+    log.info('Retention cleanup for user_pk=%s: kept %d, removed %d avatar set(s).', user_pk, keep, removed)
+    return removed
+
+
+def get_all_avatar_metadata() -> list[dict]:
+    """
+    Read and return every .meta.json file from AVATAR_ROOT.
+
+    Used by the orphan cleanup job to compare on-disk avatar ownership
+    against the set of active Authentik users.
+    """
+    entries = []
+    for meta_path in AVATAR_ROOT.glob('*.meta.json'):
+        try:
+            meta = json.loads(meta_path.read_text(encoding='utf-8'))
+            entries.append(meta)
+        except (OSError, json.JSONDecodeError) as exc:
+            log.warning('Skipping unreadable metadata file %s: %s', meta_path, exc)
+    log.debug('Loaded %d metadata file(s) from %s.', len(entries), AVATAR_ROOT)
+    return entries

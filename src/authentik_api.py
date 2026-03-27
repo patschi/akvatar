@@ -1,8 +1,9 @@
 """
 authentik_api.py – Authentik Admin API client.
 
-Updates a configurable attribute on the authenticated user's Authentik account
-so that other services reading Authentik can discover the new avatar.
+Provides helpers to resolve users, update avatar attributes, and enumerate
+all active users for cleanup.  All lookups use the Authentik integer PK as
+the stable identifier (usernames can be renamed; PKs cannot).
 """
 
 import logging
@@ -32,13 +33,18 @@ _base_url = ak_cfg['base_url']
 _users_url = f'{_base_url}/api/v3/core/users/'
 
 
-def _resolve_user_pk(username: str) -> int:
-    """Look up the Authentik integer PK for a given username via the core users search API."""
+def resolve_user_pk(username: str) -> int:
+    """
+    Look up the Authentik integer PK for a given username.
+
+    Called once at login time so the PK can be stored in the session and
+    reused for all subsequent API operations without another lookup.
+    """
     log.debug('GET %s?username=%s – resolving user PK.', _users_url, username)
     resp = _session.get(_users_url, params={'username': username}, timeout=15)
-    log.debug('User search response: HTTP %d, %d result(s).', resp.status_code, len(resp.json().get('results', [])))
     resp.raise_for_status()
     results = resp.json().get('results', [])
+    log.debug('User search response: HTTP %d, %d result(s).', resp.status_code, len(results))
     if not results:
         raise ValueError(f'User {username!r} not found in Authentik.')
     pk = results[0]['pk']
@@ -46,35 +52,80 @@ def _resolve_user_pk(username: str) -> int:
     return pk
 
 
-def update_avatar_url(username: str, avatar_url: str) -> None:
+def update_avatar_url(pk: int, avatar_url: str) -> dict:
     """
-    Look up the Authentik user by `username`, then PATCH their
-    `attributes.<avatar_attribute>` to `avatar_url`.
+    PATCH the user's avatar attribute in Authentik and return the user's
+    full ``attributes`` dict (useful for inspecting ``ldap_uniq`` etc.).
 
-    Fetches the current attributes first so existing values are preserved.
+    Accepts the Authentik PK directly so no username→PK lookup is needed.
+
+    The GET to fetch current attributes is always performed (even in dry-run
+    mode) so callers can inspect the returned attributes.  Only the PATCH
+    is skipped in dry-run mode.
     """
-    if dry_run:
-        log.info('[DRY-RUN] Would update Authentik %r for user %r to %s.', _avatar_attr, username, avatar_url)
-        return
-
-    pk = _resolve_user_pk(username)
-
     url = f'{_users_url}{pk}/'
 
-    # Fetch current attributes so we only touch what we need
+    # Always fetch current attributes — callers rely on the returned dict
+    # (e.g. to check for ldap_uniq before attempting an AD update).
     log.debug('GET %s – fetching current user attributes.', url)
     resp = _session.get(url, timeout=15)
     log.debug('GET user response: HTTP %d.', resp.status_code)
     resp.raise_for_status()
-    current_attrs = resp.json().get('attributes', {})
+
+    user_data = resp.json()
+    current_attrs = user_data.get('attributes', {})
     old_avatar = current_attrs.get(_avatar_attr, '(not set)')
     log.debug('Current attributes: %s', current_attrs)
     log.debug('Previous %s: %s', _avatar_attr, old_avatar)
 
-    # Merge and PATCH
+    if dry_run:
+        log.info('[DRY-RUN] Would update Authentik %r for pk=%s to %s.', _avatar_attr, pk, avatar_url)
+        return current_attrs
+
+    # Merge the new avatar URL into the existing attributes and PATCH
     current_attrs[_avatar_attr] = avatar_url
     log.debug('PATCH %s – setting %s to: %s', url, _avatar_attr, avatar_url)
     patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=15)
     log.debug('PATCH response: HTTP %d.', patch_resp.status_code)
     patch_resp.raise_for_status()
-    log.info('Authentik %s updated for user %r (pk=%s): %s -> %s', _avatar_attr, username, pk, old_avatar, avatar_url)
+    log.info('Authentik %s updated for pk=%s: %s -> %s', _avatar_attr, pk, old_avatar, avatar_url)
+
+    return current_attrs
+
+
+def list_all_user_pks() -> set[int]:
+    """
+    Paginate through Authentik's core users API and return the PK of every
+    active user.
+
+    Used by the orphan cleanup job: any avatar metadata whose ``user_pk``
+    is not in this set belongs to a deleted/deactivated user.
+    """
+    pks: set[int] = set()
+    url = _users_url
+    # Only request active users — deactivated accounts should have their
+    # avatars cleaned up just like deleted ones.
+    params: dict | None = {'page_size': 100, 'is_active': 'true'}
+    page = 0
+
+    while url:
+        page += 1
+        log.debug('GET %s (page %d) – fetching user list.', url, page)
+        resp = _session.get(url, params=params, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        page_results = data.get('results', [])
+        for user in page_results:
+            pk = user.get('pk')
+            if pk is not None:
+                pks.add(pk)
+        log.debug('Page %d: received %d user(s), running total %d.', page, len(page_results), len(pks))
+
+        # Authentik embeds the full next-page URL including query params,
+        # so we only pass our own params on the first request.
+        url = data.get('pagination', {}).get('next')
+        params = None
+
+    log.info('Fetched %d active user PK(s) from Authentik (%d page(s)).', len(pks), page)
+    return pks

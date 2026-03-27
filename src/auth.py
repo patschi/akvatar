@@ -13,8 +13,9 @@ from functools import wraps
 from flask import Blueprint, redirect, url_for, session, render_template
 from authlib.integrations.flask_client import OAuth
 
-from src.config import oidc_cfg
+from src.config import oidc_cfg, app_cfg
 from src.i18n import resolve_oidc_locale
+from src.authentik_api import resolve_user_pk
 
 log = logging.getLogger('auth')
 
@@ -36,10 +37,15 @@ def init_oauth(app):
         name='authentik',
         client_id=oidc_cfg['client_id'],
         client_secret=oidc_cfg['client_secret'],
-        server_metadata_url=oidc_cfg['issuer_url'] + '/.well-known/openid-configuration',
+        server_metadata_url=oidc_cfg['issuer_url'].rstrip('/') + '/.well-known/openid-configuration',
         client_kwargs={'scope': OIDC_SCOPES},
     )
     log.info('OAuth client registered (client_id=%s, scopes=%s).', oidc_cfg['client_id'], OIDC_SCOPES)
+    # Log the redirect URI that must be registered in the Authentik OAuth application.
+    # This is derived from public_base_url – if it doesn't match what Authentik has
+    # registered, logins will fail with "mismatching redirection URI".
+    _expected_redirect_uri = app_cfg.get('public_base_url', '').rstrip('/') + '/callback'
+    log.debug('Expected OIDC redirect URI (must match Authentik app config): %s', _expected_redirect_uri)
 
 
 def login_required(f):
@@ -59,8 +65,9 @@ def login_required(f):
 @auth_bp.route('/login')
 def login():
     """Redirect the browser to Authentik's authorization endpoint."""
-    log.debug('Starting OIDC authorization redirect.')
-    return oauth.authentik.authorize_redirect(url_for('auth.auth_callback', _external=True))
+    redirect_uri = url_for('auth.auth_callback', _external=True)
+    log.debug('OIDC authorization redirect – redirect_uri sent to Authentik: %s', redirect_uri)
+    return oauth.authentik.authorize_redirect(redirect_uri)
 
 
 @auth_bp.route('/callback')
@@ -78,9 +85,20 @@ def auth_callback():
         log.debug('userinfo not in token response – calling userinfo endpoint.')
         userinfo = oauth.authentik.userinfo()
 
+    username = userinfo.get(oidc_cfg['username_claim'], userinfo['sub'])
+
+    # Resolve the Authentik PK (integer primary key) at login time so that
+    # all downstream operations (API updates, metadata, cleanup) can use a
+    # stable, opaque identifier instead of the mutable username.
+    try:
+        pk = resolve_user_pk(username)
+    except Exception:
+        log.exception('Failed to resolve Authentik PK for user %r – login aborted.', username)
+        return redirect(url_for('routes.login_page'))
+
     session['user'] = {
-        'sub':      userinfo['sub'],
-        'username': userinfo.get(oidc_cfg['username_claim'], userinfo['sub']),
+        'pk':       pk,
+        'username': username,
         'name':     userinfo.get('name', ''),
         'email':    userinfo.get('email', ''),
         'avatar':   userinfo.get('picture', ''),
@@ -91,7 +109,7 @@ def auth_callback():
     session['locale'] = resolve_oidc_locale(oidc_locale_raw)
     log.debug('OIDC locale claim: %r -> resolved to %r.', oidc_locale_raw, session['locale'])
 
-    log.info('User %r logged in successfully.', session['user']['username'])
+    log.info('User %r (pk=%s) logged in successfully.', username, pk)
     log.debug('Session user data: %s', session['user'])
     return redirect(url_for('routes.dashboard'))
 

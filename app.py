@@ -17,6 +17,7 @@ from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
 from src.imaging import AVATAR_ROOT, ensure_size_directories
+from src.cleanup import start_cleanup_thread
 
 log = logging.getLogger('app')
 
@@ -29,21 +30,26 @@ logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
 class PrefixMiddleware:
     """
-    WSGI middleware that prepends a static path prefix (SCRIPT_NAME) so the app
+    WSGI middleware that sets SCRIPT_NAME to a static path prefix so the app
     can be hosted under a subfolder without a reverse proxy setting X-Forwarded-Prefix.
 
-    When a reverse proxy *does* set X-Forwarded-Prefix, ProxyFix handles it instead
-    and this middleware is not applied.
+    ProxyFix is applied as the outer middleware (runs before this one), so when a
+    reverse proxy *does* set X-Forwarded-Prefix, ProxyFix has already populated
+    SCRIPT_NAME and this middleware is a no-op.
     """
     def __init__(self, wsgi_app, prefix):
         self.wsgi_app = wsgi_app
         self.prefix = prefix
 
     def __call__(self, environ, start_response):
-        environ['SCRIPT_NAME'] = self.prefix + environ.get('SCRIPT_NAME', '')
-        path_info = environ.get('PATH_INFO', '')
-        if path_info.startswith(self.prefix):
-            environ['PATH_INFO'] = path_info[len(self.prefix):]
+        # Skip if ProxyFix already set SCRIPT_NAME from X-Forwarded-Prefix.
+        # Applying the prefix twice would generate double-prefixed URLs (e.g.
+        # /avatar-update/avatar-update/callback), causing redirect_uri mismatches.
+        if not environ.get('SCRIPT_NAME'):
+            environ['SCRIPT_NAME'] = self.prefix
+            path_info = environ.get('PATH_INFO', '')
+            if path_info.startswith(self.prefix):
+                environ['PATH_INFO'] = path_info[len(self.prefix):]
         return self.wsgi_app(environ, start_response)
 
 
@@ -60,22 +66,24 @@ def create_app() -> Flask:
     ensure_size_directories()
     log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
 
-    # -- Reverse proxy support ---------------------------------------------
-    # Trust X-Forwarded-For, X-Forwarded-Proto, X-Forwarded-Host, X-Forwarded-Prefix
-    # so that url_for() generates correct external URLs and request.remote_addr
-    # reflects the real client IP.
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-    log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
-
     # -- Subfolder support -------------------------------------------------
     # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
-    # "https://portal.example.com/avatar-update").  Applies PrefixMiddleware
-    # so the app can be hosted at a subpath without the reverse proxy needing
-    # to set X-Forwarded-Prefix.
+    # "https://portal.example.com/avatar-update").  Apply PrefixMiddleware as
+    # the inner middleware so it only fires when the reverse proxy has NOT
+    # already set SCRIPT_NAME via X-Forwarded-Prefix (handled by ProxyFix).
     _public_path = urlparse(app_cfg.get('public_base_url', '')).path.rstrip('/')
     if _public_path:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
         log.info('PrefixMiddleware applied – app is served under %r.', _public_path)
+
+    # -- Reverse proxy support ---------------------------------------------
+    # ProxyFix is the OUTER middleware (runs first on every request).  It reads
+    # X-Forwarded-For/Proto/Host/Prefix so that url_for() generates correct
+    # external URLs and remote_addr reflects the real client IP.
+    # IMPORTANT: must wrap PrefixMiddleware so that when X-Forwarded-Prefix is
+    # present, ProxyFix sets SCRIPT_NAME before PrefixMiddleware checks it.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
 
     # Initialise OIDC / OAuth
     init_oauth(app)
@@ -111,6 +119,10 @@ def create_app() -> Flask:
 
 if __name__ == '__main__':
     app = create_app()
+
+    # Start the background orphan cleanup thread (respects config interval; 0 = disabled)
+    start_cleanup_thread()
+
     debug = os.environ.get('FLASK_DEBUG', '0') == '1'
 
     # -- TLS support -------------------------------------------------------

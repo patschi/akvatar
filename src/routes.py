@@ -18,20 +18,22 @@ from pathlib import Path
 
 from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template, Response, stream_with_context
 
-from src.config import ldap_cfg, img_cfg, ak_cfg, dry_run
+from src.config import ldap_cfg, img_cfg, ak_cfg, app_cfg, dry_run
 from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
-    MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image, cleanup_avatar_files,
+    MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image,
+    cleanup_avatar_files, cleanup_old_avatars,
 )
 from src.authentik_api import update_avatar_url
 from src.ldap_client import update_thumbnail as update_ad_thumbnail, is_enabled as ldap_is_enabled
 
 # Cache immutable config values at module level (config never changes after startup)
-_ldap_enabled   = ldap_is_enabled()
-_ak_avatar_size = ak_cfg.get('avatar_size', 1024)
-_ad_thumb_size  = ldap_cfg.get('thumbnail_size', 128)
+_ldap_enabled       = ldap_is_enabled()
+_ak_avatar_size     = ak_cfg.get('avatar_size', 1024)
+_ad_thumb_size      = ldap_cfg.get('thumbnail_size', 128)
+_retention_count    = app_cfg.get('avatar_retention_count', 2)
 
 log = logging.getLogger('routes')
 
@@ -204,10 +206,13 @@ def api_upload():
             log.debug('Using %dx%d JPG for Authentik avatar URL.', _ak_avatar_size, _ak_avatar_size)
             canonical_url = urls[f'{_ak_avatar_size}x{_ak_avatar_size}']['jpg']
             has_failure = False
+            ak_attrs = {}
 
-            # Update Authentik
+            # Update Authentik — uses the PK stored in the session at login
+            # time so we don't need a username→PK lookup on every upload.
+            # The returned attributes dict is inspected below for ldap_uniq.
             try:
-                update_avatar_url(user['username'], canonical_url)
+                ak_attrs = update_avatar_url(user['pk'], canonical_url)
                 status = 'dry-run' if dry_run else 'success'
                 yield _sse({'step': t('step_profile_synced'), 'status': status})
             except Exception:
@@ -215,19 +220,29 @@ def api_upload():
                 yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
                 has_failure = True
 
-            # Update AD (if enabled)
+            # Update AD (if enabled).
+            # Only attempt if the user has a `ldap_uniq` attribute in Authentik,
+            # which proves they were synced from LDAP.  Users without it are
+            # Authentik-only and have no corresponding AD object to update.
             if _ldap_enabled:
-                try:
-                    thumb_path = AVATAR_ROOT / f'{_ad_thumb_size}x{_ad_thumb_size}' / f'{filename_base}.jpg'
-                    log.debug('Reading AD thumbnail from %s.', thumb_path)
-                    jpeg_bytes = thumb_path.read_bytes()
-                    update_ad_thumbnail(user['username'], jpeg_bytes)
-                    status = 'dry-run' if dry_run else 'success'
-                    yield _sse({'step': t('step_ad_updated'), 'status': status})
-                except Exception:
-                    log.exception('Failed to update AD thumbnailPhoto.')
-                    yield _sse({'step': t('step_ad_updated'), 'status': 'failed'})
-                    has_failure = True
+                ldap_uniq = ak_attrs.get('ldap_uniq')
+                if ldap_uniq:
+                    log.debug('User has ldap_uniq=%r – proceeding with AD update.', ldap_uniq)
+                    try:
+                        thumb_path = AVATAR_ROOT / f'{_ad_thumb_size}x{_ad_thumb_size}' / f'{filename_base}.jpg'
+                        log.debug('Reading AD thumbnail from %s.', thumb_path)
+                        jpeg_bytes = thumb_path.read_bytes()
+                        update_ad_thumbnail(ldap_uniq, jpeg_bytes)
+                        status = 'dry-run' if dry_run else 'success'
+                        yield _sse({'step': t('step_ad_updated'), 'status': status})
+                    except Exception:
+                        log.exception('Failed to update AD thumbnailPhoto.')
+                        yield _sse({'step': t('step_ad_updated'), 'status': 'failed'})
+                        has_failure = True
+                else:
+                    # User is not LDAP-synced — skip the AD step entirely
+                    log.info('User pk=%s has no ldap_uniq attribute – skipping AD thumbnail update.', user['pk'])
+                    yield _sse({'step': t('step_ad_updated'), 'status': 'skipped'})
 
             # Rollback on backend failure
             if has_failure:
@@ -236,10 +251,12 @@ def api_upload():
                 yield _sse({'done': True, 'error': 'Could not update your avatar. Please try again later.'})
                 return
 
-            # Save metadata JSON
+            # Save metadata JSON.
+            # Uses the Authentik PK as the owner identifier (not the username)
+            # because PKs are immutable and don't leak PII.
             metadata = {
                 'filename': filename_base,
-                'username': user['username'],
+                'user_pk': user['pk'],
                 'uploaded_at': datetime.now(timezone.utc).isoformat(),
                 'sizes': img_cfg['sizes'],
                 'formats': img_cfg['formats'],
@@ -249,6 +266,10 @@ def api_upload():
             meta_path = AVATAR_ROOT / f'{filename_base}.meta.json'
             meta_path.write_text(json.dumps(metadata, indent=2), encoding='utf-8')
             log.debug('Metadata saved to %s.', meta_path)
+
+            # Enforce per-user retention (delete oldest uploads beyond the limit)
+            if _retention_count > 0:
+                cleanup_old_avatars(user['pk'], keep=_retention_count)
 
             log.info('Upload pipeline complete for user %r.', user['username'])
             yield _sse({'done': True, 'avatar_url': canonical_url})
