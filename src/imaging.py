@@ -30,6 +30,10 @@ Image.MAX_IMAGE_PIXELS = 50_000_000
 # Resolve the avatar storage root from config
 AVATAR_ROOT = Path(app_cfg['avatar_storage_path'])
 
+# Metadata JSON files live in a dedicated subfolder so they don't clutter
+# the avatar root alongside the size subdirectories.
+METADATA_ROOT = AVATAR_ROOT / '_metadata'
+
 # Pre-compute frequently used values from config at import time
 MAX_SIZE = max(img_cfg['sizes'])
 _avatar_base_url = app_cfg['public_avatar_url']
@@ -119,7 +123,7 @@ def generate_filename() -> str:
 
 
 def ensure_size_directories() -> None:
-    """Create all size sub-directories under AVATAR_ROOT. Called once at startup."""
+    """Create all size sub-directories and the metadata directory under AVATAR_ROOT. Called once at startup."""
     for size in img_cfg['sizes']:
         (AVATAR_ROOT / f'{size}x{size}').mkdir(parents=True, exist_ok=True)
     log.debug('Ensured size directories under %s.', AVATAR_ROOT)
@@ -196,7 +200,7 @@ def cleanup_avatar_files(filename_base: str) -> None:
             except OSError as exc:
                 log.warning('Failed to remove %s during cleanup: %s', path, exc)
     # Also remove the metadata file if present
-    meta_path = AVATAR_ROOT / f'{filename_base}.meta.json'
+    meta_path = METADATA_ROOT / f'{filename_base}.meta.json'
     try:
         meta_path.unlink(missing_ok=True)
         log.debug('Deleted metadata %s.', meta_path)
@@ -224,7 +228,7 @@ def cleanup_old_avatars(user_pk: int, keep: int) -> int:
 
     # Scan all metadata files and collect those belonging to this user.
     entries: list[tuple[str, str]] = []  # (uploaded_at, filename_base)
-    for meta_path in AVATAR_ROOT.glob('*.meta.json'):
+    for meta_path in METADATA_ROOT.glob('*.meta.json'):
         try:
             meta = json.loads(meta_path.read_text(encoding='utf-8'))
             if meta.get('user_pk') == user_pk:
@@ -262,11 +266,11 @@ def get_all_avatar_metadata() -> list[dict]:
     against the set of active Authentik users.
     """
     entries = []
-    for meta_path in AVATAR_ROOT.glob('*.meta.json'):
+    for meta_path in METADATA_ROOT.glob('*.meta.json'):
         try:
             meta = json.loads(meta_path.read_text(encoding='utf-8'))
             entries.append(meta)
         except (OSError, json.JSONDecodeError) as exc:
             log.warning('Skipping unreadable metadata file %s: %s', meta_path, exc)
-    log.debug('Loaded %d metadata file(s) from %s.', len(entries), AVATAR_ROOT)
+    log.debug('Loaded %d metadata file(s) from %s.', len(entries), METADATA_ROOT)
     return entries

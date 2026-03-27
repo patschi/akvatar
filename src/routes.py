@@ -22,7 +22,7 @@ from src.config import ldap_cfg, img_cfg, ak_cfg, app_cfg, dry_run
 from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
-    AVATAR_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
+    AVATAR_ROOT, METADATA_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
     MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image,
     cleanup_avatar_files, cleanup_old_avatars,
 )
@@ -263,7 +263,7 @@ def api_upload():
                 'authentik_avatar_url': canonical_url,
                 'total_bytes': total_bytes,
             }
-            meta_path = AVATAR_ROOT / f'{filename_base}.meta.json'
+            meta_path = METADATA_ROOT / f'{filename_base}.meta.json'
             meta_path.write_text(json.dumps(metadata, indent=2), encoding='utf-8')
             log.debug('Metadata saved to %s.', meta_path)
 

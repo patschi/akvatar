@@ -16,7 +16,7 @@ from src.config import app_cfg, web_cfg, branding_cfg
 from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
-from src.imaging import AVATAR_ROOT, ensure_size_directories
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories
 from src.cleanup import start_cleanup_thread
 
 log = logging.getLogger('app')
@@ -63,8 +63,10 @@ def create_app() -> Flask:
 
     # Ensure the avatar storage directory tree exists (root + all size sub-dirs)
     AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
+    METADATA_ROOT.mkdir(parents=True, exist_ok=True)
     ensure_size_directories()
     log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
+    log.debug('Metadata storage root: %s', METADATA_ROOT.resolve())
 
     # -- Subfolder support -------------------------------------------------
     # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
@@ -91,7 +93,7 @@ def create_app() -> Flask:
     # Register route blueprints
     app.register_blueprint(auth_bp)    # /login, /callback, /logout
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
-    log.debug('Blueprints registered.')
+    log.debug('Web routes registered.')
 
     # -- Template context processor -----------------------------------------
     _brand_name = branding_cfg.get('name', 'Avatar Updater')
