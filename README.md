@@ -1,6 +1,6 @@
 # Authentik Avatar Updater
 
-A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to **Microsoft Active Directory/LDAP Server**.
+A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to an **LDAP Server** (Microsoft Active Directory is the primary and only tested target, but any standards-compliant LDAP server should work).
 
 ## Features
 
@@ -18,48 +18,12 @@ A self-hosted web application that lets users update their profile picture via a
 - **Optional TLS** -- serve HTTPS directly from the built-in server
 - **Distroless Docker image** for minimal attack surface
 
-## Project structure
-
-```text
-authentik-avatar-updater/
-├── app.py                  # Entry point & Flask app factory
-├── requirements.txt        # Python dependencies
-├── Dockerfile              # Distroless container build
-├── .dockerignore
-├── src/
-│   ├── __init__.py
-│   ├── config.py           # YAML config loading & logging setup
-│   ├── auth.py             # OIDC login/logout/callback routes
-│   ├── routes.py           # Page routes & upload API
-│   ├── imaging.py          # Resize, compress, save images
-│   ├── authentik_api.py    # Authentik REST API client
-│   └── ldap_client.py      # Active Directory LDAP client
-├── templates/
-│   ├── login.html          # Public landing page
-│   ├── logged_out.html     # Post-logout page
-│   └── dashboard.html      # Authenticated upload page
-├── static/
-│   ├── style.css           # Application stylesheet
-│   ├── logo.svg            # Application logo
-│   ├── favicon.svg         # SVG favicon
-│   ├── favicon.ico         # ICO favicon (legacy browsers)
-│   ├── favicon-192.png     # PNG icon (apple-touch-icon)
-│   └── vendor/
-│       ├── cropper.min.css # Cropper.js (bundled)
-│       └── cropper.min.js
-└── data/
-    ├── config/
-    │   ├── config.example.yml  # Example settings (copy to config.yml)
-    │   └── config.yml          # Your configuration (not committed)
-    └── user-avatars/           # Generated avatars (created at runtime)
-```
-
 ## Prerequisites
 
 - Linux (Debian, Ubuntu, RHEL, Alpine, etc.)
 - Python 3.11+
 - An Authentik instance (see [Authentik setup](#authentik-setup) below)
-- *(Optional)* A Microsoft Active Directory domain controller reachable via LDAPS/LDAP
+- *(Optional)* An LDAP server reachable via LDAPS/LDAP (tested with Microsoft Active Directory)
 
 ## Quick start
 
@@ -117,10 +81,12 @@ Edit `data/config/config.yml` with your environment's values:
 | `authentik_api.*` | Authentik base URL and API token |
 | `authentik_api.avatar_size` | Image size (px) used for the Authentik avatar URL (must be in `images.sizes`) |
 | `authentik_api.avatar_attribute` | Authentik user attribute to store the avatar URL in (default: `avatar-url`) |
-| `ldap.enabled` | `true` to enable AD updates, `false` to skip |
+| `ldap.enabled` | `true` to enable LDAP updates, `false` to skip |
 | `ldap.skip_cert_verify` | `true` to skip TLS certificate verification (e.g. self-signed certs) |
-| `ldap.thumbnail_size` | Image size (px) used for AD thumbnailPhoto (must be in `images.sizes`) |
-| `ldap.*` | AD connection details (only needed when enabled) |
+| `ldap.search_filter` | LDAP search filter (`{ldap_uniq}` is replaced); default: `(objectSid={ldap_uniq})` for AD |
+| `ldap.photo_attribute` | LDAP attribute to write the photo into; default: `thumbnailPhoto` for AD |
+| `ldap.thumbnail_size` | Image size (px) used for the LDAP photo (must be in `images.sizes`) |
+| `ldap.*` | LDAP connection details (only needed when enabled) |
 
 ### 5. Run
 
@@ -129,12 +95,6 @@ python app.py
 ```
 
 The app starts on `http://0.0.0.0:5000` by default.
-
-For development with auto-reload:
-
-```bash
-FLASK_DEBUG=1 python app.py
-```
 
 ## Authentik setup
 
@@ -241,7 +201,7 @@ The server uses the same port for HTTPS. A warning is logged at startup when TLS
 To generate a self-signed certificate for development/testing:
 
 ```bash
-openssl req -x509 -newkey rsa:3072 -nodes -keyout key.pem -out cert.pem -days 365 -subj "/CN=localhost"
+openssl req -x509 -newkey rsa:3072 -nodes -keyout key.pem -out cert.pem -days 3650 -subj "/CN=ak-avatar-updater"
 ```
 
 ## Running with Docker
@@ -330,6 +290,6 @@ See the comments in [`config.example.yml`](data/config/config.example.yml) for a
 5. Cropped image is uploaded as PNG to `POST /api/upload`
 6. Server resizes to all configured sizes, saves as JPG + PNG + WebP
 7. Server PATCHes `attributes.avatar-url` on the Authentik user via API
-8. *(If LDAP enabled)* Server writes the thumbnail JPEG into `thumbnailPhoto` in AD
+8. *(If LDAP enabled)* Server writes the thumbnail JPEG into the configured LDAP photo attribute
 9. A JSON metadata file is saved alongside the avatar files
 10. Browser shows step-by-step progress with success/fail status

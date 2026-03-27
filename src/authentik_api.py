@@ -55,7 +55,7 @@ def resolve_user_pk(username: str) -> int:
 def update_avatar_url(pk: int, avatar_url: str) -> dict:
     """
     PATCH the user's avatar attribute in Authentik and return the user's
-    full ``attributes`` dict (useful for inspecting ``ldap_uniq`` etc.).
+    full ``attributes`` dict (useful for inspecting ``ldap_uniq``, etc.).
 
     Accepts the Authentik PK directly so no username→PK lookup is needed.
 
@@ -66,7 +66,7 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
     url = f'{_users_url}{pk}/'
 
     # Always fetch current attributes — callers rely on the returned dict
-    # (e.g. to check for ldap_uniq before attempting an AD update).
+    # (e.g. to check for ldap_uniq before attempting an LDAP update).
     log.debug('GET %s – fetching current user attributes.', url)
     resp = _session.get(url, timeout=15)
     log.debug('GET user response: HTTP %d.', resp.status_code)

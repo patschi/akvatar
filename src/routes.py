@@ -27,12 +27,12 @@ from src.imaging import (
     cleanup_avatar_files, cleanup_old_avatars,
 )
 from src.authentik_api import update_avatar_url
-from src.ldap_client import update_thumbnail as update_ad_thumbnail, is_enabled as ldap_is_enabled
+from src.ldap_client import update_thumbnail as update_ldap_thumbnail, is_enabled as ldap_is_enabled
 
 # Cache immutable config values at module level (config never changes after startup)
 _ldap_enabled       = ldap_is_enabled()
 _ak_avatar_size     = ak_cfg.get('avatar_size', 1024)
-_ad_thumb_size      = ldap_cfg.get('thumbnail_size', 128)
+_ldap_thumb_size    = ldap_cfg.get('thumbnail_size', 128)
 _retention_count    = app_cfg.get('avatar_retention_count', 2)
 
 log = logging.getLogger('routes')
@@ -220,29 +220,29 @@ def api_upload():
                 yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
                 has_failure = True
 
-            # Update AD (if enabled).
+            # Update LDAP server (if enabled).
             # Only attempt if the user has a `ldap_uniq` attribute in Authentik,
             # which proves they were synced from LDAP.  Users without it are
-            # Authentik-only and have no corresponding AD object to update.
+            # Authentik-only and have no corresponding LDAP object to update.
             if _ldap_enabled:
                 ldap_uniq = ak_attrs.get('ldap_uniq')
                 if ldap_uniq:
-                    log.debug('User has ldap_uniq=%r – proceeding with AD update.', ldap_uniq)
+                    log.debug('User has ldap_uniq=%r – proceeding with LDAP update.', ldap_uniq)
                     try:
-                        thumb_path = AVATAR_ROOT / f'{_ad_thumb_size}x{_ad_thumb_size}' / f'{filename_base}.jpg'
-                        log.debug('Reading AD thumbnail from %s.', thumb_path)
+                        thumb_path = AVATAR_ROOT / f'{_ldap_thumb_size}x{_ldap_thumb_size}' / f'{filename_base}.jpg'
+                        log.debug('Reading LDAP thumbnail from %s.', thumb_path)
                         jpeg_bytes = thumb_path.read_bytes()
-                        update_ad_thumbnail(ldap_uniq, jpeg_bytes)
+                        update_ldap_thumbnail(ldap_uniq, jpeg_bytes)
                         status = 'dry-run' if dry_run else 'success'
-                        yield _sse({'step': t('step_ad_updated'), 'status': status})
+                        yield _sse({'step': t('step_ldap_updated'), 'status': status})
                     except Exception:
-                        log.exception('Failed to update AD thumbnailPhoto.')
-                        yield _sse({'step': t('step_ad_updated'), 'status': 'failed'})
+                        log.exception('Failed to update LDAP photo attribute.')
+                        yield _sse({'step': t('step_ldap_updated'), 'status': 'failed'})
                         has_failure = True
                 else:
-                    # User is not LDAP-synced — skip the AD step entirely
-                    log.info('User pk=%s has no ldap_uniq attribute – skipping AD thumbnail update.', user['pk'])
-                    yield _sse({'step': t('step_ad_updated'), 'status': 'skipped'})
+                    # User is not LDAP-synced — skip the LDAP step entirely
+                    log.info('User pk=%s has no ldap_uniq attribute – skipping LDAP thumbnail update.', user['pk'])
+                    yield _sse({'step': t('step_ldap_updated'), 'status': 'skipped'})
 
             # Rollback on backend failure
             if has_failure:

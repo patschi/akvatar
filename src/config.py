@@ -96,8 +96,10 @@ if ldap_cfg.get('enabled', False):
     if _ldap_thumb_size not in _valid_sizes:
         print(f'FATAL: ldap.thumbnail_size={_ldap_thumb_size} is not in images.sizes={_valid_sizes}.', file=sys.stderr)
         sys.exit(1)
-    log.debug('LDAP will use %dx%d JPG for thumbnailPhoto.', _ldap_thumb_size, _ldap_thumb_size)
+    _ldap_photo_attr = ldap_cfg.get('photo_attribute', 'thumbnailPhoto')
+    _ldap_search_filter = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
+    log.debug('LDAP will use %dx%d JPG for %s.', _ldap_thumb_size, _ldap_thumb_size, _ldap_photo_attr)
     log.debug(
-        'LDAP user identification: will search base %r with filter (objectSid={ldap_uniq from Authentik}) on server %s:%s.',
-        ldap_cfg.get('search_base', ''), ldap_cfg.get('server', ''), ldap_cfg.get('port', 636),
+        'LDAP user identification: will search base %r with filter %r on server %s:%s.',
+        ldap_cfg.get('search_base', ''), _ldap_search_filter, ldap_cfg.get('server', ''), ldap_cfg.get('port', 636),
     )

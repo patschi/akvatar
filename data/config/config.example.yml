@@ -4,8 +4,8 @@
 
 # --- Dry-Run Mode ---
 # When enabled, avatar images are still processed and saved to disk, but no
-# changes are pushed to Authentik or Active Directory.  All operations that
-# would have been performed are logged instead.  Useful for testing.
+# changes are pushed to Authentik or LDAP.  All operations that would have
+# been performed are logged instead.  Useful for testing.
 dry_run: false
 
 # --- Branding ---
@@ -57,7 +57,7 @@ oidc:
   issuer_url: "https://auth.example.com/application/o/avatar-updater"
   client_id: "avatar-updater"
   client_secret: "CHANGE-ME"
-  # OIDC claim that carries the unique username (used to match AD accounts)
+  # OIDC claim that carries the unique username
   username_claim: "preferred_username"
 
 # --- Authentik Admin API ---
@@ -72,25 +72,35 @@ authentik_api:
   # Authentik user attribute to store the avatar URL in
   avatar_attribute: "avatar-url"
 
-# --- Microsoft Active Directory / LDAP (optional) ---
+# --- LDAP Server (optional) ---
+# Supports any standards-compliant LDAP server.  Microsoft Active Directory
+# is the primary and only tested target.  Adjust search_filter and
+# photo_attribute for other directories.
 ldap:
-  # Set to false to skip AD thumbnail updates entirely
+  # Set to false to skip LDAP thumbnail updates entirely
   enabled: false
-  # AD domain controller address
+  # LDAP server address
   server: "ldaps://dc.example.com"
   # Port (636 for LDAPS, 389 for LDAP)
   port: 636
   use_ssl: true
   # Skip TLS certificate verification (set to true for self-signed certificates)
   skip_cert_verify: false
-  # Bind credentials (service account with write access to thumbnailPhoto)
+  # Bind credentials (service account with write access to the photo attribute)
   bind_dn: "CN=svc-avatar,OU=Service Accounts,DC=example,DC=com"
   bind_password: "CHANGE-ME"
   # Base DN to search for user objects
   search_base: "DC=example,DC=com"
-  # Maximum thumbnail size in KB that AD accepts (default 100 KB)
+  # LDAP search filter to locate the user.  {ldap_uniq} is replaced with the
+  # value of the user's ldap_uniq attribute from Authentik.
+  # Default uses objectSid (Microsoft Active Directory).
+  search_filter: "(objectSid={ldap_uniq})"
+  # LDAP attribute to write the photo JPEG into.
+  # Default: thumbnailPhoto (Microsoft Active Directory).
+  photo_attribute: "thumbnailPhoto"
+  # Maximum thumbnail size in KB the LDAP server accepts (default 100 KB)
   max_thumbnail_kb: 100
-  # Which generated image size (px) to use for the AD thumbnailPhoto JPEG.
+  # Which generated image size (px) to use for the LDAP photo JPEG.
   # Must be one of the values in images.sizes below.
   thumbnail_size: 128
 

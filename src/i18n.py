@@ -58,7 +58,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed':           'Image processed & saved in all sizes/formats',
         'step_processed_detail':    '{sizes} sizes, {formats} formats, {total} total',
         'step_profile_synced':      'Login Portal Photo updated',
-        'step_ad_updated':          'User Directory Photo updated',
+        'step_ldap_updated':          'User Directory Photo updated',
         'step_processing_failed':   'Processing',
 
         # -- Result messages --
@@ -107,7 +107,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed':           'Bild in allen Gr\u00f6\u00dfen/Formaten verarbeitet & gespeichert',
         'step_processed_detail':    '{sizes} Gr\u00f6\u00dfen, {formats} Formate, {total} gesamt',
         'step_profile_synced':      'Anmelde-Portal Foto aktualisiert',
-        'step_ad_updated':          'Benutzerverzeichnis Foto aktualisiert',
+        'step_ldap_updated':          'Benutzerverzeichnis Foto aktualisiert',
         'step_processing_failed':   'Verarbeitung',
 
         # -- Result messages --
@@ -184,7 +184,7 @@ _JS_KEYS = (
     'step_crop', 'step_compress', 'step_upload',
     # Server-side step labels (needed to pre-render waiting steps before SSE arrives)
     'step_validated', 'step_filename', 'step_processed',
-    'step_profile_synced', 'step_ad_updated',
+    'step_profile_synced', 'step_ldap_updated',
     # UI strings
     'upload_processing', 'upload_button',
     'result_success', 'result_retry', 'result_error', 'result_network_error',

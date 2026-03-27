@@ -268,7 +268,7 @@
           I18N.step_filename,
           I18N.step_processed,
           I18N.step_profile_synced,
-          ...(LDAP_ENABLED ? [I18N.step_ad_updated] : []),
+          ...(LDAP_ENABLED ? [I18N.step_ldap_updated] : []),
         ];
         const serverStepEls = serverStepLabels.map(label => addStep(label, "pending"));
         let stepIdx = 0;
