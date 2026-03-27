@@ -20,7 +20,7 @@ log = logging.getLogger('ldap_client')
 # Pre-compute enabled state and config values at import time (config is immutable after startup)
 _enabled = ldap_cfg.get('enabled', False)
 _skip_verify = ldap_cfg.get('skip_cert_verify', False)
-_max_thumbnail_bytes = ldap_cfg.get('max_thumbnail_bytes', 102400)
+_max_thumbnail_bytes = ldap_cfg.get('max_thumbnail_kb', 100) * 1024
 
 # Pre-build the ldap3.Server object once so it is reused across connections.
 # The Server object holds DNS resolution, schema info, and TLS config — all of

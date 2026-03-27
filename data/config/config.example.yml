@@ -81,8 +81,8 @@ ldap:
   search_base: "DC=example,DC=com"
   # LDAP attribute that matches the OIDC username
   username_attribute: "sAMAccountName"
-  # Maximum thumbnail size in bytes that AD accepts (default ~100 KB)
-  max_thumbnail_bytes: 102400
+  # Maximum thumbnail size in KB that AD accepts (default 100 KB)
+  max_thumbnail_kb: 100
   # Which generated image size (px) to use for the AD thumbnailPhoto JPEG.
   # Must be one of the values in images.sizes below.
   thumbnail_size: 128
