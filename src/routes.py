@@ -13,7 +13,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from PIL import Image, ImageOps
+from PIL import Image
 from pathlib import Path
 
 from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template, Response, stream_with_context
@@ -23,13 +23,15 @@ from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
-    MAX_SIZE, check_magic_bytes, generate_filename, process_image, cleanup_avatar_files,
+    MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image, cleanup_avatar_files,
 )
 from src.authentik_api import update_avatar_url
 from src.ldap_client import update_thumbnail as update_ad_thumbnail, is_enabled as ldap_is_enabled
 
-# Cache LDAP enabled state at module level (config is immutable after startup)
-_ldap_enabled = ldap_is_enabled()
+# Cache immutable config values at module level (config never changes after startup)
+_ldap_enabled   = ldap_is_enabled()
+_ak_avatar_size = ak_cfg.get('avatar_size', 1024)
+_ad_thumb_size  = ldap_cfg.get('thumbnail_size', 128)
 
 log = logging.getLogger('routes')
 
@@ -158,18 +160,14 @@ def api_upload():
         log.warning('Upload rejected – Pillow could not decode image: %s', exc)
         return jsonify({'error': f'Cannot decode image: {exc}'}), 400
 
-    # Check that the decoded image format is in the allow-list.
-    # A file can have a .png extension but actually be a TIFF, BMP, or
-    # something else Pillow happens to support.  We only allow formats we
-    # explicitly intend to handle.
+    # A file can have a .png extension but actually be a TIFF, BMP, or something else
+    # Pillow happens to support — only allow formats we explicitly intend to handle.
     if image.format not in ALLOWED_FORMATS:
         log.warning('Upload rejected – decoded format %r is not in the allow-list %s.', image.format, ALLOWED_FORMATS)
         return jsonify({'error': f'Image format {image.format!r} is not allowed.'}), 400
     log.debug('Decoded format %s is in the allow-list.', image.format)
 
-    # Dimension checks
-    # Reject images that are unreasonably small (pointless to resize up) or
-    # large (excessive CPU / memory during resize).
+    # Reject images too small to resize up or too large for reasonable CPU/memory use.
     w, h = image.size
     if w < MIN_DIMENSION or h < MIN_DIMENSION:
         log.warning('Upload rejected – image too small: %dx%d (min %d).', w, h, MIN_DIMENSION)
@@ -186,32 +184,7 @@ def api_upload():
     if image.info:
         log.debug('Image info: %s', {k: v for k, v in image.info.items() if not isinstance(v, bytes)})
 
-    # EXIF orientation
-    # Photos from phones often carry an EXIF orientation tag rather than
-    # having their pixels pre-rotated.  exif_transpose() reads that tag,
-    # rotates the pixel data to match, and drops the tag so downstream
-    # code sees the correct orientation without needing to understand EXIF.
-    image = ImageOps.exif_transpose(image) or image
-    log.debug('EXIF orientation applied.  Effective dimensions: %dx%d.', image.width, image.height)
-
-    # Strip all metadata – rebuild from raw pixel data only
-    # Re-create the image from raw pixel data only.  This discards EXIF,
-    # ICC profiles, XMP, IPTC, comments, and any other ancillary chunks.
-    # Why:
-    #   - EXIF can leak PII (GPS, device model, timestamps).
-    #   - Ancillary PNG/JPEG chunks can carry hidden payloads.
-    #   - ICC profiles are unnecessary for avatar thumbnails.
-    #   - Starting from a clean image guarantees nothing unexpected passes
-    #     through to the saved output files.
-    clean = Image.frombytes(image.mode, image.size, image.tobytes())
-    image = clean
-    log.debug('Metadata stripped – working with clean pixel-only image.')
-
-    # Normalise colour mode
-    if image.mode not in ('RGB', 'RGBA'):
-        log.debug('Converting image mode %s -> RGBA.', image.mode)
-        image = image.convert('RGBA')
-
+    image = normalize_image(image)
     log.info('Image validated – mode=%s, size=%dx%d. Starting SSE stream.', image.mode, image.width, image.height)
 
     # -- Stream processing steps as Server-Sent Events ----------------------
@@ -225,16 +198,11 @@ def api_upload():
 
             # Resize & save
             urls, total_bytes = process_image(image, filename_base)
-            if total_bytes >= 1_048_576:
-                size_label = f'{total_bytes / 1_048_576:.1f} MB'
-            else:
-                size_label = f'{total_bytes / 1024:.0f} KB'
+            size_label = f'{total_bytes / 1_048_576:.1f} MB' if total_bytes >= 1_048_576 else f'{total_bytes / 1024:.0f} KB'
             yield _sse({'step': t('step_processed'), 'status': 'success', 'detail': t('step_processed_detail', sizes=len(img_cfg['sizes']), formats=len(img_cfg['formats']), total=size_label)})
 
-            ak_size = ak_cfg.get('avatar_size', 1024)
-            log.debug('Using %dx%d JPG for Authentik avatar URL (from authentik_api.avatar_size).', ak_size, ak_size)
-            canonical_url = urls[f'{ak_size}x{ak_size}']['jpg']
-            ad_thumb_size = ldap_cfg.get('thumbnail_size', 128)
+            log.debug('Using %dx%d JPG for Authentik avatar URL.', _ak_avatar_size, _ak_avatar_size)
+            canonical_url = urls[f'{_ak_avatar_size}x{_ak_avatar_size}']['jpg']
             has_failure = False
 
             # Update Authentik
@@ -250,7 +218,7 @@ def api_upload():
             # Update AD (if enabled)
             if _ldap_enabled:
                 try:
-                    thumb_path = AVATAR_ROOT / f'{ad_thumb_size}x{ad_thumb_size}' / f'{filename_base}.jpg'
+                    thumb_path = AVATAR_ROOT / f'{_ad_thumb_size}x{_ad_thumb_size}' / f'{filename_base}.jpg'
                     log.debug('Reading AD thumbnail from %s.', thumb_path)
                     jpeg_bytes = thumb_path.read_bytes()
                     update_ad_thumbnail(user['username'], jpeg_bytes)

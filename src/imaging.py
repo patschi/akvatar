@@ -11,7 +11,7 @@ from time import time_ns
 from uuid import uuid4
 from secrets import token_urlsafe
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from src.config import img_cfg, app_cfg
 
@@ -52,6 +52,39 @@ MAGIC_SIGNATURES = {
 # Dimension guardrails
 MIN_DIMENSION = 64    # Smaller than our smallest output is pointless
 MAX_DIMENSION = 10000 # Sanity cap to avoid excessive memory/CPU use
+
+
+def normalize_image(image: Image.Image) -> Image.Image:
+    """
+    Apply EXIF orientation, strip all metadata, and normalize the colour mode.
+
+    Returns a clean pixel-only image in RGB or RGBA mode, ready for resizing.
+    This is the shared preprocessing step used before any save/resize operation.
+    
+    Why:
+      - EXIF can leak PII (GPS, device model, timestamps).
+      - Ancillary PNG/JPEG chunks can carry hidden payloads.
+      - ICC profiles are unnecessary for avatar thumbnails.
+      - Starting from a clean image guarantees nothing unexpected passes
+        through to the saved output files.
+    """
+    # Phone photos store orientation in EXIF rather than rotating pixels.
+    # exif_transpose() reads that tag, rotates the pixel data to match, and 
+    # drops the tag so downstream code sees the correct orientation without 
+    # needing to understand EXIF.
+    image = ImageOps.exif_transpose(image) or image
+    log.debug('EXIF orientation applied. Effective dimensions: %dx%d.', image.width, image.height)
+
+    # Rebuild from raw pixels — discards EXIF, ICC profiles, XMP, IPTC, and any
+    # other ancillary chunks that could leak PII or carry hidden payloads.
+    image = Image.frombytes(image.mode, image.size, image.tobytes())
+    log.debug('Metadata stripped – working with clean pixel-only image.')
+
+    if image.mode not in ('RGB', 'RGBA'):
+        log.debug('Converting image mode %s -> RGBA.', image.mode)
+        image = image.convert('RGBA')
+
+    return image
 
 
 def check_magic_bytes(raw_bytes: bytes) -> str | None:

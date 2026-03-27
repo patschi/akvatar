@@ -287,6 +287,7 @@
           // SSE events are delimited by double newlines
           const parts = buffer.split("\n\n");
           buffer = parts.pop();  // keep any incomplete event in the buffer
+          if (buffer.length > 65536) buffer = ""; // discard if no event boundary found (malformed stream)
 
           for (const part of parts) {
             for (const line of part.split("\n")) {
@@ -328,10 +329,8 @@
             `<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
           // Refresh the profile avatar shown at the top of the page
           const avatarEl = document.querySelector(".profile-avatar");
-          if (avatarEl && finalData.avatar_url) {
-            if (avatarEl.tagName === "IMG") {
-              avatarEl.src = finalData.avatar_url;
-            }
+          if (avatarEl && avatarEl.tagName === "IMG") {
+            avatarEl.src = finalData.avatar_url;
           }
         } else {
           resultMessage.innerHTML =
