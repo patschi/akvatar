@@ -116,6 +116,8 @@ if __name__ == '__main__':
     tls_key = web_cfg.get('tls_key', '')
     ssl_context = (tls_cert, tls_key) if tls_cert and tls_key else None
     scheme = 'https' if ssl_context else 'http'
+    host = web_cfg.get('host', '0.0.0.0')
+    port = web_cfg.get('port', 5000)
 
-    log.info('Webserver starting on %s://%s:%s (debug=%s).', scheme, web_cfg['host'], web_cfg['port'], debug)
+    log.info('Webserver starting on %s://%s:%s (debug=%s).', scheme, host, port, debug)
     app.run(host=web_cfg['host'], port=web_cfg['port'], debug=debug, ssl_context=ssl_context)

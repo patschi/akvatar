@@ -33,8 +33,6 @@ app:
 
 # --- Webserver ---
 webserver:
-  host: "0.0.0.0"
-  port: 5000
   # Base URL path when hosting behind a reverse proxy under a subfolder
   # e.g. "/avatar" to serve at https://example.com/avatar/
   # Leave empty for root deployment. Must NOT have a trailing slash.

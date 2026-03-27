@@ -57,8 +57,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_filename':            'Filename generated',
         'step_processed':           'Image processed & saved in all sizes/formats',
         'step_processed_detail':    '{sizes} sizes, {formats} formats, {total} total',
-        'step_profile_synced':      'Profile synced',
-        'step_ad_updated':          'Active Directory thumbnailPhoto updated',
+        'step_profile_synced':      'Login Portal Photo updated',
+        'step_ad_updated':          'User Directory Photo updated',
         'step_processing_failed':   'Processing',
 
         # -- Result messages --
@@ -106,8 +106,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_filename':            'Dateiname generiert',
         'step_processed':           'Bild in allen Gr\u00f6\u00dfen/Formaten verarbeitet & gespeichert',
         'step_processed_detail':    '{sizes} Gr\u00f6\u00dfen, {formats} Formate, {total} gesamt',
-        'step_profile_synced':      'Profil synchronisiert',
-        'step_ad_updated':          'Active Directory thumbnailPhoto aktualisiert',
+        'step_profile_synced':      'Anmelde-Portal Foto aktualisiert',
+        'step_ad_updated':          'Benutzerverzeichnis Foto aktualisiert',
         'step_processing_failed':   'Verarbeitung',
 
         # -- Result messages --

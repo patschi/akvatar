@@ -181,7 +181,7 @@
     }
 
     // ------------------------------------------------------------------
-    // Upload flow
+    // Upload flow  (reads Server-Sent Events for real-time progress)
     // ------------------------------------------------------------------
     uploadBtn.addEventListener("click", async () => {
       if (!cropper) return;
@@ -215,24 +215,60 @@
       progressList.lastChild.remove();
       addStep(I18N.step_compress, "success", `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
 
-      // Client step: upload
+      // Client step: upload to server
       addStep(I18N.step_upload, "pending");
       const fd = new FormData();
       fd.append("file", blob, `avatar.${ext}`);
 
       try {
         const resp = await fetch(UPLOAD_URL, { method: "POST", body: fd });
-        const data = await resp.json();
-        progressList.lastChild.remove();
-        // Upload itself succeeded if the server responded with steps
-        addStep(I18N.step_upload, data.steps ? "success" : "failed");
 
-        if (data.steps) {
-          for (const s of data.steps) addStep(s.step, s.status, s.detail || "");
+        // Validation errors come back as JSON with a 4xx status code
+        const ct = resp.headers.get("content-type") || "";
+        if (ct.includes("application/json")) {
+          const data = await resp.json();
+          progressList.lastChild.remove();
+          addStep(I18N.step_upload, "failed", data.error || "");
+          resultMessage.innerHTML = `<p class="result-error">${I18N.result_error}</p>`;
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = I18N.upload_button;
+          return;
         }
 
-        const hasFailed = data.steps && data.steps.some(s => s.status === "failed");
-        if (!hasFailed && resp.ok) {
+        // Server accepted the upload – now streaming SSE processing steps
+        progressList.lastChild.remove();
+        addStep(I18N.step_upload, "success");
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalData = null;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are delimited by double newlines
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();  // keep any incomplete event in the buffer
+
+          for (const part of parts) {
+            for (const line of part.split("\n")) {
+              if (line.startsWith("data: ")) {
+                const event = JSON.parse(line.slice(6));
+                if (event.done) {
+                  finalData = event;
+                } else if (event.step) {
+                  addStep(event.step, event.status, event.detail || "");
+                }
+              }
+            }
+          }
+        }
+
+        // Handle final result
+        if (finalData && finalData.avatar_url && !finalData.error) {
           uploadSection.classList.add("hidden");
           document.getElementById("profileDivider").classList.add("hidden");
           progressPanel.style.marginTop = "0";
@@ -242,19 +278,23 @@
             `<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
           // Refresh the profile avatar shown at the top of the page
           const avatarEl = document.querySelector(".profile-avatar");
-          if (avatarEl && data.avatar_url) {
+          if (avatarEl && finalData.avatar_url) {
             if (avatarEl.tagName === "IMG") {
-              avatarEl.src = data.avatar_url;
+              avatarEl.src = finalData.avatar_url;
             }
           }
         } else {
           resultMessage.innerHTML =
-            `<p class="result-error">${I18N.result_error}</p>`;
+            `<p class="result-error">${(finalData && finalData.error) || I18N.result_error}</p>`;
           uploadBtn.disabled = false;
           uploadBtn.textContent = I18N.upload_button;
         }
       } catch (err) {
-        progressList.lastChild.remove();
+        // Network error or stream failure
+        if (progressList.lastChild) {
+          const last = progressList.lastChild;
+          if (last.classList.contains("pending")) last.remove();
+        }
         addStep(I18N.step_upload, "failed", err.message);
         resultMessage.innerHTML =
           `<p class="result-error">${I18N.result_network_error}</p>`;
