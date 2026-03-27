@@ -252,7 +252,7 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: #fff;
-  background: #1c49b2;
+  background: #1943a8;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -263,13 +263,13 @@ body {
 }
 
 .btn:hover:not(:disabled) {
-  background: #2558c8;
-  box-shadow: 0 4px 14px rgba(28, 73, 178, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: #2251be;
+  box-shadow: 0 4px 14px rgba(25, 67, 168, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .btn:active:not(:disabled) {
   transform: scale(0.98);
-  background: #163c91;
+  background: #143788;
 }
 
 .btn:disabled {
