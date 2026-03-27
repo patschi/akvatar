@@ -31,7 +31,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # -- Login page --
         'login_heading':            'Update your avatar',
         'login_subtitle':           'Sign in with your organisation account to upload and manage your profile picture.',
-        'login_button':             'Sign in with Authentik',
+        'login_button':             'Sign in',
 
         # -- Logged-out page --
         'logout_heading':           'Logout successful',
@@ -40,7 +40,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # -- Dashboard --
         'upload_heading':           'Update your profile picture',
-        'upload_subtitle':          'Select an image, crop it to a square, and hit <strong>Upload</strong>. Your avatar will be updated across our system automatically.',
+        'upload_subtitle':          'Select an image, crop it to a square, and hit <strong>Upload</strong>. Your avatar will be updated across our systems automatically.',
         'upload_choose':            'Choose image\u2026',
         'upload_button':            'Upload & Update Avatar',
         'upload_processing':        'Processing\u2026',
@@ -80,7 +80,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # -- Login page --
         'login_heading':            'Avatar aktualisieren',
         'login_subtitle':           'Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten.',
-        'login_button':             'Mit Authentik anmelden',
+        'login_button':             'Anmelden',
 
         # -- Logged-out page --
         'logout_heading':           'Abmeldung erfolgreich',
@@ -89,7 +89,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # -- Dashboard --
         'upload_heading':           'Profilbild aktualisieren',
-        'upload_subtitle':          'W\u00e4hlen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf <strong>Hochladen</strong>. Ihr Avatar wird automatisch aktualisiert.',
+        'upload_subtitle':          'W\u00e4hlen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf <strong>Hochladen</strong>. Ihr Avatar wird automatisch in unseren Systemen aktualisiert.',
         'upload_choose':            'Bild ausw\u00e4hlen\u2026',
         'upload_button':            'Hochladen & Avatar aktualisieren',
         'upload_processing':        'Verarbeitung\u2026',
