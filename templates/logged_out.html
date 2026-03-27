@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="darkreader-lock" />
+  <meta name="color-scheme" content="dark" />
+  <title>{{ brand_name }} – Logged out</title>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+  <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='favicon.ico') }}" />
+  <link rel="apple-touch-icon"          href="{{ url_for('static', filename='favicon-192.png') }}" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <nav class="navbar">
+    <a class="brand" href="{{ url_for('routes.login_page') }}">
+      <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" />
+      {{ brand_name }}
+    </a>
+  </nav>
+
+  <main class="container container--narrow">
+    <div class="card login-card">
+      <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+
+      <h1>Logout successful</h1>
+      <p class="subtitle">You have been signed out. See you next time!</p>
+
+      <a href="{{ url_for('routes.login_page') }}" class="btn-primary btn-login">
+        Back to login
+      </a>
+    </div>
+  </main>
+
+</body>
+</html>

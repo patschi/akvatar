@@ -1,0 +1,10 @@
+# Ignore local runtime data and dev files
+data/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.git/
+.gitignore
+*.md
+**/.gitkeep

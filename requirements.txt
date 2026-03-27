@@ -1,0 +1,8 @@
+Flask==3.1.*
+Pillow==11.*
+authlib==1.4.*
+cryptography>=42.0
+requests==2.32.*
+ldap3==2.9.*
+PyYAML==6.0.*
+gunicorn==23.*

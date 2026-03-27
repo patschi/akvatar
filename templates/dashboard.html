@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="darkreader-lock" />
+  <meta name="color-scheme" content="dark" />
+  <title>{{ brand_name }} – Dashboard</title>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+  <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='favicon.ico') }}" />
+  <link rel="apple-touch-icon"          href="{{ url_for('static', filename='favicon-192.png') }}" />
+
+  <!-- Cropper.js – served locally from static/vendor/ -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/cropper.min.css') }}" />
+  <script src="{{ url_for('static', filename='vendor/cropper.min.js') }}"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ================================================================== -->
+  <!-- Top navigation bar                                                  -->
+  <!-- ================================================================== -->
+  <nav class="navbar">
+    <a class="brand" href="{{ url_for('routes.login_page') }}">
+      <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" />
+      {{ brand_name }}
+    </a>
+    <span class="user-info">
+      {{ user.name or user.username }}
+      &middot;
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
+    </span>
+  </nav>
+
+  <!-- ================================================================== -->
+  <!-- Main content card                                                   -->
+  <!-- ================================================================== -->
+  <main class="container">
+    <div class="card">
+
+      <!-- ============================================================== -->
+      <!-- Current profile: avatar + display name                          -->
+      <!-- ============================================================== -->
+      <div class="profile-header">
+        {% if user.avatar %}
+          <img class="profile-avatar" src="{{ user.avatar }}" alt="Current avatar" />
+        {% else %}
+          <!-- Fallback: initial-letter circle -->
+          <div class="profile-avatar profile-avatar--placeholder">
+            {{ (user.name or user.username)[0] | upper }}
+          </div>
+        {% endif %}
+        <div class="profile-meta">
+          <h2 class="profile-name">{{ user.name or user.username }}</h2>
+          <p class="profile-email">{{ user.email }}</p>
+        </div>
+      </div>
+
+      <hr id="profileDivider" class="divider" />
+
+      <div id="uploadSection">
+        <h1>Update your profile picture</h1>
+        <p class="subtitle">
+          Select an image, crop it to a square, and hit <strong>Upload</strong>.
+          Your avatar will be updated across our system automatically.
+        </p>
+
+        <!-- File picker -->
+        <div id="filePicker">
+          <label class="file-label" for="fileInput">
+            Choose image&hellip;
+            <input
+              type="file"
+              id="fileInput"
+              accept=".jpg,.jpeg,.png,.webp"
+              hidden
+            />
+          </label>
+          <span id="fileName" class="file-name"></span>
+        </div>
+
+        <!-- Cropper preview area (hidden until an image is chosen) -->
+        <div id="cropperWrapper" class="cropper-wrapper hidden">
+          <img id="cropperImage" src="" alt="Preview" />
+        </div>
+
+        <!-- Upload button (hidden until an image is chosen) -->
+        <button id="uploadBtn" class="btn-primary hidden" disabled>
+          Upload &amp; Update Avatar
+        </button>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- Progress panel                                                  -->
+      <!-- ============================================================== -->
+      <div id="progressPanel" class="progress-panel hidden">
+        <h2>Progress</h2>
+        <ul id="progressList" class="progress-list"></ul>
+        <div id="resultMessage"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ================================================================== -->
+  <!-- Client-side logic                                                   -->
+  <!-- ================================================================== -->
+  <script>
+    // Server-provided constants (respects base_path / reverse proxy prefix)
+    const UPLOAD_URL = "{{ url_for('routes.api_upload') }}";
+    const MAX_SIZE   = {{ max_size }};
+
+    const uploadSection  = document.getElementById("uploadSection");
+    const filePicker     = document.getElementById("filePicker");
+    const fileInput      = document.getElementById("fileInput");
+    const fileName       = document.getElementById("fileName");
+    const cropperWrapper = document.getElementById("cropperWrapper");
+    const cropperImage   = document.getElementById("cropperImage");
+    const uploadBtn      = document.getElementById("uploadBtn");
+    const progressPanel  = document.getElementById("progressPanel");
+    const progressList   = document.getElementById("progressList");
+    const resultMessage  = document.getElementById("resultMessage");
+
+    let cropper = null;
+
+    // ------------------------------------------------------------------
+    // Initialise Cropper.js when the user picks a file
+    // ------------------------------------------------------------------
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      fileName.textContent = file.name;
+
+      // Clean up any previous instance
+      if (cropperImage.src.startsWith("blob:")) URL.revokeObjectURL(cropperImage.src);
+      if (cropper) { cropper.destroy(); cropper = null; }
+
+      cropperImage.src = URL.createObjectURL(file);
+      cropperWrapper.classList.remove("hidden");
+      uploadBtn.classList.remove("hidden");
+      uploadBtn.disabled = false;
+
+      // Square-only crop via Cropper.js
+      cropper = new Cropper(cropperImage, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: "move",
+        autoCropArea: 0.9,
+        responsive: true,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+      });
+    });
+
+    // ------------------------------------------------------------------
+    // Helper: append a step row to the progress list
+    // ------------------------------------------------------------------
+    function addStep(label, status, detail) {
+      const li = document.createElement("li");
+      li.className = `step ${status}`;
+      const icons = {
+        success:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#4ade80" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        failed:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#f87171" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg>',
+        skipped:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5"/><path d="M7 10h6" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/></svg>',
+        "dry-run":'<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#60a5fa" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        pending:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
+      };
+      li.innerHTML =
+        `<span class="step-icon">${icons[status] || icons.pending}</span>` +
+        `<span class="step-label">${label}</span>` +
+        (detail ? `<span class="step-detail">${detail}</span>` : "");
+      progressList.appendChild(li);
+    }
+
+    // ------------------------------------------------------------------
+    // Upload flow
+    // ------------------------------------------------------------------
+    uploadBtn.addEventListener("click", async () => {
+      if (!cropper) return;
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Processing\u2026";
+      filePicker.classList.add("hidden");
+      cropperWrapper.classList.add("hidden");
+      progressPanel.classList.remove("hidden");
+      progressList.innerHTML = "";
+      resultMessage.innerHTML = "";
+
+      // Client step: crop & resize to server's maximum dimension
+      addStep("Cropping image in browser", "pending");
+      const canvas = cropper.getCroppedCanvas({
+        width: MAX_SIZE, height: MAX_SIZE,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high",
+      });
+      progressList.lastChild.remove();
+      addStep("Cropping image in browser", "success");
+
+      // Client step: compress (WebP preferred, JPEG fallback)
+      addStep("Compressing image in browser", "pending");
+      let blob = await new Promise((r) => canvas.toBlob(r, "image/webp", 0.85));
+      let ext = "webp";
+      if (!blob || blob.type !== "image/webp") {
+        blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+        ext = "jpg";
+      }
+      progressList.lastChild.remove();
+      addStep("Compressing image in browser", "success", `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
+
+      // Client step: upload
+      addStep("Uploading to server", "pending");
+      const fd = new FormData();
+      fd.append("file", blob, `avatar.${ext}`);
+
+      try {
+        const resp = await fetch(UPLOAD_URL, { method: "POST", body: fd });
+        const data = await resp.json();
+        progressList.lastChild.remove();
+        // Upload itself succeeded if the server responded with steps
+        addStep("Uploading to server", data.steps ? "success" : "failed");
+
+        if (data.steps) {
+          for (const s of data.steps) addStep(s.step, s.status, s.detail || "");
+        }
+
+        const hasFailed = data.steps && data.steps.some(s => s.status === "failed");
+        if (!hasFailed && resp.ok) {
+          uploadSection.classList.add("hidden");
+          document.getElementById("profileDivider").classList.add("hidden");
+          progressPanel.style.marginTop = "0";
+          progressPanel.style.paddingTop = "0";
+          resultMessage.innerHTML =
+            '<p class="result-success">Avatar updated successfully!</p>' +
+            '<button class="btn-primary" style="margin-top:1rem" onclick="location.reload()">Change avatar again</button>';
+          // Refresh the profile avatar shown at the top of the page
+          const avatarEl = document.querySelector(".profile-avatar");
+          if (avatarEl && data.avatar_url) {
+            if (avatarEl.tagName === "IMG") {
+              avatarEl.src = data.avatar_url;
+            }
+          }
+        } else {
+          resultMessage.innerHTML =
+            '<p class="result-error">Could not update your avatar. Please try again later.</p>';
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "Upload & Update Avatar";
+        }
+      } catch (err) {
+        progressList.lastChild.remove();
+        addStep("Uploading to server", "failed", err.message);
+        resultMessage.innerHTML =
+          '<p class="result-error">Could not reach the server. Please check your connection and try again.</p>';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload & Update Avatar";
+      }
+    });
+  </script>
+
+</body>
+</html>

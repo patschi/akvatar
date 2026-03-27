@@ -1,0 +1,5 @@
+# src package – all application modules live here.
+
+APP_NAME = 'ak-avatar-updater'
+APP_VERSION = '0.1'
+USER_AGENT = f'{APP_NAME}/v{APP_VERSION}'

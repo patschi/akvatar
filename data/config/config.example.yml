@@ -1,0 +1,113 @@
+# ============================================================================
+# Authentik Avatar Updater – Configuration
+# ============================================================================
+
+# --- Dry-Run Mode ---
+# When enabled, avatar images are still processed and saved to disk, but no
+# changes are pushed to Authentik or Active Directory.  All operations that
+# would have been performed are logged instead.  Useful for testing.
+dry_run: false
+
+# --- Branding ---
+# Customise the name shown in the browser title bar and navigation header.
+branding:
+  name: "Avatar Updater"
+
+# --- Application ---
+app:
+  # Secret key for Flask session management (change to a long random value!)
+  # Generate one with:  python3 -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "CHANGE-ME-to-a-random-secret-key"
+  # Maximum upload size in megabytes
+  max_upload_size_mb: 20
+  # Where processed avatars are stored on disk (relative or absolute path)
+  avatar_storage_path: "data/user-avatars"
+  # Public base URL where the app is reachable (used for OIDC redirects, etc.)
+  # Must NOT have a trailing slash
+  public_base_url: "https://avatar.example.com"
+  # Public base URL where avatar files are accessible (used to build avatar URLs
+  # pushed to Authentik/LDAP). Must NOT have a trailing slash.
+  public_avatar_url: "https://avatar.example.com/user-avatars"
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_level: "INFO"
+
+# --- Webserver ---
+webserver:
+  host: "0.0.0.0"
+  port: 5000
+  # Base URL path when hosting behind a reverse proxy under a subfolder
+  # e.g. "/avatar" to serve at https://example.com/avatar/
+  # Leave empty for root deployment. Must NOT have a trailing slash.
+  base_path: ""
+  # TLS certificate and private key paths for HTTPS.
+  # When set, the built-in server uses HTTPS on the same port.
+  # Leave empty to run plain HTTP (a warning will be logged at startup).
+  tls_cert: ""
+  tls_key: ""
+
+# --- OpenID Connect / Authentik Login ---
+# Scopes (openid, profile, email) are always requested and cannot be changed.
+oidc:
+  # Authentik OpenID provider URL (no trailing slash)
+  issuer_url: "https://auth.example.com/application/o/avatar-updater"
+  client_id: "avatar-updater"
+  client_secret: "CHANGE-ME"
+  # OIDC claim that carries the unique username (used to match AD accounts)
+  username_claim: "preferred_username"
+
+# --- Authentik Admin API ---
+authentik_api:
+  # Authentik base URL (no trailing slash)
+  base_url: "https://auth.example.com"
+  # API token with permissions to read/write user attributes
+  api_token: "CHANGE-ME"
+  # Which generated image size (px) to use for the Authentik avatar URL.
+  # Must be one of the values in images.sizes below.
+  avatar_size: 1024
+  # Authentik user attribute to store the avatar URL in
+  avatar_attribute: "avatar-url"
+
+# --- Microsoft Active Directory / LDAP (optional) ---
+ldap:
+  # Set to false to skip AD thumbnail updates entirely
+  enabled: false
+  # AD domain controller address
+  server: "ldaps://dc.example.com"
+  # Port (636 for LDAPS, 389 for LDAP)
+  port: 636
+  use_ssl: true
+  # Skip TLS certificate verification (set to true for self-signed certificates)
+  skip_cert_verify: false
+  # Bind credentials (service account with write access to thumbnailPhoto)
+  bind_dn: "CN=svc-avatar,OU=Service Accounts,DC=example,DC=com"
+  bind_password: "CHANGE-ME"
+  # Base DN to search for user objects
+  search_base: "DC=example,DC=com"
+  # LDAP attribute that matches the OIDC username
+  username_attribute: "sAMAccountName"
+  # Maximum thumbnail size in bytes that AD accepts (default ~100 KB)
+  max_thumbnail_bytes: 102400
+  # Which generated image size (px) to use for the AD thumbnailPhoto JPEG.
+  # Must be one of the values in images.sizes below.
+  thumbnail_size: 128
+
+# --- Image Processing ---
+images:
+  # Sizes to generate (width x height, always square)
+  sizes:
+    - 1024
+    - 648
+    - 512
+    - 256
+    - 128
+    - 64
+  # Output formats to save for each size
+  formats:
+    - "jpg"
+    - "png"
+    - "webp"
+  # JPEG / WebP quality (1-100)
+  jpeg_quality: 90
+  webp_quality: 85
+  # PNG compression level (0-9, higher = smaller but slower)
+  png_compress_level: 6

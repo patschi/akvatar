@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="darkreader-lock" />
+  <meta name="color-scheme" content="dark" />
+  <title>{{ brand_name }} – Sign in</title>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+  <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='favicon.ico') }}" />
+  <link rel="apple-touch-icon"          href="{{ url_for('static', filename='favicon-192.png') }}" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- ================================================================== -->
+  <!-- Top navigation bar (minimal – no user info yet)                     -->
+  <!-- ================================================================== -->
+  <nav class="navbar">
+    <a class="brand" href="{{ url_for('routes.login_page') }}">
+      <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" />
+      {{ brand_name }}
+    </a>
+  </nav>
+
+  <!-- ================================================================== -->
+  <!-- Centred login card                                                  -->
+  <!-- ================================================================== -->
+  <main class="container container--narrow">
+    <div class="card login-card">
+      <!-- Application logo as the hero element -->
+      <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+
+      <h1>Update your avatar</h1>
+      <p class="subtitle">
+        Sign in with your organisation account to upload and manage your
+        profile picture.
+      </p>
+
+      <a href="{{ url_for('auth.login') }}" class="btn-primary btn-login">
+        Sign in with Authentik
+      </a>
+    </div>
+  </main>
+
+</body>
+</html>
