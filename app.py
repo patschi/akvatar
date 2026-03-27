@@ -95,10 +95,10 @@ def create_app() -> Flask:
             'i18n': get_js_translations(),
         }
 
-    # -- HTTP request logging (non-static assets at DEBUG level) -----------
+    # -- HTTP response headers & logging ------------------------------------
     @app.after_request
-    def _log_http_request(response):
-        # Skip static file requests to keep logs clean
+    def _after_request(response):
+        # Log non-static requests at DEBUG level
         if not request.path.startswith('/static/'):
             http_log.debug('%s %s %s (client=%s)', request.method, request.path, response.status_code, request.remote_addr)
         return response

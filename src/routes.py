@@ -32,6 +32,15 @@ routes_bp = Blueprint('routes', __name__)
 
 
 # ---------------------------------------------------------------------------
+# robots.txt – block all search engine crawling
+# ---------------------------------------------------------------------------
+@routes_bp.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt from the static directory at the site root."""
+    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
+
+
+# ---------------------------------------------------------------------------
 # Public login page
 # ---------------------------------------------------------------------------
 @routes_bp.route('/')
