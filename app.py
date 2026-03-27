@@ -7,7 +7,12 @@ and subfolder middleware, and starts the development server when run directly.
 
 import os
 import logging
+import flask.cli
 from urllib.parse import urlparse
+
+# Suppress Flask's default startup banner ("Serving Flask app ...")
+# – we print our own startup info via the 'app' logger.
+flask.cli.show_server_banner = lambda *a, **kw: None
 
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -125,7 +130,7 @@ if __name__ == '__main__':
     # Start the background orphan cleanup thread (respects config interval; 0 = disabled)
     start_cleanup_thread()
 
-    debug = os.environ.get('FLASK_DEBUG', '0') == '1'
+    flask_debug = os.environ.get('FLASK_DEBUG', '0') == '1'
 
     # -- TLS support -------------------------------------------------------
     tls_cert = web_cfg.get('tls_cert', '')
@@ -135,5 +140,7 @@ if __name__ == '__main__':
     host = web_cfg.get('host', '0.0.0.0')
     port = web_cfg.get('port', 5000)
 
-    log.info('Webserver starting on %s://%s:%s (debug=%s).', scheme, host, port, debug)
-    app.run(host=host, port=port, debug=debug, ssl_context=ssl_context)
+    log.info('Webserver starting on %s://%s:%s...', scheme, host, port)
+    if flask_debug:
+        log.warning('Flask debug mode is enabled – disable in production to hide internal details from users.')
+    app.run(host=host, port=port, debug=flask_debug, ssl_context=ssl_context)
