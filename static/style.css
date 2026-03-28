@@ -302,6 +302,15 @@ body {
   cursor: not-allowed;
 }
 
+.upload-disclaimer {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+  margin-top: 1rem;
+  margin-bottom: -0.25rem;
+  line-height: 1.4;
+}
+
 /* Modifier: full-width block button */
 .btn-block {
   display: flex;

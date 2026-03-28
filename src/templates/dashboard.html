@@ -86,7 +86,8 @@
           <img id="cropperImage" src="" alt="Preview" />
         </div>
 
-        <!-- Upload button (hidden until an image is chosen) -->
+        <!-- Disclaimer + Upload button (hidden until an image is chosen) -->
+        <p id="uploadDisclaimer" class="upload-disclaimer hidden">{{ t('upload_disclaimer') }}</p>
         <button id="uploadBtn" class="btn btn-block hidden" disabled>
           {{ t('upload_button') }}
         </button>
@@ -141,6 +142,7 @@
 
       cropperImage.src = URL.createObjectURL(file);
       cropperWrapper.classList.remove("hidden");
+      document.getElementById("uploadDisclaimer").classList.remove("hidden");
       uploadBtn.classList.remove("hidden");
       uploadBtn.disabled = false;
 
