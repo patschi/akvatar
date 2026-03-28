@@ -41,8 +41,8 @@ server {
 ```
 
 Key points:
-- `proxy_pass http://127.0.0.1:5000/;` -- the **trailing slash** strips `/avatar/` from the path before forwarding. The app receives requests at `/`, `/api/upload`, etc.
-- `X-Forwarded-Prefix /avatar` -- tells the app to prepend `/avatar` to all generated URLs.
+- `proxy_pass http://127.0.0.1:5000/;`: The **trailing slash** strips `/avatar/` from the path before forwarding. The app receives requests at `/`, `/api/upload`, etc.
+- `X-Forwarded-Prefix /avatar`: Tells the app to prepend `/avatar` to all generated URLs.
 
 ### No config.yml changes needed for `base_path`
 
@@ -61,7 +61,7 @@ The application applies this prefix using a WSGI middleware that wraps all route
 
 ```nginx
 location /avatar/ {
-    # No trailing slash on proxy_pass -- the /avatar/ prefix is kept.
+    # No trailing slash on proxy_pass: the /avatar/ prefix is kept.
     proxy_pass http://127.0.0.1:5000;
 
     proxy_set_header Host              $host;
@@ -103,8 +103,8 @@ Update the **Redirect URIs/Origins** in your Authentik OAuth2/OpenID Provider to
 
 The application uses two middleware layers (applied during startup in `app.py`):
 
-1. **`ProxyFix`** (Werkzeug) -- trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers from the reverse proxy.
-2. **`PrefixMiddleware`** -- if `webserver.base_path` is set, this WSGI middleware strips the prefix from incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
+1. **`ProxyFix`** (Werkzeug): Trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers from the reverse proxy.
+2. **`PrefixMiddleware`**: If `webserver.base_path` is set, this WSGI middleware strips the prefix from incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
 
 The two approaches can coexist: if both `X-Forwarded-Prefix` and `base_path` are set, the proxy header takes precedence for URL generation while `base_path` handles path routing.
 
@@ -113,6 +113,6 @@ The two approaches can coexist: if both `X-Forwarded-Prefix` and `base_path` are
 After deploying, verify that:
 
 1. **The login page loads** at `https://portal.example.com/avatar/`
-2. **Static assets load** (CSS, JS, favicon) -- check the browser's Network tab for 404 errors
-3. **OIDC login works** -- clicking "Sign in" redirects to Authentik and back to `/avatar/callback`
-4. **Upload progress works** -- SSE events stream in real time during image upload
+2. **Static assets load** (CSS, JS, favicon): Check the browser's Network tab for 404 errors
+3. **OIDC login works:** Clicking "Sign in" redirects to Authentik and back to `/avatar/callback`
+4. **Upload progress works:** SSE events stream in real time during image upload

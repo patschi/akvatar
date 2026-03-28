@@ -4,10 +4,10 @@ The Avatar Updater uses the Authentik Admin API to read user attributes and set 
 
 ## What the application does with the API
 
-1. **Resolve user PK** -- at login time, the app calls `GET /api/v3/core/users/?username=<username>` to find the user's numeric primary key (PK). This PK is used as a stable identifier for all subsequent operations.
-2. **Read user attributes** -- after uploading an avatar, the app calls `GET /api/v3/core/users/<pk>/` to fetch the user's current `attributes` dict. This is needed to read the `ldap_uniq` value (used for LDAP updates) without overwriting other custom attributes.
-3. **Write avatar URL** -- the app calls `PATCH /api/v3/core/users/<pk>/` to set `attributes.avatar-url` (or whichever attribute is configured via `authentik_api.avatar_attribute`) to the public URL of the uploaded avatar.
-4. **List active users** -- the cleanup job calls `GET /api/v3/core/users/?is_active=true` to determine which users still exist, so it can remove avatars of deleted or deactivated users.
+1. **Resolve user PK:** At login time, the app calls `GET /api/v3/core/users/?username=<username>` to find the user's numeric primary key (PK). This PK is used as a stable identifier for all subsequent operations.
+2. **Read user attributes:** After uploading an avatar, the app calls `GET /api/v3/core/users/<pk>/` to fetch the user's current `attributes` dict. This is needed to read the `ldap_uniq` value (used for LDAP updates) without overwriting other custom attributes.
+3. **Write avatar URL:** The app calls `PATCH /api/v3/core/users/<pk>/` to set `attributes.avatar-url` (or whichever attribute is configured via `authentik_api.avatar_attribute`) to the public URL of the uploaded avatar.
+4. **List active users:** The cleanup job calls `GET /api/v3/core/users/?is_active=true` to determine which users still exist, so it can remove avatars of deleted or deactivated users.
 
 ## Create the token
 

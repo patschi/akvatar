@@ -17,7 +17,7 @@ If you already have a signing key for OIDC, skip this step.
 1. In the Authentik admin panel, go to **System > Certificates**
 2. Click **Generate** to create a new self-signed certificate/key pair
 3. Give it a name (e.g. `OIDC Signing Key`) and save
-4. This key is used by the OIDC provider to sign ID tokens -- the Avatar Updater validates the signature during login
+4. This key is used by the OIDC provider to sign ID tokens; the Avatar Updater validates the signature during login
 
 ## 2. Create an OAuth2/OpenID Provider
 
@@ -26,13 +26,13 @@ If you already have a signing key for OIDC, skip this step.
 3. Fill in:
    - **Name**: e.g. `Avatar Updater`
    - **Authorization flow**: select your standard authorization flow
-   - **Client ID**: note the auto-generated value (or set your own) -- this goes into `oidc.client_id` in [config.yml](configuration.md#oidcclient_id)
-   - **Client Secret**: note the auto-generated value -- this goes into `oidc.client_secret` in [config.yml](configuration.md#oidcclient_secret)
+   - **Client ID**: note the auto-generated value (or set your own); goes into `oidc.client_id` in [config.yml](configuration.md#oidcclient_id)
+   - **Client Secret**: note the auto-generated value; goes into `oidc.client_secret` in [config.yml](configuration.md#oidcclient_secret)
    - **Redirect URIs/Origins**: set to `https://your-app-url/callback` (the `/callback` path is required and must match exactly)
    - **Signing Key**: select the certificate you created in step 1
 4. Under **Advanced protocol settings**:
    - **Scopes**: ensure `openid`, `profile`, and `email` are selected (the app hardcodes these three scopes)
-   - **Subject mode**: can be left at the default ("Based on the hashed User ID") -- the app looks up users by username, not by `sub` claim
+   - **Subject mode**: can be left at the default ("Based on the hashed User ID"); the app looks up users by username, not by `sub` claim
 5. Save the provider
 
 ## 3. Create an Application

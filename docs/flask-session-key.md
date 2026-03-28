@@ -1,6 +1,6 @@
 # Flask Session Key
 
-The `app.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is predictable, too short, or shared between environments, an attacker can forge session cookies and impersonate any user -- including administrators.
+The `app.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is predictable, too short, or shared between environments, an attacker can forge session cookies and impersonate any user, including administrators.
 
 ## Generating a key
 
@@ -23,7 +23,7 @@ openssl rand -hex 32
 ### PowerShell
 
 ```powershell
--join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+-join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 32) })
 ```
 
 ## Setting the key
@@ -40,7 +40,7 @@ app:
 The application validates the secret key at startup and **refuses to start** if:
 
 - The key is still set to the default placeholder (`CHANGE-ME-to-a-random-secret-key`)
-- The key is shorter than 16 characters
+- The key is shorter than 32 characters
 
 Both cases log a `FATAL` error with instructions on how to generate a proper key.
 

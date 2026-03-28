@@ -8,10 +8,10 @@ For production deployments, **terminate TLS at a reverse proxy** (nginx, Caddy, 
 
 Benefits of reverse proxy TLS termination:
 
-- **Automated certificate management** -- tools like Certbot (Let's Encrypt) or Caddy's built-in ACME integrate directly with the reverse proxy
-- **Centralised TLS configuration** -- cipher suites, protocol versions, HSTS headers, and OCSP stapling are managed in one place
-- **Better performance** -- reverse proxies are optimised for TLS handling and connection management
-- **Separation of concerns** -- the Python application does not need to handle TLS, reducing its attack surface
+- **Automated certificate management:** Tools like Certbot (Let's Encrypt) or Caddy's built-in ACME integrate directly with the reverse proxy
+- **Centralised TLS configuration:** Cipher suites, protocol versions, HSTS headers, and OCSP stapling are managed in one place
+- **Better performance:** Reverse proxies are optimised for TLS handling and connection management
+- **Separation of concerns:** The Python application does not need to handle TLS, reducing its attack surface
 
 When the reverse proxy terminates TLS, the application runs over plain HTTP internally. The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs use the correct scheme.
 
@@ -19,7 +19,7 @@ See [Nginx Reverse Proxy](nginx-reverse-proxy.md) for a complete nginx configura
 
 ## Built-in TLS (development / testing)
 
-The application can serve HTTPS directly using its built-in server. This is intended for **development and testing only** -- not for production use.
+The application can serve HTTPS directly using its built-in server. This is intended for **development and testing only**, not for production use.
 
 Set the certificate and key paths in `data/config/config.yml`:
 

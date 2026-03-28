@@ -8,9 +8,59 @@ cp data/config/config.example.yml data/config/config.yml
 
 The application reads the configuration file once at startup. Changes require a restart to take effect.
 
+## Settings overview
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| [`dry_run`](#dry_run) | Boolean | `false` | Skip Authentik/LDAP writes; log all actions instead |
+| [`branding.name`](#branding_name) | String | `"Avatar Updater"` | Application name shown in the UI |
+| [`app.secret_key`](#app_secret_key) | String | *(must be set)* | Flask session signing key |
+| [`app.max_upload_size_mb`](#app_max_upload_size_mb) | Integer | `10` | Maximum upload size in MB |
+| [`app.avatar_storage_path`](#app_avatar_storage_path) | String | `"data/user-avatars"` | Directory for stored avatar images |
+| [`app.public_base_url`](#app_public_base_url) | URL | *(must be set)* | Public URL where the application is reachable |
+| [`app.public_avatar_url`](#app_public_avatar_url) | URL | *(must be set)* | Public URL where avatar files are served |
+| [`app.avatar_retention_count`](#app_avatar_retention_count) | Integer | `2` | Avatar sets to keep per user (0 = unlimited) |
+| [`app.cleanup_interval`](#app_cleanup_interval) | Cron | `"0 2 * * *"` | Cron schedule for the cleanup job |
+| [`app.cleanup_on_startup`](#app_cleanup_on_startup) | Boolean | `false` | Run cleanup once 60 s after startup |
+| [`app.log_level`](#app_log_level) | Enum | `"INFO"` | Log verbosity |
+| [`app.debug_full`](#app_debug_full) | Boolean | `false` | Full debug mode — never enable in production |
+| [`webserver.access_log`](#webserver_access_log) | Boolean | `false` | Log every HTTP request to the console |
+| [`webserver.workers`](#webserver_workers) | Integer | `2` | Number of gunicorn worker processes |
+| [`webserver.threads`](#webserver_threads) | Integer | `4` | Threads per worker |
+| [`webserver.timeout`](#webserver_timeout) | Integer | `120` | Worker timeout in seconds |
+| [`webserver.tls_cert`](#webserver_tls_cert) | String | `""` | Path to TLS certificate file |
+| [`webserver.tls_key`](#webserver_tls_cert) | String | `""` | Path to TLS private key file |
+| [`oidc.issuer_url`](#oidc_issuer_url) | URL | *(must be set)* | Authentik OIDC provider URL |
+| [`oidc.client_id`](#oidc_client_id) | String | *(must be set)* | OAuth2 client ID |
+| [`oidc.client_secret`](#oidc_client_secret) | String | *(must be set)* | OAuth2 client secret |
+| [`oidc.username_claim`](#oidc_username_claim) | String | `"preferred_username"` | OIDC claim used as the username |
+| [`authentik_api.base_url`](#authentik_api_base_url) | URL | *(must be set)* | Authentik instance base URL |
+| [`authentik_api.api_token`](#authentik_api_api_token) | String | *(must be set)* | Authentik Admin API token |
+| [`authentik_api.avatar_size`](#authentik_api_avatar_size) | Integer | `1024` | Image size (px) used for the Authentik avatar URL |
+| [`authentik_api.avatar_attribute`](#authentik_api_avatar_attribute) | String | `"avatar-url"` | Authentik user attribute to store the avatar URL |
+| [`ldap.enabled`](#ldap_enabled) | Boolean | `false` | Enable LDAP photo attribute updates |
+| [`ldap.server`](#ldap_server) | String | *(required if enabled)* | LDAP server address |
+| [`ldap.port`](#ldap_port) | Integer | `636` | LDAP server port |
+| [`ldap.use_ssl`](#ldap_use_ssl) | Boolean | `true` | Use SSL/TLS for the LDAP connection |
+| [`ldap.skip_cert_verify`](#ldap_skip_cert_verify) | Boolean | `false` | Skip TLS certificate verification |
+| [`ldap.bind_dn`](#ldap_bind_dn) | String | *(required if enabled)* | Service account DN for LDAP bind |
+| [`ldap.bind_password`](#ldap_bind_password) | String | *(required if enabled)* | Service account password |
+| [`ldap.search_base`](#ldap_search_base) | String | *(required if enabled)* | Base DN for user searches |
+| [`ldap.search_filter`](#ldap_search_filter) | String | `"(objectSid={ldap_uniq})"` | LDAP filter to locate the user object |
+| [`ldap.photo_attribute`](#ldap_photo_attribute) | String | `"thumbnailPhoto"` | LDAP attribute to write the photo into |
+| [`ldap.max_thumbnail_kb`](#ldap_max_thumbnail_kb) | Integer | `100` | Maximum thumbnail size accepted by the LDAP server |
+| [`ldap.thumbnail_size`](#ldap_thumbnail_size) | Integer | `128` | Image size (px) used for the LDAP thumbnail |
+| [`images.sizes`](#images_sizes) | List | `[1024, 648, 512, 256, 128, 64]` | Square output sizes to generate (px) |
+| [`images.formats`](#images_formats) | List | `["jpg", "png", "webp"]` | Output formats to save for each size |
+| [`images.jpeg_quality`](#images_jpeg_quality) | Integer | `90` | JPEG compression quality (1–100) |
+| [`images.webp_quality`](#images_webp_quality) | Integer | `85` | WebP compression quality (1–100) |
+| [`images.png_compress_level`](#images_png_compress_level) | Integer | `6` | PNG compression level (0–9) |
+
 ---
 
 ## Dry-Run Mode
+
+<a id="dry_run"></a>
 
 ### `dry_run`
 
@@ -25,6 +75,8 @@ When enabled, avatar images are still processed and saved to disk, but no change
 
 ## Branding
 
+<a id="branding_name"></a>
+
 ### `branding.name`
 
 | | |
@@ -38,12 +90,14 @@ The application name displayed in the browser title bar and the navigation heade
 
 ## Application
 
+<a id="app_secret_key"></a>
+
 ### `app.secret_key`
 
 | | |
 |---|---|
 | **Type** | String |
-| **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder -- must be changed) |
+| **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder, must be changed) |
 
 The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an attacker can forge sessions.
 
@@ -52,6 +106,8 @@ The application **refuses to start** if:
 - The key is shorter than 16 characters
 
 See [Flask Session Key](flask-session-key.md) for generation instructions.
+
+<a id="app_max_upload_size_mb"></a>
 
 ### `app.max_upload_size_mb`
 
@@ -62,6 +118,8 @@ See [Flask Session Key](flask-session-key.md) for generation instructions.
 
 Maximum allowed upload size in megabytes. Files exceeding this limit are rejected by Flask before reaching the upload handler. Note that the browser compresses images client-side before uploading, so typical uploads are well under 1 MB regardless of this limit.
 
+<a id="app_avatar_storage_path"></a>
+
 ### `app.avatar_storage_path`
 
 | | |
@@ -70,6 +128,8 @@ Maximum allowed upload size in megabytes. Files exceeding this limit are rejecte
 | **Default** | `"data/user-avatars"` |
 
 Directory where processed avatar images and metadata are stored. Can be a relative path (relative to the project root) or an absolute path. The application creates the directory and all required subdirectories at startup if they do not exist.
+
+<a id="app_public_base_url"></a>
 
 ### `app.public_base_url`
 
@@ -84,6 +144,8 @@ If the URL includes a path component (e.g. `https://portal.example.com/avatar`),
 
 Must **not** have a trailing slash.
 
+<a id="app_public_avatar_url"></a>
+
 ### `app.public_avatar_url`
 
 | | |
@@ -95,6 +157,8 @@ The public base URL where avatar files are accessible. This URL is used to build
 
 Must **not** have a trailing slash.
 
+<a id="app_avatar_retention_count"></a>
+
 ### `app.avatar_retention_count`
 
 | | |
@@ -103,6 +167,8 @@ Must **not** have a trailing slash.
 | **Default** | `2` |
 
 Number of avatar sets to keep per user. When a user has more than this many uploaded avatars, the cleanup job deletes the oldest ones. Set to `0` to keep all uploads indefinitely (no retention cleanup).
+
+<a id="app_cleanup_interval"></a>
 
 ### `app.cleanup_interval`
 
@@ -115,6 +181,8 @@ Cron schedule for the cleanup job that removes avatars of deleted users and enfo
 
 Set to `""` (empty string) to disable the cleanup job entirely.
 
+<a id="app_cleanup_on_startup"></a>
+
 ### `app.cleanup_on_startup`
 
 | | |
@@ -123,6 +191,8 @@ Set to `""` (empty string) to disable the cleanup job entirely.
 | **Default** | `false` |
 
 When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the regular cron schedule. Useful for catching up after extended downtime.
+
+<a id="app_log_level"></a>
 
 ### `app.log_level`
 
@@ -141,6 +211,8 @@ Controls the verbosity of log output:
 | `WARNING` | Rejected uploads, missing TLS configuration, LDAP without SSL |
 | `ERROR` | Failures in Authentik API or LDAP calls |
 | `CRITICAL` | Fatal startup errors (missing config, etc.) |
+
+<a id="app_debug_full"></a>
 
 ### `app.debug_full`
 
@@ -162,6 +234,8 @@ Enables full debug mode. When active:
 
 These settings apply when running via `run.py` / gunicorn (production and Docker). When running via `app.py` (development), only `host`, `port`, and TLS settings are used.
 
+<a id="webserver_access_log"></a>
+
 ### `webserver.access_log`
 
 | | |
@@ -170,6 +244,8 @@ These settings apply when running via `run.py` / gunicorn (production and Docker
 | **Default** | `false` |
 
 When enabled, every HTTP request is logged to the console (except requests to `/static/` assets). Useful for debugging but verbose in production.
+
+<a id="webserver_workers"></a>
 
 ### `webserver.workers`
 
@@ -180,6 +256,8 @@ When enabled, every HTTP request is logged to the console (except requests to `/
 
 Number of gunicorn worker processes. Each worker is an independent OS process that handles requests. A reasonable starting point is `2 * CPU_cores + 1`, but for this application 2-4 workers are usually sufficient since image processing is the bottleneck, not concurrency.
 
+<a id="webserver_threads"></a>
+
 ### `webserver.threads`
 
 | | |
@@ -188,6 +266,8 @@ Number of gunicorn worker processes. Each worker is an independent OS process th
 | **Default** | `4` |
 
 Number of threads per worker. Each thread handles one request concurrently within a worker process. Threads help handle idle connections (e.g. SSE streams) without blocking the worker. The gunicorn worker class is `gthread` (threaded workers).
+
+<a id="webserver_timeout"></a>
 
 ### `webserver.timeout`
 
@@ -198,12 +278,14 @@ Number of threads per worker. Each thread handles one request concurrently withi
 
 Worker timeout in seconds. A worker is restarted by gunicorn if it does not respond to the arbiter within this duration. Should be long enough for the slowest expected request (e.g. large image upload + processing + LDAP update). If you see `WORKER TIMEOUT` errors, increase this value.
 
+<a id="webserver_tls_cert"></a>
+
 ### `webserver.tls_cert` / `tls_key`
 
 | | |
 |---|---|
 | **Type** | String (file path) |
-| **Default** | `""` (empty -- no TLS) |
+| **Default** | `""` (empty, no TLS) |
 
 Paths to the TLS certificate and private key files for HTTPS. When both are set, the server uses HTTPS on the same port. When empty, the server runs over plain HTTP and a warning is logged at startup.
 
@@ -214,6 +296,8 @@ For production, terminate TLS at a reverse proxy instead. See [TLS Configuration
 ## OpenID Connect / Authentik Login
 
 See [Authentik OIDC Setup](authentik-oidc-setup.md) for step-by-step setup instructions.
+
+<a id="oidc_issuer_url"></a>
 
 ### `oidc.issuer_url`
 
@@ -226,6 +310,8 @@ The Authentik OpenID provider URL. Follows the pattern `https://<authentik-domai
 
 Must **not** have a trailing slash.
 
+<a id="oidc_client_id"></a>
+
 ### `oidc.client_id`
 
 | | |
@@ -235,6 +321,8 @@ Must **not** have a trailing slash.
 
 The OAuth2 client ID from the Authentik provider configuration.
 
+<a id="oidc_client_secret"></a>
+
 ### `oidc.client_secret`
 
 | | |
@@ -242,7 +330,9 @@ The OAuth2 client ID from the Authentik provider configuration.
 | **Type** | String |
 | **Default** | `"CHANGE-ME"` (must be changed) |
 
-The OAuth2 client secret from the Authentik provider configuration. Treat as a secret -- do not commit to version control.
+The OAuth2 client secret from the Authentik provider configuration. Treat as a secret; do not commit to version control.
+
+<a id="oidc_username_claim"></a>
 
 ### `oidc.username_claim`
 
@@ -259,6 +349,8 @@ The OIDC claim that carries the unique username. The value of this claim is used
 
 See [Authentik API Token](authentik-api-token.md) for step-by-step setup instructions.
 
+<a id="authentik_api_base_url"></a>
+
 ### `authentik_api.base_url`
 
 | | |
@@ -267,6 +359,8 @@ See [Authentik API Token](authentik-api-token.md) for step-by-step setup instruc
 | **Default** | `"https://auth.example.com"` (must be changed) |
 
 The base URL of your Authentik instance (without trailing slash). The application appends API paths like `/api/v3/core/users/` to this URL.
+
+<a id="authentik_api_api_token"></a>
 
 ### `authentik_api.api_token`
 
@@ -277,6 +371,8 @@ The base URL of your Authentik instance (without trailing slash). The applicatio
 
 An API token with permissions to read and write user attributes. See [Authentik API Token](authentik-api-token.md) for required permissions.
 
+<a id="authentik_api_avatar_size"></a>
+
 ### `authentik_api.avatar_size`
 
 | | |
@@ -285,6 +381,8 @@ An API token with permissions to read and write user attributes. See [Authentik 
 | **Default** | `1024` |
 
 Which generated image size (in pixels) to use for the avatar URL pushed to Authentik. This value **must** be one of the entries in `images.sizes`. The application validates this at startup and exits with an error if the size is not found.
+
+<a id="authentik_api_avatar_attribute"></a>
 
 ### `authentik_api.avatar_attribute`
 
@@ -301,6 +399,8 @@ The Authentik user attribute name where the avatar URL is stored. The applicatio
 
 Supports any standards-compliant LDAP server. Microsoft Active Directory is the primary and only tested target. See [MS AD Service Account](ms-ad-service-account.md) for setting up a least-privilege service account in Active Directory.
 
+<a id="ldap_enabled"></a>
+
 ### `ldap.enabled`
 
 | | |
@@ -309,6 +409,8 @@ Supports any standards-compliant LDAP server. Microsoft Active Directory is the 
 | **Default** | `false` |
 
 Set to `true` to enable LDAP thumbnail updates. When disabled, the entire LDAP module is a no-op and no LDAP connections are made.
+
+<a id="ldap_server"></a>
 
 ### `ldap.server`
 
@@ -319,6 +421,8 @@ Set to `true` to enable LDAP thumbnail updates. When disabled, the entire LDAP m
 
 The LDAP server address. Use `ldaps://` for LDAP over TLS (recommended) or `ldap://` for plain LDAP.
 
+<a id="ldap_port"></a>
+
 ### `ldap.port`
 
 | | |
@@ -327,6 +431,8 @@ The LDAP server address. Use `ldaps://` for LDAP over TLS (recommended) or `ldap
 | **Default** | `636` |
 
 The LDAP server port. Standard ports: `636` for LDAPS, `389` for LDAP.
+
+<a id="ldap_use_ssl"></a>
 
 ### `ldap.use_ssl`
 
@@ -337,6 +443,8 @@ The LDAP server port. Standard ports: `636` for LDAPS, `389` for LDAP.
 
 Whether to use SSL/TLS for the LDAP connection. Should be `true` when using port 636. A warning is logged at startup if LDAP is enabled without SSL.
 
+<a id="ldap_skip_cert_verify"></a>
+
 ### `ldap.skip_cert_verify`
 
 | | |
@@ -345,6 +453,8 @@ Whether to use SSL/TLS for the LDAP connection. Should be `true` when using port
 | **Default** | `false` |
 
 Set to `true` to skip TLS certificate verification. Use only for self-signed certificates in development environments. A warning is logged at startup when this is enabled, as it makes the connection vulnerable to MITM attacks.
+
+<a id="ldap_bind_dn"></a>
 
 ### `ldap.bind_dn`
 
@@ -355,6 +465,8 @@ Set to `true` to skip TLS certificate verification. Use only for self-signed cer
 
 The distinguished name (DN) of the service account used to bind (authenticate) to the LDAP server. This account needs read access to search for users and write access to the photo attribute.
 
+<a id="ldap_bind_password"></a>
+
 ### `ldap.bind_password`
 
 | | |
@@ -364,6 +476,8 @@ The distinguished name (DN) of the service account used to bind (authenticate) t
 
 The password for the LDAP bind DN. Treat as a secret.
 
+<a id="ldap_search_base"></a>
+
 ### `ldap.search_base`
 
 | | |
@@ -372,6 +486,8 @@ The password for the LDAP bind DN. Treat as a secret.
 | **Default** | `"DC=example,DC=com"` |
 
 The base DN under which user objects are searched. The search is performed with subtree scope, so users in any sub-OU are found.
+
+<a id="ldap_search_filter"></a>
 
 ### `ldap.search_filter`
 
@@ -384,6 +500,8 @@ The LDAP search filter used to locate the user object. The placeholder `{ldap_un
 
 The default uses `objectSid`, which is the standard unique identifier in Microsoft Active Directory. For other LDAP directories, change this to match your schema (e.g. `(uid={ldap_uniq})` for OpenLDAP).
 
+<a id="ldap_photo_attribute"></a>
+
 ### `ldap.photo_attribute`
 
 | | |
@@ -393,6 +511,8 @@ The default uses `objectSid`, which is the standard unique identifier in Microso
 
 The LDAP attribute to write the photo JPEG bytes into. The default `thumbnailPhoto` is standard in Microsoft Active Directory and is displayed in Outlook, Teams, and other Microsoft applications. For other directories, use the appropriate attribute (e.g. `jpegPhoto` for OpenLDAP).
 
+<a id="ldap_max_thumbnail_kb"></a>
+
 ### `ldap.max_thumbnail_kb`
 
 | | |
@@ -401,6 +521,8 @@ The LDAP attribute to write the photo JPEG bytes into. The default `thumbnailPho
 | **Default** | `100` |
 
 Maximum allowed size of the JPEG thumbnail in kilobytes. The application checks the thumbnail size before writing it to LDAP and raises an error if it exceeds this limit. Active Directory has a default limit of ~100 KB for `thumbnailPhoto`.
+
+<a id="ldap_thumbnail_size"></a>
 
 ### `ldap.thumbnail_size`
 
@@ -417,6 +539,8 @@ A smaller size (128 or 256) is recommended for LDAP to stay within the `max_thum
 
 ## Image Processing
 
+<a id="images_sizes"></a>
+
 ### `images.sizes`
 
 | | |
@@ -425,6 +549,8 @@ A smaller size (128 or 256) is recommended for LDAP to stay within the `max_thum
 | **Default** | `[1024, 648, 512, 256, 128, 64]` |
 
 The square pixel dimensions to generate for each uploaded avatar. Every uploaded image is resized to each of these sizes. The values in `authentik_api.avatar_size` and `ldap.thumbnail_size` must appear in this list.
+
+<a id="images_formats"></a>
 
 ### `images.formats`
 
@@ -435,6 +561,8 @@ The square pixel dimensions to generate for each uploaded avatar. Every uploaded
 
 The output formats to save for each size. Each size x format combination produces one file. Supported values: `jpg` (JPEG), `png`, `webp`.
 
+<a id="images_jpeg_quality"></a>
+
 ### `images.jpeg_quality`
 
 | | |
@@ -444,6 +572,8 @@ The output formats to save for each size. Each size x format combination produce
 
 JPEG compression quality. Higher values produce better quality but larger files. 90 is a good balance for avatars.
 
+<a id="images_webp_quality"></a>
+
 ### `images.webp_quality`
 
 | | |
@@ -452,6 +582,8 @@ JPEG compression quality. Higher values produce better quality but larger files.
 | **Default** | `85` |
 
 WebP compression quality. Similar to JPEG quality but WebP typically achieves better compression at the same visual quality.
+
+<a id="images_png_compress_level"></a>
 
 ### `images.png_compress_level`
 

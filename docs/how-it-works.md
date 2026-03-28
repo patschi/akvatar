@@ -1,6 +1,6 @@
 # How It Works
 
-This document explains the complete request lifecycle of the Authentik Avatar Updater -- from login through avatar upload to backend synchronisation.
+This document explains the complete request lifecycle of the Authentik Avatar Updater, from login through avatar upload to backend synchronisation.
 
 ## Architecture overview
 
@@ -20,9 +20,9 @@ This document explains the complete request lifecycle of the Authentik Avatar Up
 ```
 
 The application sits behind a reverse proxy and communicates with three backends:
-- **Authentik** -- for OIDC authentication and user attribute updates via the Admin API
-- **Disk** -- for storing processed avatar images in multiple sizes and formats
-- **LDAP Server** (optional) -- for writing the photo attribute directly into the directory (e.g. Active Directory `thumbnailPhoto`)
+- **Authentik:** OIDC authentication and user attribute updates via the Admin API
+- **Disk:** Processed avatar images stored in multiple sizes and formats
+- **LDAP Server** (optional): Writes the photo attribute directly into the directory (e.g. Active Directory `thumbnailPhoto`)
 
 ## Authentication flow
 
@@ -67,7 +67,7 @@ sequenceDiagram
 
 ## Upload and processing flow
 
-Once authenticated, the user can upload an avatar. The process involves client-side preprocessing, server-side validation and processing, and backend synchronisation -- all streamed to the browser in real time via Server-Sent Events (SSE).
+Once authenticated, the user can upload an avatar. The process involves client-side preprocessing, server-side validation and processing, and backend synchronisation, all streamed to the browser in real time via Server-Sent Events (SSE).
 
 ```mermaid
 sequenceDiagram
@@ -119,15 +119,15 @@ sequenceDiagram
 
 Before the image reaches the server, the browser performs two steps:
 
-1. **Cropping** -- [Cropper.js](https://github.com/fengyuanchen/cropperjs) enforces a **square** crop area. The user can reposition and resize the crop box. The cropped result is rendered onto an HTML canvas at the server's maximum configured dimension (default: 1024x1024).
+1. **Cropping:** [Cropper.js](https://github.com/fengyuanchen/cropperjs) enforces a **square** crop area. The user can reposition and resize the crop box. The cropped result is rendered onto an HTML canvas at the server's maximum configured dimension (default: 1024x1024).
 
-2. **Compression** -- the canvas is exported as a blob using `canvas.toBlob()`. The browser first attempts **WebP** (quality 0.85). If WebP encoding is not supported (older browsers), it falls back to **JPEG** (quality 0.85). This minimises upload size while preserving quality.
+2. **Compression:** The canvas is exported as a blob using `canvas.toBlob()`. The browser first attempts **WebP** (quality 0.85). If WebP encoding is not supported (older browsers), it falls back to **JPEG** (quality 0.85). This minimises upload size while preserving quality.
 
 The compressed blob is sent as a `multipart/form-data` POST to `/api/upload`.
 
 ## Server-side validation
 
-Validation happens **synchronously** before the SSE stream begins. If any check fails, the server returns a JSON error response with HTTP 400 -- the browser shows the error inline.
+Validation happens **synchronously** before the SSE stream begins. If any check fails, the server returns a JSON error response with HTTP 400; the browser shows the error inline.
 
 | Check | What it catches | Implementation |
 |---|---|---|
@@ -142,15 +142,15 @@ Validation happens **synchronously** before the SSE stream begins. If any check 
 
 After validation, the image is normalised and processed:
 
-1. **EXIF orientation** -- phone photos store rotation in EXIF metadata rather than rotating pixels. `ImageOps.exif_transpose()` applies the rotation to the actual pixel data.
+1. **EXIF orientation:** Phone photos store rotation in EXIF metadata rather than rotating pixels. `ImageOps.exif_transpose()` applies the rotation to the actual pixel data.
 
-2. **Metadata stripping** -- the image is rebuilt from raw pixel data (`Image.frombytes()`). This discards all EXIF, ICC profiles, XMP, IPTC, and any other metadata that could contain PII (GPS coordinates, device model, timestamps) or hidden payloads.
+2. **Metadata stripping:** The image is rebuilt from raw pixel data (`Image.frombytes()`). This discards all EXIF, ICC profiles, XMP, IPTC, and any other metadata that could contain PII (GPS coordinates, device model, timestamps) or hidden payloads.
 
-3. **Mode normalisation** -- the image is converted to RGB or RGBA if it isn't already.
+3. **Mode normalisation:** The image is converted to RGB or RGBA if it isn't already.
 
-4. **Resizing** -- the normalised image is resized to every configured square size (default: 1024, 648, 512, 256, 128, 64) using Lanczos resampling.
+4. **Resizing:** The normalised image is resized to every configured square size (default: 1024, 648, 512, 256, 128, 64) using Lanczos resampling.
 
-5. **Multi-format save** -- each size is saved in every configured format (default: JPEG, PNG, WebP) with configurable quality settings.
+5. **Multi-format save:** Each size is saved in every configured format (default: JPEG, PNG, WebP) with configurable quality settings.
 
 ## Filename generation
 
@@ -163,9 +163,9 @@ Filenames are designed to be **practically impossible to guess**, preventing URL
 Example: `a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4-Ks8dF2nP...64chars...-1711612800123456789`
 
 Components:
-- `uuid4().hex` -- 32 hex characters (128 bits of randomness)
-- `token_urlsafe(64)` -- 86 URL-safe characters (~512 bits of randomness)
-- `time_ns()` -- nanosecond timestamp (adds uniqueness, not security)
+- `uuid4().hex`: 32 hex characters (128 bits of randomness)
+- `token_urlsafe(64)`: 86 URL-safe characters (~512 bits of randomness)
+- `time_ns()`: Nanosecond timestamp (adds uniqueness, not security)
 
 ## Backend synchronisation
 
@@ -227,9 +227,9 @@ Metadata files are stored in `data/user-avatars/_metadata/` and are used by the 
 
 The cleanup job runs on a configurable cron schedule (default: daily at 2 AM) and performs two phases:
 
-1. **Orphan removal** -- compares avatar ownership (from metadata files) against the list of active Authentik users. Avatars belonging to deleted or deactivated users are removed.
+1. **Orphan removal:** Compares avatar ownership (from metadata files) against the list of active Authentik users. Avatars belonging to deleted or deactivated users are removed.
 
-2. **Retention enforcement** -- for each active user, keeps only the N most recent avatar sets (configurable via `app.avatar_retention_count`, default: 2). Older uploads are automatically deleted.
+2. **Retention enforcement:** For each active user, keeps only the N most recent avatar sets (configurable via `app.avatar_retention_count`, default: 2). Older uploads are automatically deleted.
 
 See [Configuration Reference](configuration.md#appcleanup_interval) for schedule and retention settings.
 
@@ -263,7 +263,7 @@ Each step has a `status` field: `success`, `failed`, `skipped`, or `dry-run`. Th
 | Magic byte verification | Blocks files with fake extensions before they reach the image decoder |
 | Pillow decompression bomb limit (50 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images |
 | Dimension limits (64--10000 px) | Guards against excessive CPU/memory use during resizing |
-| Format allow-list | Only JPEG, PNG, WebP are processed -- no TIFF, BMP, SVG, etc. |
+| Format allow-list | Only JPEG, PNG, WebP are processed (no TIFF, BMP, SVG, etc.) |
 | Metadata stripping | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded data that could leak PII |
 | Flask session signing | Session cookies are cryptographically signed with `app.secret_key` |
 | Non-root Docker container | Application runs as UID 65532 with no shell in a distroless image |

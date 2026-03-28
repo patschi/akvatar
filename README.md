@@ -119,8 +119,8 @@ The app fully supports running behind a reverse proxy (nginx, Caddy, Traefik, et
 
 See the detailed guides:
 
-- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)** -- full nginx configuration with TLS termination, SSE support, and optional direct avatar file serving
-- **[Subfolder Deployment](docs/subfolder-deployment.md)** -- hosting the app under a URL path prefix (e.g. `/avatar/`)
+- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md):** Full nginx configuration with TLS termination, SSE support, and optional direct avatar file serving
+- **[Subfolder Deployment](docs/subfolder-deployment.md):** Hosting the app under a URL path prefix (e.g. `/avatar/`)
 
 ## How it works
 
