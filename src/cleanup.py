@@ -126,8 +126,11 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
                 log.info('[DRY-RUN] Would remove obsolete size directory %s/ (%d file(s)).', entry.name, file_count)
                 removed += file_count
             else:
-                log.info('Removing obsolete size directory %s/.', entry.name)
-                shutil.rmtree(entry)
+                try:
+                    shutil.rmtree(entry)
+                    log.info('Removed obsolete size directory %s/.', entry.name)
+                except OSError as exc:
+                    log.warning('Failed to remove obsolete size directory %s/: %s', entry.name, exc)
             continue
 
         # Phase B+C: scan files inside configured size directories
@@ -145,8 +148,11 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
                 if dry_run:
                     log.info('[DRY-RUN] Would remove obsolete format file %s/%s.', entry.name, file_path.name)
                 else:
-                    log.info('Removing obsolete format file %s/%s.', entry.name, file_path.name)
-                    file_path.unlink()
+                    try:
+                        file_path.unlink()
+                        log.info('Removed obsolete format file %s/%s.', entry.name, file_path.name)
+                    except OSError as exc:
+                        log.warning('Failed to remove obsolete format file %s/%s: %s', entry.name, file_path.name, exc)
                 removed += 1
                 continue
 
@@ -155,8 +161,11 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
                 if dry_run:
                     log.info('[DRY-RUN] Would remove orphaned file %s/%s (no metadata).', entry.name, file_path.name)
                 else:
-                    log.info('Removing orphaned file %s/%s (no metadata).', entry.name, file_path.name)
-                    file_path.unlink()
+                    try:
+                        file_path.unlink()
+                        log.info('Removed orphaned file %s/%s (no metadata).', entry.name, file_path.name)
+                    except OSError as exc:
+                        log.warning('Failed to remove orphaned file %s/%s: %s', entry.name, file_path.name, exc)
                 removed += 1
 
     # Phase D: remove orphaned metadata files with no matching images
@@ -166,8 +175,11 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
             if dry_run:
                 log.info('[DRY-RUN] Would remove orphaned metadata %s.', meta_path.name)
             else:
-                log.info('Removing orphaned metadata %s.', meta_path.name)
-                meta_path.unlink()
+                try:
+                    meta_path.unlink()
+                    log.info('Removed orphaned metadata %s.', meta_path.name)
+                except OSError as exc:
+                    log.warning('Failed to remove orphaned metadata %s: %s', meta_path.name, exc)
             removed += 1
 
     return removed
