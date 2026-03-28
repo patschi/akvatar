@@ -13,7 +13,7 @@ import requests as http_requests
 from src import USER_AGENT
 from src.config import ak_cfg, dry_run
 
-log = logging.getLogger('authentik_api')
+log = logging.getLogger('ak_api')
 
 # ---------------------------------------------------------------------------
 # Module-level configuration

@@ -395,10 +395,21 @@
                     profileAvatar.src = finalResult.avatar_url;
                 }
             } else {
-                // Failure: show the error message and re-enable the upload button
-                var errorMessage = (finalResult && finalResult.error) || I18N.result_error;
-                resultMessage.innerHTML = '<p class="result-error">' + errorMessage + '</p>';
-                resetUploadButton();
+                // Failure: hide the upload form and show the error with a retry button
+                uploadSection.classList.add("hidden");
+                profileDivider.classList.add("hidden");
+                progressPanel.style.marginTop = "0";
+                progressPanel.style.paddingTop = "10";
+
+                // Map server error codes to translated messages, fall back to generic error
+                var errorCode = finalResult && finalResult.error;
+                var errorMessage = (errorCode === 'contact_admin')
+                    ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
+                    : (errorCode || I18N.result_error);
+                resultMessage.innerHTML =
+                    '<p class="result-error">' + errorMessage + '</p>' +
+                    '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
+                        + I18N.result_retry + '</button>';
             }
         } catch (networkError) {
             // Network failure or stream read error
@@ -407,8 +418,17 @@
                 lastStep.remove();
             }
             appendStep(I18N.step_upload, "failed", networkError.message);
-            resultMessage.innerHTML = '<p class="result-error">' + I18N.result_network_error + '</p>';
-            resetUploadButton();
+
+            // Hide the upload form and show the error with a retry button
+            uploadSection.classList.add("hidden");
+            profileDivider.classList.add("hidden");
+            progressPanel.style.marginTop = "0";
+            progressPanel.style.paddingTop = "10";
+
+            resultMessage.innerHTML =
+                '<p class="result-error">' + I18N.result_network_error + '</p>' +
+                '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
+                    + I18N.result_retry + '</button>';
         }
     });
   </script>

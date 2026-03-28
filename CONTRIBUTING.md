@@ -20,7 +20,7 @@ For **larger changes** (new features, refactors, architectural changes), always 
 Use the development compose file, which builds the container from source and enables debug mode (`DEBUG_MODE=true`) by default:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up --build ak-avatar-updater
 ```
 
 Debug mode enables Flask's debugger, template auto-reload, and verbose `DEBUG`-level logging.
@@ -30,14 +30,14 @@ Debug mode enables Flask's debugger, template auto-reload, and verbose `DEBUG`-l
 Docker layer caching can cause stale dependencies or code to persist. To ensure a fully clean build:
 
 ```bash
-# Remove the dev container and its volumes
+# Stop and remove the dev container and its volumes
 docker compose -f docker-compose.dev.yml down -v
 
 # Rebuild without using cached layers
-docker compose -f docker-compose.dev.yml build --no-cache
+docker compose -f docker-compose.dev.yml build --no-cache ak-avatar-updater
 
 # Start fresh
-docker compose -f docker-compose.dev.yml up
+docker compose -f docker-compose.dev.yml up ak-avatar-updater
 ```
 
 If you changed `requirements.txt`, always rebuild with `--no-cache` (or at minimum `--build`) to pick up new dependencies.

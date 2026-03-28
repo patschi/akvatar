@@ -2,7 +2,7 @@ services:
   ak-avatar-updater:
     build: .
     container_name: ak-avatar-updater-dev
-    restart: never
+    restart: no
     read_only: true
     cap_drop:
       - ALL

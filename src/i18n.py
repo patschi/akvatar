@@ -73,13 +73,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed':           'Image processed & saved in all sizes/formats',
         'step_processed_detail':    '{sizes} sizes, {formats} formats, {total} total',
         'step_profile_synced':      'Login Portal Photo updated',
-        'step_ldap_updated':          'User Directory Photo updated',
-        'step_processing_failed':   'Processing',
+        'step_ldap_updated':        'User Directory Photo updated',
+        'step_processing_failed':   'Processing the image failed',
+        'step_save_failed':         'Could not save your avatar.',
 
         # -- Result messages --
         'result_success':           'Avatar updated successfully!',
         'result_retry':             'Change avatar again',
         'result_error':             'Could not update your avatar. Please try again later.',
+        'result_contact_admin':     'Please contact your administrator.',
         'result_network_error':     'Could not reach the server. Please check your connection and try again.',
     },
 
@@ -137,13 +139,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed':           'Bild in allen Gr\u00f6\u00dfen/Formaten verarbeitet & gespeichert',
         'step_processed_detail':    '{sizes} Gr\u00f6\u00dfen, {formats} Formate, {total} gesamt',
         'step_profile_synced':      'Anmelde-Portal Foto aktualisiert',
-        'step_ldap_updated':          'Benutzerverzeichnis Foto aktualisiert',
-        'step_processing_failed':   'Verarbeitung',
+        'step_ldap_updated':        'Benutzerverzeichnis Foto aktualisiert',
+        'step_processing_failed':   'Verarbeitung des Bildes fehlgeschlagen',
+        'step_save_failed':         'Avatar konnte nicht gespeichert werden.',
 
         # -- Result messages --
         'result_success':           'Avatar erfolgreich aktualisiert!',
         'result_retry':             'Avatar erneut \u00e4ndern',
         'result_error':             'Avatar konnte nicht aktualisiert werden. Bitte versuchen Sie es sp\u00e4ter erneut.',
+        'result_contact_admin':     'Bitte kontaktieren Sie Ihren Administrator.',
         'result_network_error':     'Server nicht erreichbar. Bitte \u00fcberpr\u00fcfen Sie Ihre Verbindung und versuchen Sie es erneut.',
     },
 }
@@ -224,7 +228,8 @@ _JS_KEYS = (
     'step_profile_synced', 'step_ldap_updated',
     # UI strings
     'upload_processing', 'upload_button',
-    'result_success', 'result_retry', 'result_error', 'result_network_error',
+    'step_save_failed',
+    'result_success', 'result_retry', 'result_error', 'result_contact_admin', 'result_network_error',
 )
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)

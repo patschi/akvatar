@@ -81,6 +81,24 @@ docker run -d \
 - Mount a volume at `/app/data/config` with a read-only bind for the configuration file (`config.yml`)
 - Mount a volume at `/app/data/user-avatars` for persistent avatar storage
 
+#### Using bind-mount directories instead of named volumes
+
+If you prefer bind-mounting host directories instead of named Docker volumes, create them with the correct ownership first (the container runs as UID 65532):
+
+```bash
+mkdir -p ./data/config ./data/user-avatars
+chown -R 65532:65532 ./data/user-avatars
+```
+
+Then replace the volume flags with bind-mount paths:
+
+```bash
+-v ./data/config:/app/data/config:ro \
+-v ./data/user-avatars:/app/data/user-avatars \
+```
+
+The config directory only needs to be readable. The `user-avatars` directory must be writable by UID 65532.
+
 ### Docker Compose
 
 A ready-to-use [`docker-compose.yml`](docker-compose.yml) is included in the repository.

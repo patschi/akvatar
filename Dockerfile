@@ -2,8 +2,8 @@
 # Authentik Avatar Updater – Distroless container image
 #
 # Multi-stage build:
-#   1. Builder stage: installs Python dependencies into a virtual env
-#   2. Final stage:   Google distroless Python image with only the app + venv
+#   1. Builder stage: installs Python dependencies into the system path
+#   2. Final stage:   Google distroless Python image with only the app + deps
 #
 # Security:
 #   - Runs as non-root (UID 65532, distroless "nonroot" user)
@@ -28,13 +28,11 @@ RUN apt-get update && \
         zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a virtual environment so we can copy it cleanly to the final stage
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Install Python dependencies (separate layer — cached until requirements.txt changes)
+# Install Python dependencies into a staging directory (no venv needed in
+# Docker). The target path is version-independent so the Dockerfile does
+# not need updating when the base Python version changes.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --target /opt/site-packages -r requirements.txt
 
 # Create data directory skeleton owned by nonroot (UID 65532) so Docker
 # initialises named volumes with correct ownership on first run.
@@ -49,8 +47,9 @@ FROM gcr.io/distroless/python3-debian13:nonroot
 
 WORKDIR /app
 
-# Copy the virtual env (with all installed packages) from the builder
-COPY --from=builder /opt/venv /opt/venv
+# Copy installed packages into the version-independent dist-packages
+# directory that is on every Debian Python's default sys.path.
+COPY --from=builder /opt/site-packages /usr/lib/python3/dist-packages
 
 # Copy shared libraries that Pillow needs at runtime (single layer)
 COPY --from=builder \
@@ -61,10 +60,7 @@ COPY --from=builder \
     /usr/lib/x86_64-linux-gnu/libz*.so* \
     /usr/lib/x86_64-linux-gnu/
 
-# Set virtualenv on the path so Python finds the installed packages
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/app" \
-    PYTHONDONTWRITEBYTECODE="1" \
+ENV PYTHONDONTWRITEBYTECODE="1" \
     PYTHONUNBUFFERED="1"
 
 # Copy application code and healthcheck binary (explicit files only)

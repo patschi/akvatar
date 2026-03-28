@@ -331,9 +331,10 @@ def generate_sse(user: dict, image: Image.Image):
         log.info('Upload pipeline complete for user %r (pk=%s).', username, user_pk)
         yield _sse({'done': True, 'avatar_url': canonical_url})
 
-    except Exception as exc:
+    except Exception:
         log.exception('Upload processing failed for user %r.', username)
         if filename_base:
             cleanup_avatar_files(filename_base)
-        yield _sse({'step': t('step_processing_failed'), 'status': 'failed', 'detail': str(exc)})
-        yield _sse({'done': True, 'error': str(exc)})
+        # Show a vague user-friendly message – never expose internal errors to the client
+        yield _sse({'step': t('step_processing_failed'), 'status': 'failed', 'detail': t('step_save_failed')})
+        yield _sse({'done': True, 'error': 'contact_admin'})
