@@ -211,12 +211,18 @@ openssl req -x509 -newkey rsa:3072 -nodes -keyout key.pem -out cert.pem -days 36
 ```bash
 docker run -d \
   --name avatar-updater \
+  --read-only \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --tmpfs /tmp \
   -p 5000:5000 \
   -v ak-avatar-config:/app/data/config:ro \
   -v ak-avatar-data:/app/data/user-avatars \
   ghcr.io/patschi/ak-avatar-updater:latest
 ```
 
+- The container runs as non-root (UID 65532) with a read-only root filesystem
+- `/tmp` is mounted as tmpfs for gunicorn worker temp files
 - Mount a volume at `/app/data/config` with a read-only bind for the configuration file (`config.yml`)
 - Mount a volume at `/app/data/user-avatars` for persistent avatar storage
 
@@ -228,8 +234,13 @@ services:
     image: ghcr.io/patschi/ak-avatar-updater:latest
     container_name: avatar-updater
     restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges
+    tmpfs:
+      - /tmp
     ports:
       - "5000:5000"
     volumes:

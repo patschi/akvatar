@@ -34,6 +34,7 @@ args = [
     '--preload',
     '--bind', f'{host}:{port}',
     '--workers', str(workers),
+    '--worker-tmp-dir', '/tmp',
     '--access-logfile', '-',
 ]
 

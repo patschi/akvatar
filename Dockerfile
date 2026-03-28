@@ -5,8 +5,11 @@
 #   1. Builder stage: installs Python dependencies into a virtual env
 #   2. Final stage:   Google distroless Python image with only the app + venv
 #
-# No .dockerignore is used — only explicitly listed files are copied into the
-# image, so the build context never leaks secrets, data, or dev artefacts.
+# Security:
+#   - Runs as non-root (UID 65532, distroless "nonroot" user)
+#   - Designed for read-only root filesystem (only volumes are writable)
+#   - No shell, no package manager — minimal attack surface
+#   - No .dockerignore needed — only explicitly listed files are copied
 # ============================================================================
 
 # ---------- Stage 1: build dependencies in a full Python image ----------
@@ -33,10 +36,16 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create data directory skeleton owned by nonroot (UID 65532) so Docker
+# initialises named volumes with correct ownership on first run.
+RUN mkdir -p /data-skel/user-avatars /data-skel/config && \
+    chown -R 65532:65532 /data-skel
+
 # ---------- Stage 2: distroless runtime image ----------
 # gcr.io/distroless/python3 contains only the Python interpreter and its
 # core C libraries — no shell, no package manager, minimal attack surface.
-FROM gcr.io/distroless/python3-debian13
+# The :nonroot tag sets the default user to 65532 (nonroot).
+FROM gcr.io/distroless/python3-debian13:nonroot
 
 WORKDIR /app
 
@@ -58,16 +67,19 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE="1" \
     PYTHONUNBUFFERED="1"
 
-# Copy application code and healthcheck binary (explicit files only — no .dockerignore needed)
+# Copy application code and healthcheck binary (explicit files only)
 COPY app.py cleanup.py run.py ./
 COPY src/ src/
 COPY static/ static/
-
 COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
-HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:5000/healthz"]
 
-EXPOSE 5000
+# Data directories — ownership inherited from builder skeleton so the
+# nonroot user can write when Docker initialises the volumes.
+COPY --from=builder --chown=65532:65532 /data-skel/ /app/data/
+
 VOLUME ["/app/data/user-avatars", "/app/data/config"]
+HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:5000/healthz"]
+EXPOSE 5000
 
 # Launch via run.py which reads config.yml and starts gunicorn with --preload.
 # A Python script is used because distroless images have no shell.
