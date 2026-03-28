@@ -33,7 +33,7 @@ The recommended way to run the application is via the **container image** (see [
 1. Clone and install:
 
    ```bash
-   git clone <repo-url> authentik-avatar-updater && cd authentik-avatar-updater
+   git clone https://github.com/patschi/authentik-avatar-updater.git authentik-avatar-updater && cd authentik-avatar-updater
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    ```
@@ -73,7 +73,7 @@ docker run -d \
   -p 5000:5000 \
   -v ak-avatar-config:/app/data/config:ro \
   -v ak-avatar-data:/app/data/user-avatars \
-  ghcr.io/patschi/ak-avatar-updater:latest
+  ghcr.io/patschi/authentik-avatar-updater:latest
 ```
 
 - The container runs as non-root (UID 65532) with a read-only root filesystem
