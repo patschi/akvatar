@@ -1,7 +1,7 @@
 services:
-  ak-avatar-updater:
-    image: ghcr.io/patschi/authentik-avatar-updater:latest
-    container_name: ak-avatar-updater
+  akvatar:
+    image: ghcr.io/patschi/akvatar:latest
+    container_name: akvatar
     restart: unless-stopped
     read_only: true
     cap_drop:
@@ -13,9 +13,9 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ak-avatar-config:/app/data/config:ro
-      - ak-avatar-data:/app/data/user-avatars
+      - akvatar-config:/app/data/config:ro
+      - akvatar-data:/app/data/user-avatars
 
 volumes:
-  ak-avatar-data:
-  ak-avatar-config:
+  akvatar-data:
+  akvatar-config:

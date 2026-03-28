@@ -1,18 +1,18 @@
 # How It Works
 
-This document explains the complete request lifecycle of the Authentik Avatar Updater, from login through avatar upload to backend synchronisation.
+This document explains the complete request lifecycle of Akvatar, from login through avatar upload to backend synchronisation.
 
 ## Architecture overview
 
-```
-┌─────────┐      HTTPS       ┌───────────────┐       HTTP       ┌─────────────────────┐
-│ Browser │ ◄──────────────► │ Reverse Proxy │ ◄──────────────► │   Avatar Updater    │
-│         │                  │ (nginx/Caddy) │                  │   (Flask/gunicorn)  │
+```text
+┌─────────┐                  ┌───────────────┐                  ┌─────────────────────┐
+│ Browser │      HTTPS       │ Reverse Proxy │    HTTP/HTTPS    │       Akvatar       │
+│         │ ◄──────────────► │ (nginx/Caddy) │ ◄──────────────► │   (Flask/gunicorn)  │
 └─────────┘                  └───────────────┘                  └──────────┬──────────┘
                                                                            │
-                              ┌────────────────────────────────────────────┼────────────────┐
-                              │                                            │                │
-                              ▼                                            ▼                ▼
+                              ┌────────────────────────────────────────────┼──────────────┐
+                              │                                            │              │
+                              ▼                                            ▼              ▼
                      ┌─────────────────┐                         ┌──────────────┐  ┌──────────────┐
                      │    Authentik    │                         │     Disk     │  │ LDAP Server  │
                      │  (OIDC + API)   │                         │  (avatars)   │  │  (optional)  │
@@ -20,6 +20,7 @@ This document explains the complete request lifecycle of the Authentik Avatar Up
 ```
 
 The application sits behind a reverse proxy and communicates with three backends:
+
 - **Authentik:** OIDC authentication and user attribute updates via the Admin API
 - **Disk:** Processed avatar images stored in multiple sizes and formats
 - **LDAP Server** (optional): Writes the photo attribute directly into the directory (e.g. Active Directory `thumbnailPhoto`)
@@ -31,7 +32,7 @@ The login process uses the standard **OpenID Connect Authorization Code Flow**.
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant A as Avatar Updater
+    participant A as Akvatar
     participant K as Authentik
 
     B->>A: GET /
@@ -72,7 +73,7 @@ Once authenticated, the user can upload an avatar. The process involves client-s
 ```mermaid
 sequenceDiagram
     participant B as Browser
-    participant A as Avatar Updater
+    participant A as Akvatar
     participant D as Disk
     participant K as Authentik API
     participant L as LDAP Server

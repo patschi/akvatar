@@ -1,7 +1,7 @@
 services:
-  ak-avatar-updater:
+  akvatar:
     build: .
-    container_name: ak-avatar-updater-dev
+    container_name: akvatar
     restart: no
     read_only: true
     cap_drop:
