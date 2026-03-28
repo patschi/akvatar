@@ -62,7 +62,7 @@ ENV PYTHONDONTWRITEBYTECODE="1" \
     PYTHONUNBUFFERED="1"
 
 # Copy application code and healthcheck binary (explicit files only)
-COPY app.py cleanup.py run.py ./
+COPY app.py run_app.py run_cleanup.py ./
 COPY src/ src/
 COPY static/ static/
 COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
@@ -75,6 +75,6 @@ VOLUME ["/app/data/user-avatars", "/app/data/config"]
 HEALTHCHECK --interval=60s --timeout=3s CMD ["/bin/httpscheck", "localhost:5000/healthz"]
 EXPOSE 5000
 
-# Launch via run.py which reads config.yml and starts gunicorn with --preload.
+# Launch via run_app.py which reads config.yml and starts gunicorn with --preload.
 # A Python script is used because distroless images have no shell.
-ENTRYPOINT ["python", "run.py"]
+ENTRYPOINT ["python", "run_app.py"]

@@ -26,8 +26,8 @@ Safety:
     would be deleted without touching the filesystem.
 
 This module is used in two ways:
-  1. Automatically via a background daemon thread started in run.py.
-  2. Manually via ``python cleanup.py`` at the project root.
+  1. Automatically via a background daemon thread started in run_app.py.
+  2. Manually via ``python run_cleanup.py`` at the project root.
 """
 
 import logging

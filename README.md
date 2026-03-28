@@ -49,7 +49,7 @@ The recommended way to run the application is via the **container image** (see [
 3. Run:
 
    ```bash
-   python run.py
+   python run_app.py
    ```
 
 ## Prerequisites

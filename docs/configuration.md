@@ -231,7 +231,7 @@ Enables full debug mode. When active:
 
 ## Webserver
 
-These settings apply when running via `run.py` / gunicorn (production and Docker). When running via `app.py` (development), only `host`, `port`, and TLS settings are used.
+These settings apply when running via `run_app.py` / gunicorn (production and Docker). When running via `app.py` (development), only `host`, `port`, and TLS settings are used.
 
 <a id="webserver_proxy_mode"></a>
 

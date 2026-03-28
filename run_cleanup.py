@@ -1,7 +1,7 @@
 """
-cleanup.py – Manual trigger for avatar cleanup.
+run_cleanup.py – Manual trigger for avatar cleanup.
 
-Run with:  python cleanup.py
+Run with:  python run_cleanup.py
 
 The actual logic lives in src/cleanup.py.  This file is a convenience
 entry point for one-off manual runs (the same function also runs
