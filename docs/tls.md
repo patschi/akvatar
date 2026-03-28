@@ -1,6 +1,6 @@
 # TLS Configuration
 
-This guide covers how to configure TLS (HTTPS) for the Authentik Avatar Updater.
+This guide covers how to configure TLS (HTTPS) for Akvatar.
 
 ## Recommended: Use a reverse proxy
 
@@ -40,7 +40,7 @@ For development or testing, generate a self-signed certificate:
 ```bash
 openssl req -x509 -newkey rsa:3072 -nodes \
   -keyout key.pem -out cert.pem \
-  -days 3650 -subj "/CN=ak-avatar-updater"
+  -days 3650 -subj "/CN=akvatar"
 ```
 
 | Parameter | Purpose |

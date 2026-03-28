@@ -1,6 +1,6 @@
 # Subfolder Deployment
 
-This guide explains how to host the Authentik Avatar Updater under a URL path prefix (e.g. `https://portal.example.com/avatar/`) instead of at the root of a domain.
+This guide explains how to host Akvatar under a URL path prefix (e.g. `https://portal.example.com/avatar/`) instead of at the root of a domain.
 
 ## Overview
 

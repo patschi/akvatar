@@ -1,6 +1,6 @@
 # Nginx Reverse Proxy
 
-This guide covers how to run the Authentik Avatar Updater behind an **nginx** reverse proxy.
+This guide covers how to run Akvatar behind an **nginx** reverse proxy.
 
 ## Prerequisites
 

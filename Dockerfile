@@ -1,4 +1,4 @@
-# Authentik Avatar Updater – Distroless container image
+# Akvatar – Distroless container image
 #
 # Multi-stage build:
 #   1. Builder stage: installs Python dependencies into the system path

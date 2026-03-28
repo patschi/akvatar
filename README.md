@@ -1,4 +1,4 @@
-# Akvatar aka. Authentik Avatar Updater
+# Akvatar – Authentik Avatar Updater
 
 A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to an **LDAP Server** (only tested Microsoft Active Directory, but any standards-compliant LDAP server should work).
 
@@ -33,7 +33,7 @@ The recommended way to run the application is via the **container image** (see [
 1. Clone and install:
 
    ```bash
-   git clone https://github.com/patschi/akvatar.git authentik-avatar-updater && cd authentik-avatar-updater
+   git clone https://github.com/patschi/akvatar.git akvatar && cd akvatar
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    ```
@@ -65,14 +65,14 @@ The recommended way to run the application is via the **container image** (see [
 
 ```bash
 docker run -d \
-  --name ak-avatar-updater \
+  --name akvatar \
   --read-only \
   --cap-drop ALL \
   --security-opt no-new-privileges \
   --tmpfs /tmp \
   -p 5000:5000 \
-  -v ak-avatar-config:/app/data/config:ro \
-  -v ak-avatar-data:/app/data/user-avatars \
+  -v akvatar-config:/app/data/config:ro \
+  -v akvatar-data:/app/data/user-avatars \
   ghcr.io/patschi/akvatar:latest
 ```
 

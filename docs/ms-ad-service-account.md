@@ -1,10 +1,10 @@
 # Active Directory Service Account Setup
 
-This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for the Authentik Avatar Updater's LDAP integration. The account will only have permission to **read user objects** and **write photo attributes** (e.g. `thumbnailPhoto`, `jpegPhoto`) within a specific Organizational Unit (OU).
+This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for Akvatar's LDAP integration. The account will only have permission to **read user objects** and **write photo attributes** (e.g. `thumbnailPhoto`, `jpegPhoto`) within a specific Organizational Unit (OU).
 
 ## Overview
 
-The Avatar Updater connects to LDAP (Active Directory) to write profile photos directly into user objects. To follow the principle of least privilege, the service account should:
+Akvatar connects to LDAP (Active Directory) to write profile photos directly into user objects. To follow the principle of least privilege, the service account should:
 
 - Be able to **bind** (authenticate) to the directory
 - **Search** for user objects within a specific OU
@@ -53,9 +53,9 @@ $DomainDN = "DC=corp,DC=example,DC=com"
 $ServiceAccountOU = "OU=Service Accounts,$DomainDN"
 
 # Service account name
-$SamAccountName = "sa-ak-avatar-updater"
-$DisplayName    = "Authentik Avatar Updater Service Account"
-$Description    = "Least-privilege service account for the Authentik Avatar Updater LDAP integration. Allowed to write photo attributes on user objects."
+$SamAccountName = "sa-akvatar"
+$DisplayName    = "Akvatar Service Account"
+$Description    = "Least-privilege service account for the Akvatar LDAP integration. Allowed to write photo attributes on user objects."
 
 # Target OU where user objects live (the service account will be granted
 # write access to thumbnailPhoto only on user objects within this OU)
@@ -364,7 +364,7 @@ $OU = [System.DirectoryServices.DirectoryEntry]::new("LDAP://OU=Users,DC=corp,DC
 $ACL = $OU.ObjectSecurity
 
 $ACL.Access | Where-Object {
-    $_.IdentityReference -match "sa-ak-avatar-updater"
+    $_.IdentityReference -match "sa-akvatar"
 } | Format-Table ActiveDirectoryRights, ObjectType, InheritedObjectType, InheritanceType -AutoSize
 ```
 
@@ -389,7 +389,7 @@ ActiveDirectoryRights ObjectType                           InheritedObjectType  
 2. Enable **View > Advanced Features**
 3. Right-click the target OU (e.g. `Users`) and select **Properties > Security**
 4. Click **Advanced**
-5. Look for entries with `sa-ak-avatar-updater` as the principal
+5. Look for entries with `sa-akvatar` as the principal
 6. Verify the permissions match: Write/Read on each configured photo attribute on User objects
 
 ## Testing the service account
@@ -398,7 +398,7 @@ Test the connection and permissions before deploying the application:
 
 ```powershell
 # Quick test: bind as the service account and search for a user
-$Cred = Get-Credential -UserName "sa-ak-avatar-updater"
+$Cred = Get-Credential -UserName "sa-akvatar"
 
 Get-ADUser -Filter "objectSid -eq 'S-1-5-21-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX'" `
     -Server "dc.corp.example.com" `
@@ -420,7 +420,7 @@ ldap:
   port: 636
   use_ssl: true
   skip_cert_verify: false
-  bind_dn: "CN=Authentik Avatar Updater Service Account,OU=Service Accounts,DC=corp,DC=example,DC=com"
+  bind_dn: "CN=Akvatar Service Account,OU=Service Accounts,DC=corp,DC=example,DC=com"
   bind_password: "<the generated password>"
   search_base: "OU=Users,DC=corp,DC=example,DC=com"
   search_filter: "(objectSid={ldap_uniq})"
@@ -445,7 +445,7 @@ To clean up the service account and its delegated permissions:
 # Remove delegated ACEs from the target OU
 $OU = [System.DirectoryServices.DirectoryEntry]::new("LDAP://OU=Users,DC=corp,DC=example,DC=com")
 $ACL = $OU.ObjectSecurity
-$Account = Get-ADUser -Identity "sa-ak-avatar-updater"
+$Account = Get-ADUser -Identity "sa-akvatar"
 $SID = [System.Security.Principal.SecurityIdentifier]$Account.SID
 
 # Remove all ACEs for this account
@@ -460,7 +460,7 @@ $OU.CommitChanges()
 $OU.Dispose()
 
 # Delete the service account
-Remove-ADUser -Identity "sa-ak-avatar-updater" -Confirm:$false
+Remove-ADUser -Identity "sa-akvatar" -Confirm:$false
 
 Write-Host "Service account and delegated permissions removed." -ForegroundColor Green
 ```
