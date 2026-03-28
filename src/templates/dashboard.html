@@ -12,15 +12,11 @@
 
   {% include 'partials/navbar.html' %}
 
-  <!-- ================================================================== -->
-  <!-- Main content card                                                   -->
-  <!-- ================================================================== -->
+  <!-- Main content card -->
   <main class="container">
     <div class="card">
 
-      <!-- ============================================================== -->
-      <!-- Current profile: avatar + display name                          -->
-      <!-- ============================================================== -->
+      <!-- Current profile: avatar + display name -->
       <div class="profile-header">
         {% if user.avatar %}
           <img class="profile-avatar" src="{{ user.avatar }}" alt="Current avatar" />
@@ -68,9 +64,7 @@
         </button>
       </div>
 
-      <!-- ============================================================== -->
-      <!-- Progress panel                                                  -->
-      <!-- ============================================================== -->
+      <!-- Progress panel -->
       <div id="progressPanel" class="progress-panel hidden">
         <h2>{{ t('progress_heading') }}</h2>
         <ul id="progressList" class="progress-list"></ul>
@@ -79,23 +73,21 @@
     </div>
   </main>
 
-  <!-- ================================================================== -->
-  <!-- Client-side logic                                                   -->
-  <!-- ================================================================== -->
+  <!-- Client-side logic -->
   <script>
     /**
      * Dashboard – avatar upload with client-side cropping and server-side
      * processing streamed back as Server-Sent Events (SSE).
      */
 
-    // ── Server-provided constants (injected by Jinja2) ─────────────────
+    // Server-provided constants (injected by Jinja2)
     const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
     const MAX_AVATAR_SIZE    = {{ max_size }};
     const I18N               = {{ i18n | tojson }};
     const LDAP_ENABLED       = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});
 
-    // ── DOM element references ─────────────────────────────────────────
+    // DOM element references
     const uploadSection      = document.getElementById("uploadSection");
     const filePicker         = document.getElementById("filePicker");
     const fileInput          = document.getElementById("fileInput");
@@ -112,8 +104,7 @@
     // Cropper.js instance — created when user selects an image
     let cropperInstance = null;
 
-    // ── Progress step icons (SVGs using currentColor for theme adaptation) ──
-
+    // Progress step icons (SVGs using currentColor for theme adaptation)
     const ICON_CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
         + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
         + '<path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
@@ -147,7 +138,7 @@
         active:    ICON_SPINNER,
     };
 
-    // ── Progress step list helpers ─────────────────────────────────────
+    // Progress step list helpers
 
     /**
      * Build the inner HTML for a single progress step row.
@@ -181,8 +172,7 @@
         uploadButton.textContent = I18N.upload_button;
     }
 
-    // ── File selection: validate extension and initialise cropper ──────
-
+    // File selection: validate extension and initialise cropper
     fileInput.addEventListener("change", function (event) {
         var selectedFile = event.target.files[0];
         if (!selectedFile) return;
@@ -236,8 +226,7 @@
         });
     });
 
-    // ── Upload flow with SSE streaming progress ────────────────────────
-
+    // Upload flow with SSE streaming progress
     uploadButton.addEventListener("click", async function () {
         if (!cropperInstance) return;
 
@@ -319,7 +308,8 @@
             var currentStepIndex = 0;
             updateStep(serverStepElements[0], serverStepLabels[0], "active");
 
-            // Read the SSE response stream chunk by chunk
+            // Parse the SSE response stream: read chunks, split into frames,
+            // update progress steps as each server event arrives
             var streamReader = response.body.getReader();
             var textDecoder = new TextDecoder();
             var sseBuffer = "";
@@ -376,7 +366,7 @@
                 updateStep(serverStepElements[i], serverStepLabels[i], "skipped");
             }
 
-            // ── Display final result ──────────────────────────────────
+            // Display final result
             if (finalResult && finalResult.avatar_url && !finalResult.error) {
                 // Success: hide the upload form and show the updated avatar
                 uploadSection.classList.add("hidden");

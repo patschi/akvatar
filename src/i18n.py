@@ -15,9 +15,7 @@ log = logging.getLogger('i18n')
 SUPPORTED_LOCALES = frozenset(('en_US', 'de_DE'))
 DEFAULT_LOCALE = 'en_US'
 
-# ---------------------------------------------------------------------------
 # Translation strings
-# ---------------------------------------------------------------------------
 TRANSLATIONS: dict[str, dict[str, str]] = {
     'en_US': {
         # -- Page titles (appended after brand name) --

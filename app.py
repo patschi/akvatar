@@ -38,9 +38,7 @@ http_log = logging.getLogger('http')
 # Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
 
-# ---------------------------------------------------------------------------
 # In-memory static file cache
-# ---------------------------------------------------------------------------
 # All files in static/ are read once at import time and served from memory.
 # With gunicorn --preload, workers inherit the cache via fork (shared pages).
 _STATIC_DIR = Path(__file__).resolve().parent / 'static'
@@ -68,9 +66,7 @@ log.info('Static file cache: %d file(s), %.1f KB total.',
          sum(len(d) for d, _, _ in _static_cache.values()) / 1024)
 
 
-# ---------------------------------------------------------------------------
 # Periodic memory monitor
-# ---------------------------------------------------------------------------
 
 def _get_rss_mb() -> float | None:
     """Return current process RSS in MB, or None if unavailable."""
@@ -181,7 +177,7 @@ def create_app() -> Flask:
     log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
     log.debug('Metadata storage root: %s', METADATA_ROOT.resolve())
 
-    # -- Subfolder support -------------------------------------------------
+    # Subfolder support
     # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
     # "https://portal.example.com/avatar-update").  Apply PrefixMiddleware as
     # the inner middleware so it only fires when the reverse proxy has NOT
@@ -191,7 +187,7 @@ def create_app() -> Flask:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
         log.info('PrefixMiddleware applied – app is served under %r.', _public_path)
 
-    # -- Reverse proxy support ---------------------------------------------
+    # Reverse proxy support
     # ProxyFix is the OUTER middleware (runs first on every request).  It reads
     # X-Forwarded-For/Proto/Host/Prefix so that url_for() generates correct
     # external URLs and remote_addr reflects the real client IP.
@@ -211,7 +207,7 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)    # /login, /callback, /logout
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
 
-    # -- Serve static files from in-memory cache ----------------------------
+    # Serve static files from in-memory cache
     @app.route('/static/<path:filename>', endpoint='static')
     def _serve_static(filename):
         entry = _static_cache.get(filename)
@@ -226,7 +222,7 @@ def create_app() -> Flask:
     log.debug('Web routes registered.')
     log.info('OK! Ready to serve requests.')
 
-    # -- Template context processor -----------------------------------------
+    # Template context processor – inject shared variables into all templates
     _brand_name = branding_cfg.get('name', 'Avatar Updater')
 
     @app.context_processor
@@ -240,7 +236,7 @@ def create_app() -> Flask:
             'i18n': get_js_translations(locale),
         }
 
-    # -- HTTP response headers & logging ------------------------------------
+    # HTTP request logging (non-static requests only)
     if access_log:
         @app.after_request
         def _after_request(response):
@@ -248,7 +244,7 @@ def create_app() -> Flask:
                 http_log.debug('%s %s %s (client=%s)', request.method, request.path, response.status_code, request.remote_addr)
             return response
 
-    # -- Template cache warm-up --------------------------------------------
+    # Template cache warm-up – pre-compile so forked workers have zero disk I/O
     # Pre-compile all templates so workers forked via --preload inherit them
     # and the first request per template has zero disk I/O.
     if not debug_full:
@@ -267,7 +263,7 @@ if __name__ == '__main__':
     # Start the background cleanup thread (respects config interval; 0 = disabled)
     start_cleanup_thread()
 
-    # -- TLS support -------------------------------------------------------
+    # TLS support
     tls_cert = web_cfg.get('tls_cert', '')
     tls_key = web_cfg.get('tls_key', '')
     ssl_context = (tls_cert, tls_key) if tls_cert and tls_key else None

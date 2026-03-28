@@ -25,9 +25,7 @@ from src.config import ldap_cfg, dry_run
 
 log = logging.getLogger('ldap_client')
 
-# ---------------------------------------------------------------------------
 # Module-level configuration (config is immutable after startup)
-# ---------------------------------------------------------------------------
 _enabled = ldap_cfg.get('enabled', False)
 _server_host = ldap_cfg.get('server', '')
 _server_port = ldap_cfg.get('port', 636)
@@ -54,9 +52,7 @@ if _enabled:
     log.debug('Pre-built LDAP Server object for %s:%s.', _server_host, _server_port)
 
 
-# ---------------------------------------------------------------------------
 # Public helpers
-# ---------------------------------------------------------------------------
 
 def is_enabled() -> bool:
     """Return True if LDAP integration is turned on in the config."""
@@ -68,9 +64,7 @@ def get_photos_config() -> list[dict]:
     return _photos
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 def _describe_value(val) -> str:
     """Human-readable description of an LDAP attribute value for logging."""
@@ -159,9 +153,7 @@ def _apply_modifications(conn: ldap3.Connection, user_dn: str, updates: list[dic
         log.info('LDAP %s updated for %r (%s).', update['attribute'], user_dn, _describe_value(update['value']))
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
     """

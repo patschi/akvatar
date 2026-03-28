@@ -15,9 +15,7 @@ from src.config import ak_cfg, dry_run
 
 log = logging.getLogger('ak_api')
 
-# ---------------------------------------------------------------------------
 # Module-level configuration
-# ---------------------------------------------------------------------------
 
 # Which Authentik user attribute stores the avatar URL (configurable in config)
 _avatar_attr = ak_cfg.get('avatar_attribute', 'avatar-url')
@@ -40,9 +38,7 @@ _base_url = ak_cfg['base_url']
 _users_url = f'{_base_url}/api/v3/core/users/'
 
 
-# ---------------------------------------------------------------------------
 # Response helpers
-# ---------------------------------------------------------------------------
 
 def _parse_json(resp: http_requests.Response) -> dict:
     """Parse JSON from a response, raising a clear error on failure."""
@@ -61,9 +57,7 @@ def _parse_json(resp: http_requests.Response) -> dict:
     return data
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 def resolve_user_pk(username: str) -> int:
     """
@@ -102,8 +96,7 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
     """
     url = f'{_users_url}{pk}/'
 
-    # -- Fetch current attributes ----------------------------------------------
-    # Always performed — callers rely on the returned dict (e.g. to read
+    # Fetch current attributes (always performed — callers rely on the returned dict) — callers rely on the returned dict (e.g. to read
     # ldap_uniq before attempting an LDAP update).
     log.debug('GET %s – fetching current user attributes.', url)
     resp = _session.get(url, timeout=_TIMEOUT)
@@ -125,7 +118,7 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
         log.info('[DRY-RUN] Would update Authentik %r for pk=%d to %s.', _avatar_attr, pk, avatar_url)
         return current_attrs
 
-    # -- PATCH the avatar attribute --------------------------------------------
+    # PATCH the avatar attribute on the Authentik user object
     current_attrs[_avatar_attr] = avatar_url
     log.debug('PATCH %s – setting %s to: %s', url, _avatar_attr, avatar_url)
     patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
@@ -161,6 +154,7 @@ def list_all_user_pks() -> set[int]:
     url: str | None = _users_url
     params: dict | None = {'page_size': 100, 'is_active': 'true'}
 
+    # Paginate through all result pages, collecting PKs from each page
     while url:
         page += 1
         log.debug('GET %s (page %d) – fetching user list.', url, page)

@@ -40,26 +40,20 @@ from src.ldap_client import (
 
 log = logging.getLogger('upload')
 
-# ---------------------------------------------------------------------------
 # Module-level config (immutable after startup)
-# ---------------------------------------------------------------------------
 _ldap_enabled = ldap_is_enabled()
 _ldap_photos = ldap_photos_config()
 _ak_avatar_size = ak_cfg.get('avatar_size', 1024)
 
 
-# ---------------------------------------------------------------------------
 # SSE helper
-# ---------------------------------------------------------------------------
 
 def _sse(data: dict) -> str:
     """Format a dict as a single Server-Sent Event frame."""
     return f"data: {json.dumps(data)}\n\n"
 
 
-# ---------------------------------------------------------------------------
 # Upload validation (synchronous – called before switching to SSE stream)
-# ---------------------------------------------------------------------------
 
 class ValidationError(Exception):
     """Raised when the uploaded file fails a validation check."""
@@ -72,7 +66,7 @@ def validate_upload(file) -> Image.Image:
 
     Raises ``ValidationError`` with a user-facing message on failure.
     """
-    # -- Filename & extension --------------------------------------------------
+    # Filename & extension check
     if not file.filename:
         raise ValidationError('Empty filename.')
 
@@ -82,7 +76,7 @@ def validate_upload(file) -> Image.Image:
             f'File type .{ext} not allowed. Accepted: {", ".join(sorted(ALLOWED_EXTENSIONS))}'
         )
 
-    # -- Read bytes & magic signature ------------------------------------------
+    # Read raw bytes and verify magic signature
     raw_bytes = file.read()
     if not raw_bytes:
         raise ValidationError('Uploaded file is empty.')
@@ -94,7 +88,7 @@ def validate_upload(file) -> Image.Image:
         raise ValidationError(magic_err)
     log.debug('Magic-byte signature check passed.')
 
-    # -- Pillow decode ---------------------------------------------------------
+    # Decode with Pillow and verify format
     try:
         image = Image.open(io.BytesIO(raw_bytes))
         # .load() forces full pixel decoding — catches truncated/corrupt files
@@ -110,7 +104,7 @@ def validate_upload(file) -> Image.Image:
         raise ValidationError(f'Image format {image.format!r} is not allowed.')
     log.debug('Decoded format %s is in the allow-list.', image.format)
 
-    # -- Dimension checks ------------------------------------------------------
+    # Dimension checks
     w, h = image.size
     if w < MIN_DIMENSION or h < MIN_DIMENSION:
         raise ValidationError(
@@ -130,9 +124,8 @@ def validate_upload(file) -> Image.Image:
     return normalize_image(image)
 
 
-# ---------------------------------------------------------------------------
 # Pipeline steps
-# ---------------------------------------------------------------------------
+#
 # Steps that need to both yield SSE frames and return data use Python's
 # generator-return: yield SSE strings, return the result.  The caller
 # collects via `result = yield from step(...)`.
@@ -284,9 +277,7 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
     log.debug('Metadata saved to %s.', meta_path)
 
 
-# ---------------------------------------------------------------------------
 # Main SSE generator – orchestrates the full pipeline
-# ---------------------------------------------------------------------------
 
 def generate_sse(user: dict, image: Image.Image):
     """
@@ -302,30 +293,30 @@ def generate_sse(user: dict, image: Image.Image):
     try:
         yield _sse({'step': t('step_validated'), 'status': 'success', 'detail': t('step_validated_detail')})
 
-        # -- Step 1: Generate secure filename ----------------------------------
+        # Step 1: Generate secure filename
         filename_base = generate_filename()
         yield _sse({'step': t('step_filename'), 'status': 'success'})
 
-        # -- Step 2: Resize & save all configured sizes/formats ----------------
+        # Step 2: Resize & save all configured sizes/formats
         urls, total_bytes = yield from _step_process_image(image, filename_base)
 
-        # -- Step 3: Resolve canonical avatar URL for Authentik ----------------
+        # Step 3: Resolve canonical avatar URL for Authentik
         canonical_url = _resolve_canonical_url(urls)
 
-        # -- Step 4: Push avatar URL to Authentik ------------------------------
+        # Step 4: Push avatar URL to Authentik
         ak_attrs, ak_failed = yield from _step_sync_authentik(user_pk, canonical_url)
 
-        # -- Step 5: Update LDAP photo attributes (if applicable) --------------
+        # Step 5: Update LDAP photo attributes (if applicable)
         ldap_failed = yield from _step_sync_ldap(image, urls, filename_base, ak_attrs, user_pk)
 
-        # -- Rollback on any backend failure -----------------------------------
+        # Rollback on any backend failure
         if ak_failed or ldap_failed:
             log.warning('Backend update failed – rolling back avatar files for %s.', filename_base)
             cleanup_avatar_files(filename_base)
             yield _sse({'done': True, 'error': 'Could not update your avatar. Please try again later.'})
             return
 
-        # -- Step 6: Persist metadata ------------------------------------------
+        # Step 6: Persist metadata
         _save_metadata(filename_base, user_pk, total_bytes)
 
         log.info('Upload pipeline complete for user %r (pk=%s).', username, user_pk)

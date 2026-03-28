@@ -9,7 +9,7 @@
 (function () {
     "use strict";
 
-    // ── Cookie helpers ─────────────────────────────────────────────────
+    // Cookie helpers
 
     /** Read a cookie value by name, or null if not set. */
     function getCookie(cookieName) {
@@ -31,7 +31,7 @@
         document.cookie = cookieName + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax";
     }
 
-    // ── Theme management ───────────────────────────────────────────────
+    // Theme management
 
     /**
      * Resolve a theme preference to a concrete value ("light" or "dark").
@@ -68,7 +68,7 @@
         }
     });
 
-    // ── Overlay open/close ─────────────────────────────────────────────
+    // Overlay open/close
 
     var settingsOverlay = document.getElementById("settingsOverlay");
     var settingsOpenButtons = document.querySelectorAll(".settings-btn");
@@ -111,7 +111,7 @@
         }
     });
 
-    // ── Button state helpers ───────────────────────────────────────────
+    // Button state helpers
 
     var themeButtons  = settingsOverlay.querySelectorAll("[data-theme-value]");
     var localeButtons = settingsOverlay.querySelectorAll("[data-locale]");
@@ -133,7 +133,7 @@
         });
     }
 
-    // ── Set initial active states ──────────────────────────────────────
+    // Set initial active states
 
     // Theme: if no cookie is set, "auto" is the default
     var savedThemeCookie = getCookie("theme");
@@ -142,8 +142,7 @@
     // Locale: highlight whichever language the server rendered
     highlightActiveLocale();
 
-    // ── Theme button click handlers ────────────────────────────────────
-    // Theme changes are instant (no page reload needed)
+    // Theme button click handlers (instant, no page reload needed)
 
     themeButtons.forEach(function (button) {
         button.addEventListener("click", function () {
@@ -162,8 +161,7 @@
         });
     });
 
-    // ── Locale button click handlers ───────────────────────────────────
-    // Language changes require a reload so the server renders the correct locale
+    // Locale button click handlers (requires reload for server-rendered locale)
 
     localeButtons.forEach(function (button) {
         button.addEventListener("click", function () {
@@ -172,8 +170,7 @@
         });
     });
 
-    // ── Reset settings button ──────────────────────────────────────────
-    // Removes all preference cookies and reloads with defaults
+    // Reset settings button – removes all preference cookies and reloads with defaults
 
     var resetButton = document.getElementById("settingsReset");
     if (resetButton) {

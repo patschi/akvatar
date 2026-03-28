@@ -1,6 +1,6 @@
 services:
   ak-avatar-updater:
-    image: ghcr.io/patschi/ak-avatar-updater:latest
+    image: ghcr.io/patschi/authentik-avatar-updater:latest
     container_name: ak-avatar-updater
     restart: unless-stopped
     read_only: true

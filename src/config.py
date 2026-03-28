@@ -24,11 +24,9 @@ def _fatal_unless(condition: bool, msg: str) -> None:
         _fatal(msg)
 
 
-# ---------------------------------------------------------------------------
-# Load configuration
-# ---------------------------------------------------------------------------
 CONFIG_PATH = 'data/config/config.yml'
 
+# Load configuration from YAML file
 try:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as _f:
         cfg = yaml.safe_load(_f)
@@ -37,9 +35,7 @@ except FileNotFoundError:
 except yaml.YAMLError as exc:
     _fatal(f'Failed to parse {CONFIG_PATH!r}: {exc}')
 
-# ---------------------------------------------------------------------------
 # Convenience references for each config section
-# ---------------------------------------------------------------------------
 dry_run      = cfg.get('dry_run', False)
 branding_cfg = cfg.get('branding', {})
 app_cfg      = cfg['app']
@@ -50,9 +46,7 @@ ldap_cfg     = cfg.get('ldap', {})  # May be absent if disabled
 img_cfg      = cfg['images']
 access_log   = bool(web_cfg.get('access_log', False))
 
-# ---------------------------------------------------------------------------
 # Logging setup
-# ---------------------------------------------------------------------------
 _LOG_LEVELS = {
     'DEBUG':    logging.DEBUG,
     'INFO':     logging.INFO,
@@ -85,9 +79,7 @@ log.debug('Log level set to %s.', _configured_level)
 if dry_run:
     log.warning('DRY-RUN MODE is enabled – no changes will be pushed to Authentik or LDAP.')
 
-# ---------------------------------------------------------------------------
 # Startup SSL warnings (logged once at import time)
-# ---------------------------------------------------------------------------
 _tls_cert = web_cfg.get('tls_cert', '')
 _tls_key = web_cfg.get('tls_key', '')
 if not _tls_cert or not _tls_key:
@@ -98,9 +90,7 @@ if ldap_cfg.get('enabled', False) and not ldap_cfg.get('use_ssl', False):
 if ldap_cfg.get('enabled', False) and ldap_cfg.get('skip_cert_verify', False):
     log.warning('LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks.')
 
-# ---------------------------------------------------------------------------
 # Validate configured image sizes for backends
-# ---------------------------------------------------------------------------
 _valid_sizes = img_cfg.get('sizes', [])
 
 _ak_avatar_size = ak_cfg.get('avatar_size', 1024)
@@ -155,9 +145,7 @@ if ldap_cfg.get('enabled', False):
     )
     log.info('LDAP configured with %d photo attribute(s).', len(_ldap_photos))
 
-# ---------------------------------------------------------------------------
 # Validate Flask secret key
-# ---------------------------------------------------------------------------
 _secret_key = app_cfg.get('secret_key', '')
 _SECRET_KEY_MIN_LENGTH = 32
 _SECRET_KEY_HINT = 'Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"'

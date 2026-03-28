@@ -19,9 +19,7 @@ from src.config import img_cfg, app_cfg
 
 log = logging.getLogger('imaging')
 
-# ---------------------------------------------------------------------------
 # Security: Pillow decompression bomb limit
-# ---------------------------------------------------------------------------
 # A "decompression bomb" is a small file on disk (e.g. 1 MB) that expands to
 # an enormous bitmap in memory (e.g. 20 GB) when decoded.  Pillow's default
 # limit is ~178 megapixels, which is far too generous for an avatar uploader.
@@ -130,9 +128,7 @@ def ensure_size_directories_existence() -> None:
     log.debug('Ensured size directories under %s.', AVATAR_ROOT)
 
 
-# ---------------------------------------------------------------------------
 # Shared format mapping and save helper
-# ---------------------------------------------------------------------------
 _FORMAT_MAP = {
     'jpeg': ('JPEG', 'jpg'),
     'jpg':  ('JPEG', 'jpg'),
@@ -201,9 +197,7 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
     return results, total_bytes
 
 
-# ---------------------------------------------------------------------------
 # LDAP image preparation
-# ---------------------------------------------------------------------------
 
 def prepare_ldap_image(
     source_image: Image.Image,
@@ -228,7 +222,7 @@ def prepare_ldap_image(
     log.debug('Preparing LDAP image: %dx%d %s (max %d KB).',
               target_size, target_size, pillow_fmt, max_file_size_kb)
 
-    # -- Try to reuse a pre-generated file ------------------------------------
+    # Try to reuse a pre-generated file if it exists and fits the size limit
     existing_path = AVATAR_ROOT / f'{target_size}x{target_size}' / f'{filename_base}.{file_ext}'
     try:
         data = existing_path.read_bytes()
@@ -240,7 +234,7 @@ def prepare_ldap_image(
     except FileNotFoundError:
         pass
 
-    # -- Resize from source image and encode ----------------------------------
+    # Resize from source image and encode to target format
     log.debug('Resizing to %dx%d %s for LDAP attribute.', target_size, target_size, pillow_fmt)
     resized = source_image.resize((target_size, target_size), Image.LANCZOS)
     if pillow_fmt == 'JPEG' and resized.mode != 'RGB':
@@ -265,7 +259,7 @@ def prepare_ldap_image(
         log.info('LDAP image ready: %dx%d %s, %d bytes (quality=%s).', target_size, target_size, pillow_fmt, len(data), quality)
         return data
 
-    # -- Quality reduction loop (JPEG / WebP only) ----------------------------
+    # Quality reduction loop (JPEG / WebP only)
     if quality is None:
         raise ValueError(
             f'PNG image at {target_size}x{target_size} is {len(data)} bytes, '

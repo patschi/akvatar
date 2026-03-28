@@ -59,9 +59,6 @@ def login_required(f):
     return decorated
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
 @auth_bp.route('/login')
 def login():
     """Redirect the browser to Authentik's authorization endpoint."""

@@ -26,9 +26,7 @@ log = logging.getLogger('routes')
 routes_bp = Blueprint('routes', __name__)
 
 
-# ---------------------------------------------------------------------------
 # robots.txt – block all search engine crawling
-# ---------------------------------------------------------------------------
 @routes_bp.route('/robots.txt')
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
@@ -40,18 +38,14 @@ def robots_txt():
     return Response(data, mimetype=mime)
 
 
-# ---------------------------------------------------------------------------
 # Health check
-# ---------------------------------------------------------------------------
 @routes_bp.route('/healthz')
 def healthz():
     """Lightweight health probe for load balancers or healthchecks."""
     return Response('OK', mimetype='text/plain')
 
 
-# ---------------------------------------------------------------------------
 # Public login page
-# ---------------------------------------------------------------------------
 @routes_bp.route('/')
 def login_page():
     """Show a static landing page with a login button, or redirect to dashboard if already authenticated."""
@@ -66,9 +60,7 @@ def login_page():
     return render_template('login.html', error_key=error_key)
 
 
-# ---------------------------------------------------------------------------
 # Dashboard (authenticated)
-# ---------------------------------------------------------------------------
 @routes_bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -81,9 +73,7 @@ def dashboard():
     )
 
 
-# ---------------------------------------------------------------------------
 # Serve stored avatar files
-# ---------------------------------------------------------------------------
 @routes_bp.route('/user-avatars/<dimensions>/<filename>')
 def serve_avatar(dimensions, filename):
     """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
@@ -92,9 +82,7 @@ def serve_avatar(dimensions, filename):
     return send_from_directory(AVATAR_ROOT, filepath)
 
 
-# ---------------------------------------------------------------------------
-# Serve avatar metadata files
-# ---------------------------------------------------------------------------
+# Serve avatar metadata JSON files
 @routes_bp.route('/user-avatars/_metadata/<filename>')
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory."""
@@ -102,9 +90,7 @@ def serve_avatar_metadata(filename):
     return send_from_directory(AVATAR_ROOT, f'_metadata/{filename}', mimetype='application/json')
 
 
-# ---------------------------------------------------------------------------
-# Upload & process API  (Server-Sent Events for real-time progress)
-# ---------------------------------------------------------------------------
+# Upload & process API (Server-Sent Events for real-time progress)
 @routes_bp.route('/api/upload', methods=['POST'])
 @login_required
 def api_upload():
@@ -119,7 +105,7 @@ def api_upload():
     user = session['user']
     log.info('Upload request from user %r.', user['username'])
 
-    # -- Synchronous validation (returns JSON 400 on failure) ------------------
+    # Synchronous validation (returns JSON 400 on failure)
     if 'file' not in request.files:
         log.warning('Upload rejected – no file part in request.')
         return jsonify({'error': 'No file part in the request.'}), 400
@@ -133,7 +119,7 @@ def api_upload():
     log.info('Image validated – mode=%s, size=%dx%d. Starting SSE stream.',
              image.mode, image.width, image.height)
 
-    # -- Stream processing progress as SSE -------------------------------------
+    # Stream processing progress as SSE
     return Response(
         stream_with_context(generate_sse(user, image)),
         mimetype='text/event-stream',

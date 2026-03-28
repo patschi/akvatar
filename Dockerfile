@@ -1,4 +1,3 @@
-# ============================================================================
 # Authentik Avatar Updater – Distroless container image
 #
 # Multi-stage build:
@@ -10,7 +9,6 @@
 #   - Designed for read-only root filesystem (only volumes are writable)
 #   - No shell, no package manager — minimal attack surface
 #   - No .dockerignore needed — only explicitly listed files are copied
-# ============================================================================
 
 # ---------- Stage 1: build dependencies in a full Python image ----------
 FROM python:3.13-slim-trixie AS builder

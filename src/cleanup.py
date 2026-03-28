@@ -269,10 +269,7 @@ def run_cleanup() -> int:
     return removed
 
 
-# ---------------------------------------------------------------------------
 # Background daemon thread
-# ---------------------------------------------------------------------------
-
 def _cleanup_loop() -> None:
     """
     Sleep until the next cron-scheduled time, run cleanup, repeat.
