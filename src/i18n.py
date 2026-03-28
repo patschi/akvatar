@@ -28,6 +28,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         # -- Navbar --
         'nav_logout':               'Log out',
 
+        # -- Settings UI --
+        'settings_title':           'Settings',
+        'settings_theme':           'Theme',
+        'settings_light':           'Light',
+        'settings_dark':            'Dark',
+        'settings_auto':            'Auto',
+        'settings_language':        'Language',
+        'settings_reset':           'Reset settings',
+
         # -- Login page --
         'login_heading':            'Update your avatar',
         'login_subtitle':           'Sign in with your organisation account to upload and manage your profile picture.',
@@ -82,6 +91,15 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # -- Navbar --
         'nav_logout':               'Abmelden',
+
+        # -- Settings UI --
+        'settings_title':           'Einstellungen',
+        'settings_theme':           'Design',
+        'settings_light':           'Hell',
+        'settings_dark':            'Dunkel',
+        'settings_auto':            'Auto',
+        'settings_language':        'Sprache',
+        'settings_reset':           'Einstellungen zurücksetzen',
 
         # -- Login page --
         'login_heading':            'Avatar aktualisieren',
@@ -166,12 +184,17 @@ def resolve_oidc_locale(oidc_locale: str) -> str:
 
 def get_locale() -> str:
     """Return the active locale for the current request."""
-    # 1. Session (set during OIDC callback)
+    # 1. Cookie override (user preference set via settings UI)
+    cookie_locale = request.cookies.get('locale', '') if request else ''
+    if cookie_locale in SUPPORTED_LOCALES:
+        return cookie_locale
+
+    # 2. Session (set during OIDC callback)
     loc = session.get('locale')
     if loc and loc in SUPPORTED_LOCALES:
         return loc
 
-    # 2. Accept-Language header (for unauthenticated pages)
+    # 3. Accept-Language header (for unauthenticated pages)
     accept = request.headers.get('Accept-Language', '') if request else ''
     for part in accept.split(','):
         tag = part.split(';')[0].strip()

@@ -34,6 +34,7 @@
 
 /* --- Light mode (default) ------------------------------------------- */
 :root {
+  color-scheme: light;
   --bg:            #f7f9fc;
   --bg-glow:       rgba(37, 99, 235, 0.035);
   --surface:       #ffffff;
@@ -62,33 +63,32 @@
   --transition:    0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- Dark mode ------------------------------------------------------ */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:            #0b0f1a;
-    --bg-glow:       rgba(59, 130, 246, 0.05);
-    --surface:       #151c2c;
-    --surface-hover: #1c2640;
-    --text:          #f1f5f9;
-    --text-muted:    #94a3b8;
-    --accent:        #1943a8;
-    --accent-hover:  #2251be;
-    --accent-soft:   rgba(59, 130, 246, 0.10);
-    --btn-glow:      rgba(59, 130, 246, 0.25);
-    --success:       #4ade80;
-    --success-soft:  rgba(74, 222, 128, 0.06);
-    --error:         #f87171;
-    --error-soft:    rgba(248, 113, 113, 0.06);
-    --skipped:       #64748b;
-    --link:          #7db8fc;
-    --link-hover:    #a5d0ff;
-    --info:          #60a5fa;
-    --info-soft:     rgba(96, 165, 250, 0.08);
-    --border:        rgba(255, 255, 255, 0.06);
-    --border-strong: rgba(255, 255, 255, 0.10);
-    --shadow:        0 1px 3px rgba(0, 0, 0, 0.3),
-                     0 8px 32px rgba(0, 0, 0, 0.4);
-  }
+/* --- Dark mode (driven by data-theme attribute set via JS) ---------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:            #0b0f1a;
+  --bg-glow:       rgba(59, 130, 246, 0.05);
+  --surface:       #151c2c;
+  --surface-hover: #1c2640;
+  --text:          #f1f5f9;
+  --text-muted:    #94a3b8;
+  --accent:        #1943a8;
+  --accent-hover:  #2251be;
+  --accent-soft:   rgba(59, 130, 246, 0.10);
+  --btn-glow:      rgba(59, 130, 246, 0.25);
+  --success:       #4ade80;
+  --success-soft:  rgba(74, 222, 128, 0.06);
+  --error:         #f87171;
+  --error-soft:    rgba(248, 113, 113, 0.06);
+  --skipped:       #64748b;
+  --link:          #7db8fc;
+  --link-hover:    #a5d0ff;
+  --info:          #60a5fa;
+  --info-soft:     rgba(96, 165, 250, 0.08);
+  --border:        rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --shadow:        0 1px 3px rgba(0, 0, 0, 0.3),
+                   0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 html {
@@ -160,6 +160,196 @@ body {
 
 .user-info a:hover {
   color: var(--link-hover);
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* --- Settings overlay ----------------------------------------------- */
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color var(--transition), background var(--transition);
+  padding: 0;
+}
+
+.settings-btn:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.settings-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.85rem;
+  min-width: 380px;
+  max-width: 440px;
+  width: 90vw;
+  animation: scaleIn 0.15s ease-out;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.settings-title {
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.settings-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--transition), background var(--transition);
+  padding: 0;
+}
+
+.settings-close:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.settings-group {
+  margin-bottom: 1.25rem;
+}
+
+.settings-group:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.settings-options {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Override .btn defaults for settings option buttons */
+.btn.settings-option {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.btn.settings-option:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+  box-shadow: none;
+}
+
+.btn.settings-option.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.settings-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  margin-right: 0.3rem;
+  vertical-align: baseline;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings-reset {
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  transition: color var(--transition);
+}
+
+.settings-reset:hover {
+  color: var(--text);
+}
+
+.settings-version {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.6;
+  letter-spacing: 0.02em;
 }
 
 /* --- Layout --------------------------------------------------------- */

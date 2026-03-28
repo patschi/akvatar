@@ -1,0 +1,20 @@
+<!-- Top navigation bar -->
+<nav class="navbar">
+  <a class="brand" href="{{ url_for('routes.login_page') }}">
+    <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" />
+    {{ brand_name }}
+  </a>
+  <div class="navbar-right">
+    {% if user is defined and user %}
+      <span class="user-info">
+        {{ user.name or user.username }}
+        &middot;
+        <a href="{{ url_for('auth.logout') }}">{{ t('nav_logout') }}</a>
+      </span>
+    {% endif %}
+    {% include 'partials/settings-btn.html' %}
+  </div>
+</nav>
+
+<!-- Settings overlay (outside navbar to escape its stacking context) -->
+{% include 'partials/settings.html' %}

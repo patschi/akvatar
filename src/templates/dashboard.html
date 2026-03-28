@@ -1,41 +1,16 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="darkreader-lock" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="robots" content="noindex, nofollow" />
-  <title>{{ brand_name }} – {{ t('title_dashboard') }}</title>
-
-  <!-- Favicons -->
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
-  <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='favicon.ico') }}" />
-  <link rel="apple-touch-icon"          href="{{ url_for('static', filename='favicon-192.png') }}" />
-
+{% set cropper_head %}
   <!-- Cropper.js – served locally from static/vendor/ -->
   <link rel="stylesheet" href="{{ url_for('static', filename='vendor/cropper.min.css') }}" />
   <script src="{{ url_for('static', filename='vendor/cropper.min.js') }}"></script>
-
-  <!-- App styles -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-</head>
+{% endset %}
+{% with page_title=t('title_dashboard'), head_extra=cropper_head %}
+  {% include 'partials/head.html' %}
+{% endwith %}
 <body>
 
-  <!-- ================================================================== -->
-  <!-- Top navigation bar                                                  -->
-  <!-- ================================================================== -->
-  <nav class="navbar">
-    <a class="brand" href="{{ url_for('routes.login_page') }}">
-      <img class="brand-logo" src="{{ url_for('static', filename='logo.svg') }}" alt="" />
-      {{ brand_name }}
-    </a>
-    <span class="user-info">
-      {{ user.name or user.username }}
-      &middot;
-      <a href="{{ url_for('auth.logout') }}">{{ t('nav_logout') }}</a>
-    </span>
-  </nav>
+  {% include 'partials/navbar.html' %}
 
   <!-- ================================================================== -->
   <!-- Main content card                                                   -->
@@ -108,104 +83,144 @@
   <!-- Client-side logic                                                   -->
   <!-- ================================================================== -->
   <script>
-    // ── Server-provided constants ──────────────────────────────────────
-    const UPLOAD_URL         = "{{ url_for('routes.api_upload') }}";
-    const MAX_SIZE           = {{ max_size }};
+    /**
+     * Dashboard – avatar upload with client-side cropping and server-side
+     * processing streamed back as Server-Sent Events (SSE).
+     */
+
+    // ── Server-provided constants (injected by Jinja2) ─────────────────
+    const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
+    const MAX_AVATAR_SIZE    = {{ max_size }};
     const I18N               = {{ i18n | tojson }};
     const LDAP_ENABLED       = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});
 
-    // ── DOM references ─────────────────────────────────────────────────
-    const uploadSection    = document.getElementById("uploadSection");
-    const filePicker       = document.getElementById("filePicker");
-    const fileInput        = document.getElementById("fileInput");
-    const fileNameEl       = document.getElementById("fileName");
-    const cropperWrapper   = document.getElementById("cropperWrapper");
-    const cropperImage     = document.getElementById("cropperImage");
-    const uploadBtn        = document.getElementById("uploadBtn");
-    const uploadDisclaimer = document.getElementById("uploadDisclaimer");
-    const profileDivider   = document.getElementById("profileDivider");
-    const progressPanel    = document.getElementById("progressPanel");
-    const progressList     = document.getElementById("progressList");
-    const resultMessage    = document.getElementById("resultMessage");
+    // ── DOM element references ─────────────────────────────────────────
+    const uploadSection      = document.getElementById("uploadSection");
+    const filePicker         = document.getElementById("filePicker");
+    const fileInput          = document.getElementById("fileInput");
+    const fileNameDisplay    = document.getElementById("fileName");
+    const cropperWrapper     = document.getElementById("cropperWrapper");
+    const cropperImage       = document.getElementById("cropperImage");
+    const uploadButton       = document.getElementById("uploadBtn");
+    const uploadDisclaimer   = document.getElementById("uploadDisclaimer");
+    const profileDivider     = document.getElementById("profileDivider");
+    const progressPanel      = document.getElementById("progressPanel");
+    const progressList       = document.getElementById("progressList");
+    const resultMessage      = document.getElementById("resultMessage");
 
-    let cropper = null;
+    // Cropper.js instance — created when user selects an image
+    let cropperInstance = null;
 
-    // ── SVG icons for each step status (currentColor adapts to theme) ──
-    const CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    const STEP_ICONS = {
-        success:   CHECK_CIRCLE,
-        "dry-run": CHECK_CIRCLE,
-        failed:    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        skipped:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-        pending:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
-        active:    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/></svg>',
+    // ── Progress step icons (SVGs using currentColor for theme adaptation) ──
+
+    const ICON_CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+        + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+        + '<path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '</svg>';
+
+    const ICON_CROSS_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+        + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+        + '<path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+        + '</svg>';
+
+    const ICON_DASH_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+        + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+        + '<path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+        + '</svg>';
+
+    const ICON_DASHED_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+        + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>'
+        + '</svg>';
+
+    const ICON_SPINNER = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+        + '<circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/>'
+        + '</svg>';
+
+    // Map step status to its SVG icon
+    const STEP_STATUS_ICONS = {
+        success:   ICON_CHECK_CIRCLE,
+        "dry-run": ICON_CHECK_CIRCLE,
+        failed:    ICON_CROSS_CIRCLE,
+        skipped:   ICON_DASH_CIRCLE,
+        pending:   ICON_DASHED_CIRCLE,
+        active:    ICON_SPINNER,
     };
 
-    // ── Step list helpers ──────────────────────────────────────────────
+    // ── Progress step list helpers ─────────────────────────────────────
 
-    /** Build the inner HTML for a progress step row. */
+    /**
+     * Build the inner HTML for a single progress step row.
+     * Content is safe: labels come from server I18N, details from SSE payloads.
+     */
     function buildStepHTML(label, status, detail) {
-        const icon = STEP_ICONS[status] || STEP_ICONS.pending;
-        // NOTE: label/detail originate from server-controlled I18N strings or
-        // server SSE payloads — not from user input — so innerHTML is safe here.
-        return `<span class="step-icon">${icon}</span>` +
-               `<span class="step-label">${label}</span>` +
-               (detail ? `<span class="step-detail">${detail}</span>` : "");
+        var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
+        return '<span class="step-icon">' + icon + '</span>'
+            + '<span class="step-label">' + label + '</span>'
+            + (detail ? '<span class="step-detail">' + detail + '</span>' : "");
     }
 
-    /** Append a new step row and return the <li> element. */
-    function addStep(label, status, detail) {
-        const li = document.createElement("li");
-        li.className = `step ${status}`;
-        li.innerHTML = buildStepHTML(label, status, detail);
-        progressList.appendChild(li);
-        return li;
+    /** Append a new progress step row and return its <li> element. */
+    function appendStep(label, status, detail) {
+        var stepElement = document.createElement("li");
+        stepElement.className = "step " + status;
+        stepElement.innerHTML = buildStepHTML(label, status, detail);
+        progressList.appendChild(stepElement);
+        return stepElement;
     }
 
-    /** Update an existing step row in place. */
-    function setStep(li, label, status, detail) {
-        li.className = `step ${status}`;
-        li.innerHTML = buildStepHTML(label, status, detail);
+    /** Update an existing progress step row with new status and detail. */
+    function updateStep(stepElement, label, status, detail) {
+        stepElement.className = "step " + status;
+        stepElement.innerHTML = buildStepHTML(label, status, detail);
     }
 
     /** Reset upload button to its default enabled state. */
-    function resetUploadBtn() {
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = I18N.upload_button;
+    function resetUploadButton() {
+        uploadButton.disabled = false;
+        uploadButton.textContent = I18N.upload_button;
     }
 
-    // ── File picker: validate extension & initialise cropper ───────────
-    fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    // ── File selection: validate extension and initialise cropper ──────
 
-        // Case-insensitive check against the server-provided allow-list
-        const ext = file.name.includes(".")
-            ? file.name.split(".").pop().toLowerCase()
+    fileInput.addEventListener("change", function (event) {
+        var selectedFile = event.target.files[0];
+        if (!selectedFile) return;
+
+        // Extract and validate file extension (case-insensitive)
+        var fileExtension = selectedFile.name.includes(".")
+            ? selectedFile.name.split(".").pop().toLowerCase()
             : "";
-        if (!ALLOWED_EXTENSIONS.has(ext)) {
-            const allowed = [...ALLOWED_EXTENSIONS].join(", ");
-            alert(I18N.upload_invalid_ext.replace("{ext}", ext).replace("{allowed}", allowed));
+
+        if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
+            var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
+            alert(I18N.upload_invalid_ext
+                .replace("{ext}", fileExtension)
+                .replace("{allowed}", allowedList));
             fileInput.value = "";
             return;
         }
 
-        fileNameEl.textContent = file.name;
+        fileNameDisplay.textContent = selectedFile.name;
 
-        // Tear down previous cropper instance and revoke its object URL
-        if (cropperImage.src.startsWith("blob:")) URL.revokeObjectURL(cropperImage.src);
-        if (cropper) { cropper.destroy(); cropper = null; }
+        // Clean up previous cropper instance and revoke its object URL to free memory
+        if (cropperImage.src.startsWith("blob:")) {
+            URL.revokeObjectURL(cropperImage.src);
+        }
+        if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+        }
 
-        // Show cropper area and upload controls
-        cropperImage.src = URL.createObjectURL(file);
+        // Show the cropper area and upload controls
+        cropperImage.src = URL.createObjectURL(selectedFile);
         cropperWrapper.classList.remove("hidden");
         uploadDisclaimer.classList.remove("hidden");
-        uploadBtn.classList.remove("hidden");
-        uploadBtn.disabled = false;
+        uploadButton.classList.remove("hidden");
+        uploadButton.disabled = false;
 
-        // Enforce square crop
-        cropper = new Cropper(cropperImage, {
+        // Initialise Cropper.js with a locked square aspect ratio
+        cropperInstance = new Cropper(cropperImage, {
             aspectRatio: 1,
             viewMode: 1,
             dragMode: "move",
@@ -221,149 +236,183 @@
         });
     });
 
-    // ── Upload flow (SSE streaming progress) ───────────────────────────
-    uploadBtn.addEventListener("click", async () => {
-        if (!cropper) return;
+    // ── Upload flow with SSE streaming progress ────────────────────────
 
-        // Lock UI and show progress panel
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = I18N.upload_processing;
+    uploadButton.addEventListener("click", async function () {
+        if (!cropperInstance) return;
+
+        // Lock the UI and switch to progress view
+        uploadButton.disabled = true;
+        uploadButton.textContent = I18N.upload_processing;
         filePicker.classList.add("hidden");
         cropperWrapper.classList.add("hidden");
         progressPanel.classList.remove("hidden");
         progressList.innerHTML = "";
         resultMessage.innerHTML = "";
 
-        // ── Client step 1: crop to square at server's max dimension ──
-        const cropStep = addStep(I18N.step_crop, "active");
-        const canvas = cropper.getCroppedCanvas({
-            width: MAX_SIZE, height: MAX_SIZE,
+        // Step 1: Crop the image to a square at the server's max avatar dimension
+        var cropStepElement = appendStep(I18N.step_crop, "active");
+        var croppedCanvas = cropperInstance.getCroppedCanvas({
+            width: MAX_AVATAR_SIZE,
+            height: MAX_AVATAR_SIZE,
             imageSmoothingEnabled: true,
             imageSmoothingQuality: "high",
         });
-        setStep(cropStep, I18N.step_crop, "success");
+        updateStep(cropStepElement, I18N.step_crop, "success");
 
-        // ── Client step 2: compress (WebP preferred, JPEG fallback) ──
-        const compressStep = addStep(I18N.step_compress, "active");
-        let blob = await new Promise(r => canvas.toBlob(r, "image/webp", 0.85));
-        let ext = "webp";
-        if (!blob || blob.type !== "image/webp") {
-            blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
-            ext = "jpg";
+        // Step 2: Compress to WebP (preferred) with JPEG as fallback
+        var compressStepElement = appendStep(I18N.step_compress, "active");
+        var imageBlob = await new Promise(function (resolve) {
+            croppedCanvas.toBlob(resolve, "image/webp", 0.85);
+        });
+        var imageFormat = "webp";
+
+        // Fall back to JPEG if the browser doesn't support WebP encoding
+        if (!imageBlob || imageBlob.type !== "image/webp") {
+            imageBlob = await new Promise(function (resolve) {
+                croppedCanvas.toBlob(resolve, "image/jpeg", 0.85);
+            });
+            imageFormat = "jpg";
         }
-        setStep(compressStep, I18N.step_compress, "success",
-            `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
 
-        // ── Client step 3: upload to server ──────────────────────────
-        const uploadStep = addStep(I18N.step_upload, "active");
-        const fd = new FormData();
-        fd.append("file", blob, `avatar.${ext}`);
+        var fileSizeKB = (imageBlob.size / 1024).toFixed(0);
+        updateStep(compressStepElement, I18N.step_compress, "success",
+            imageFormat.toUpperCase() + ", " + fileSizeKB + " KB");
+
+        // Step 3: Upload the compressed image to the server
+        var uploadStepElement = appendStep(I18N.step_upload, "active");
+        var formData = new FormData();
+        formData.append("file", imageBlob, "avatar." + imageFormat);
 
         try {
-            const resp = await fetch(UPLOAD_URL, { method: "POST", body: fd });
+            var response = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
 
-            // Server returns JSON for validation errors (4xx)
-            const ct = resp.headers.get("content-type") || "";
-            if (ct.includes("application/json")) {
-                const data = await resp.json();
-                setStep(uploadStep, I18N.step_upload, "failed", data.error || "");
-                resultMessage.innerHTML = `<p class="result-error">${I18N.result_error}</p>`;
-                resetUploadBtn();
+            // Server returns JSON for validation errors (4xx responses)
+            var contentType = response.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+                var errorData = await response.json();
+                updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
+                resultMessage.innerHTML = '<p class="result-error">' + I18N.result_error + '</p>';
+                resetUploadButton();
                 return;
             }
 
-            // Upload accepted — switch to streaming server-side processing steps
-            setStep(uploadStep, I18N.step_upload, "success");
+            // Upload accepted — server streams processing progress as SSE
+            updateStep(uploadStepElement, I18N.step_upload, "success");
 
-            // Pre-render server steps as pending so the user sees what's coming
-            const serverLabels = [
+            // Pre-render all expected server steps as "pending" so the user sees what's coming
+            var serverStepLabels = [
                 I18N.step_validated,
                 I18N.step_filename,
                 I18N.step_processed,
                 I18N.step_profile_synced,
-                ...(LDAP_ENABLED ? [I18N.step_ldap_updated] : []),
             ];
-            const serverEls = serverLabels.map(label => addStep(label, "pending"));
-            let stepIdx = 0;
-            setStep(serverEls[0], serverLabels[0], "active");
+            if (LDAP_ENABLED) {
+                serverStepLabels.push(I18N.step_ldap_updated);
+            }
 
-            // Read SSE stream chunk by chunk
-            const reader = resp.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = "";
-            let finalData = null;
+            var serverStepElements = serverStepLabels.map(function (label) {
+                return appendStep(label, "pending");
+            });
+
+            // Mark the first server step as actively processing
+            var currentStepIndex = 0;
+            updateStep(serverStepElements[0], serverStepLabels[0], "active");
+
+            // Read the SSE response stream chunk by chunk
+            var streamReader = response.body.getReader();
+            var textDecoder = new TextDecoder();
+            var sseBuffer = "";
+            var finalResult = null;
 
             while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                buffer += decoder.decode(value, { stream: true });
+                var readResult = await streamReader.read();
+                if (readResult.done) break;
 
-                // SSE frames are delimited by double newlines
-                const parts = buffer.split("\n\n");
-                buffer = parts.pop();
-                if (buffer.length > 65536) buffer = ""; // discard runaway buffer (malformed stream)
+                sseBuffer += textDecoder.decode(readResult.value, { stream: true });
 
-                for (const part of parts) {
-                    for (const line of part.split("\n")) {
+                // SSE frames are separated by double newlines
+                var sseFrames = sseBuffer.split("\n\n");
+                sseBuffer = sseFrames.pop(); // Keep the incomplete last frame
+
+                // Safety: discard if buffer grows beyond 64 KB (malformed stream)
+                if (sseBuffer.length > 65536) sseBuffer = "";
+
+                for (var frameIndex = 0; frameIndex < sseFrames.length; frameIndex++) {
+                    var frameLines = sseFrames[frameIndex].split("\n");
+
+                    for (var lineIndex = 0; lineIndex < frameLines.length; lineIndex++) {
+                        var line = frameLines[lineIndex];
                         if (!line.startsWith("data: ")) continue;
-                        const event = JSON.parse(line.slice(6));
 
-                        if (event.done) {
-                            finalData = event;
+                        var sseEvent = JSON.parse(line.slice(6));
+
+                        // The final event signals completion with an avatar URL or error
+                        if (sseEvent.done) {
+                            finalResult = sseEvent;
                             continue;
                         }
 
-                        // Update the pre-rendered step, or append if the server sends extra steps
-                        if (stepIdx < serverEls.length) {
-                            setStep(serverEls[stepIdx], event.step, event.status, event.detail || "");
+                        // Update the matching pre-rendered step, or append unexpected extra steps
+                        if (currentStepIndex < serverStepElements.length) {
+                            updateStep(serverStepElements[currentStepIndex],
+                                sseEvent.step, sseEvent.status, sseEvent.detail || "");
                         } else {
-                            addStep(event.step, event.status, event.detail || "");
+                            appendStep(sseEvent.step, sseEvent.status, sseEvent.detail || "");
                         }
-                        stepIdx++;
+                        currentStepIndex++;
 
                         // Advance the spinner to the next pending step
-                        if (stepIdx < serverEls.length) {
-                            setStep(serverEls[stepIdx], serverLabels[stepIdx], "active");
+                        if (currentStepIndex < serverStepElements.length) {
+                            updateStep(serverStepElements[currentStepIndex],
+                                serverStepLabels[currentStepIndex], "active");
                         }
                     }
                 }
             }
 
-            // Mark leftover pre-rendered steps as skipped (early failure / partial pipeline)
-            for (let i = stepIdx; i < serverEls.length; i++) {
-                setStep(serverEls[i], serverLabels[i], "skipped");
+            // Mark any remaining pre-rendered steps as skipped (pipeline ended early)
+            for (var i = currentStepIndex; i < serverStepElements.length; i++) {
+                updateStep(serverStepElements[i], serverStepLabels[i], "skipped");
             }
 
-            // ── Handle final result ──────────────────────────────────
-            if (finalData?.avatar_url && !finalData.error) {
-                // Hide upload form, show success message, update displayed avatar
+            // ── Display final result ──────────────────────────────────
+            if (finalResult && finalResult.avatar_url && !finalResult.error) {
+                // Success: hide the upload form and show the updated avatar
                 uploadSection.classList.add("hidden");
                 profileDivider.classList.add("hidden");
                 progressPanel.style.marginTop = "0";
                 progressPanel.style.paddingTop = "10";
+
                 resultMessage.innerHTML =
-                    `<p class="result-success">${I18N.result_success}</p>` +
-                    `<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
-                const avatarEl = document.querySelector(".profile-avatar");
-                if (avatarEl?.tagName === "IMG") {
-                    avatarEl.src = finalData.avatar_url;
+                    '<p class="result-success">' + I18N.result_success + '</p>' +
+                    '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
+                        + I18N.result_retry + '</button>';
+
+                // Update the avatar image in the profile header
+                var profileAvatar = document.querySelector(".profile-avatar");
+                if (profileAvatar && profileAvatar.tagName === "IMG") {
+                    profileAvatar.src = finalResult.avatar_url;
                 }
             } else {
-                resultMessage.innerHTML =
-                    `<p class="result-error">${finalData?.error || I18N.result_error}</p>`;
-                resetUploadBtn();
+                // Failure: show the error message and re-enable the upload button
+                var errorMessage = (finalResult && finalResult.error) || I18N.result_error;
+                resultMessage.innerHTML = '<p class="result-error">' + errorMessage + '</p>';
+                resetUploadButton();
             }
-        } catch (err) {
-            // Network error or stream read failure
-            if (progressList.lastChild?.classList.contains("pending")) {
-                progressList.lastChild.remove();
+        } catch (networkError) {
+            // Network failure or stream read error
+            var lastStep = progressList.lastChild;
+            if (lastStep && lastStep.classList.contains("pending")) {
+                lastStep.remove();
             }
-            addStep(I18N.step_upload, "failed", err.message);
-            resultMessage.innerHTML = `<p class="result-error">${I18N.result_network_error}</p>`;
-            resetUploadBtn();
+            appendStep(I18N.step_upload, "failed", networkError.message);
+            resultMessage.innerHTML = '<p class="result-error">' + I18N.result_network_error + '</p>';
+            resetUploadButton();
         }
     });
   </script>
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
 
 </body>
 </html>

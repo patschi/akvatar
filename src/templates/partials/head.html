@@ -1,0 +1,45 @@
+<!-- Shared <head> section – included by all page templates -->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="darkreader-lock" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>{{ brand_name }} – {{ page_title }}</title>
+
+  <!--
+    Theme initialisation – runs before first paint to prevent a flash of
+    wrong colours. Reads the "theme" cookie and applies the correct
+    data-theme attribute immediately.
+  -->
+  <script>
+    (function () {
+      // Read the saved theme preference from cookie
+      var cookieMatch    = document.cookie.match(/(?:^|; )theme=(\w+)/);
+      var savedPreference = cookieMatch ? cookieMatch[1] : null;
+
+      // Explicit light/dark wins; otherwise follow the OS preference
+      var resolvedTheme = (savedPreference === "light" || savedPreference === "dark")
+        ? savedPreference
+        : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+      document.documentElement.setAttribute("data-theme", resolvedTheme);
+
+      // Prevent Dark Reader browser extension from overriding our theme
+      document.documentElement.setAttribute("data-darkreader-mode", "disabled");
+    })();
+  </script>
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}" />
+  <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='favicon.ico') }}" />
+  <link rel="apple-touch-icon"          href="{{ url_for('static', filename='favicon-192.png') }}" />
+
+  <!-- Optional page-specific head content (e.g. Cropper.js on the dashboard) -->
+  {% if head_extra %}
+    {{ head_extra | safe }}
+  {% endif %}
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>

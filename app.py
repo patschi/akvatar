@@ -24,6 +24,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations
+from src import APP_VERSION
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
@@ -221,6 +222,7 @@ def create_app() -> Flask:
         return Response(data, mimetype=mime, headers=headers)
 
     log.debug('Web routes registered.')
+    log.info('OK! Ready to serve requests.')
 
     # -- Template context processor -----------------------------------------
     _brand_name = branding_cfg.get('name', 'Avatar Updater')
@@ -230,6 +232,7 @@ def create_app() -> Flask:
         locale = get_locale()
         return {
             'brand_name': _brand_name,
+            'app_version': APP_VERSION,
             't': t,
             'lang': locale.split('_')[0],
             'i18n': get_js_translations(locale),
