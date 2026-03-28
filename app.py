@@ -8,6 +8,8 @@ and subfolder middleware, and starts the development server when run directly.
 import hashlib
 import logging
 import mimetypes
+import threading
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -65,6 +67,66 @@ log.info('Static file cache: %d file(s), %.1f KB total.',
          sum(len(d) for d, _, _ in _static_cache.values()) / 1024)
 
 
+# ---------------------------------------------------------------------------
+# Periodic memory monitor
+# ---------------------------------------------------------------------------
+
+def _get_rss_mb() -> float | None:
+    """Return current process RSS in MB, or None if unavailable."""
+    # Linux: parse VmRSS from /proc/self/status (value in KB)
+    try:
+        with open('/proc/self/status') as f:
+            for line in f:
+                if line.startswith('VmRSS:'):
+                    return int(line.split()[1]) / 1024
+    except (FileNotFoundError, OSError):
+        pass
+    # Windows: query working set size via Win32 API
+    try:
+        import ctypes
+        import ctypes.wintypes
+
+        class _PMC(ctypes.Structure):
+            _fields_ = [
+                ('cb',                         ctypes.wintypes.DWORD),
+                ('PageFaultCount',             ctypes.wintypes.DWORD),
+                ('PeakWorkingSetSize',         ctypes.c_size_t),
+                ('WorkingSetSize',             ctypes.c_size_t),
+                ('QuotaPeakPagedPoolUsage',    ctypes.c_size_t),
+                ('QuotaPagedPoolUsage',        ctypes.c_size_t),
+                ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                ('QuotaNonPagedPoolUsage',     ctypes.c_size_t),
+                ('PagefileUsage',              ctypes.c_size_t),
+                ('PeakPagefileUsage',          ctypes.c_size_t),
+            ]
+
+        pmc = _PMC()
+        pmc.cb = ctypes.sizeof(pmc)
+        ctypes.windll.psapi.GetProcessMemoryInfo(
+            ctypes.windll.kernel32.GetCurrentProcess(),
+            ctypes.byref(pmc),
+            pmc.cb,
+        )
+        return pmc.WorkingSetSize / (1024 * 1024)
+    except Exception:
+        return None
+
+
+def _memory_log_loop() -> None:
+    """Log process RSS: every 2 s during startup, then every 60 s."""
+    while True:
+        rss = _get_rss_mb()
+        if rss is not None:
+            log.debug('Monitor: Process memory: %.1f MB', rss)
+        time.sleep(300)
+
+
+def _start_memory_monitor() -> None:
+    """Start the memory monitor thread (once)."""
+    threading.Thread(target=_memory_log_loop, name='memlog', daemon=True).start()
+    log.debug('Memory monitor thread started.')
+
+
 class PrefixMiddleware:
     """
     WSGI middleware that sets SCRIPT_NAME to a static path prefix so the app
@@ -92,6 +154,11 @@ class PrefixMiddleware:
 
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
+
+    # Start the memory monitor thread immediately so it runs during startup and continues in workers after fork.
+    _start_memory_monitor()
+
+    # Initialize flask app
     app = Flask(__name__, template_folder='src/templates', static_folder=None)
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
