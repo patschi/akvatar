@@ -56,8 +56,8 @@ _level = logging.DEBUG if debug_full else _LOG_LEVELS.get(_configured_level, log
 
 logging.basicConfig(
     level=_level,
-    format='%(asctime)s [%(levelname)-8s] %(name)-24s | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
+    format='[%(asctime)s] [%(levelname)-8s] [%(name)-24s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S %z',
 )
 
 from src import APP_NAME, APP_VERSION
