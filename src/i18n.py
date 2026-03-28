@@ -49,6 +49,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'upload_processing':        'Processing\u2026',
         'progress_heading':         'Progress',
 
+        # -- Client-side validation --
+        'upload_invalid_ext':       'File type .{ext} is not allowed. Accepted: {allowed}',
+
         # -- Progress steps (client-side) --
         'step_crop':                'Cropping image in browser',
         'step_compress':            'Compressing image in browser',
@@ -100,6 +103,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'upload_button':            'Hochladen & Avatar aktualisieren',
         'upload_processing':        'Verarbeitung\u2026',
         'progress_heading':         'Fortschritt',
+
+        # -- Client-side validation --
+        'upload_invalid_ext':       'Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}',
 
         # -- Progress steps (client-side) --
         'step_crop':                'Bild wird im Browser zugeschnitten',
@@ -186,6 +192,8 @@ def t(key: str, **kwargs) -> str:
 
 
 _JS_KEYS = (
+    # Client-side validation
+    'upload_invalid_ext',
     # Client-side step labels
     'step_crop', 'step_compress', 'step_upload',
     # Server-side step labels (needed to pre-render waiting steps before SSE arrives)

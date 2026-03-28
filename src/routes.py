@@ -16,7 +16,7 @@ from flask import (
 )
 
 from src.auth import login_required
-from src.imaging import AVATAR_ROOT, MAX_SIZE
+from src.imaging import AVATAR_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.upload import validate_upload, generate_sse, ValidationError
 
@@ -74,7 +74,10 @@ def dashboard():
     """Serve the authenticated avatar upload / crop page."""
     user = session['user']
     log.debug('Serving dashboard for user %r.', user['username'])
-    return render_template('dashboard.html', user=user, ldap_enabled=ldap_is_enabled(), max_size=MAX_SIZE)
+    return render_template(
+        'dashboard.html', user=user, ldap_enabled=ldap_is_enabled(),
+        max_size=MAX_SIZE, allowed_extensions=sorted(ALLOWED_EXTENSIONS),
+    )
 
 
 # ---------------------------------------------------------------------------

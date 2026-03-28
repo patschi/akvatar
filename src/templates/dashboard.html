@@ -74,7 +74,7 @@
             <input
               type="file"
               id="fileInput"
-              accept=".jpg,.jpeg,.png,.webp"
+              accept="{% for ext in allowed_extensions %}.{{ ext }}{% if not loop.last %},{% endif %}{% endfor %}"
               hidden
             />
           </label>
@@ -109,10 +109,11 @@
   <!-- ================================================================== -->
   <script>
     // Server-provided constants (respects public_base_url path / reverse proxy prefix)
-    const UPLOAD_URL   = "{{ url_for('routes.api_upload') }}";
-    const MAX_SIZE     = {{ max_size }};
-    const I18N         = {{ i18n | tojson }};
-    const LDAP_ENABLED = {{ ldap_enabled | tojson }};
+    const UPLOAD_URL          = "{{ url_for('routes.api_upload') }}";
+    const MAX_SIZE            = {{ max_size }};
+    const I18N                = {{ i18n | tojson }};
+    const LDAP_ENABLED        = {{ ldap_enabled | tojson }};
+    const ALLOWED_EXTENSIONS  = new Set({{ allowed_extensions | tojson }});
 
     const uploadSection  = document.getElementById("uploadSection");
     const filePicker     = document.getElementById("filePicker");
@@ -133,6 +134,18 @@
     fileInput.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      // Validate file extension against the server-provided allow-list
+      const ext = file.name.includes(".")
+        ? file.name.split(".").pop().toLowerCase()
+        : "";
+      if (!ALLOWED_EXTENSIONS.has(ext)) {
+        alert(I18N.upload_invalid_ext
+          ? I18N.upload_invalid_ext.replace("{ext}", ext).replace("{allowed}", [...ALLOWED_EXTENSIONS].join(", "))
+          : `File type .${ext} is not allowed. Accepted: ${[...ALLOWED_EXTENSIONS].join(", ")}`);
+        fileInput.value = "";
+        return;
+      }
 
       fileName.textContent = file.name;
 
