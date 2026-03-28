@@ -1,8 +1,29 @@
 /* =====================================================================
-   Authentik Avatar Updater – Stylesheet
+   Authentik Avatar Updater – Stylesheet (Adaptive Light / Dark)
+   =====================================================================
+   Typography: Outfit (self-hosted variable font, geometric/modern)
+   Palette:    Cool blue-tech with warm neutral text
    ===================================================================== */
 
-/* --- Reset & base --------------------------------------------------- */
+/* --- Outfit font (variable, weights 100–900) ------------------------ */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/outfit-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/outfit-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- Reset ---------------------------------------------------------- */
 *,
 *::before,
 *::after {
@@ -11,27 +32,59 @@
   padding: 0;
 }
 
+/* --- Light mode (default) ------------------------------------------- */
 :root {
-  --bg:            #0c0e14;
-  --bg-subtle:     #10131a;
-  --surface:       #151820;
-  --surface-hover: #1a1e28;
-  --text:          #f0f2f7;
-  --text-muted:    #9ba3b8;
-  --accent:        #1a3f99;
-  --accent-hover:  #152f73;
-  --accent-soft:   rgba(50, 120, 230, 0.10);
-  --accent-glow:   rgba(50, 120, 230, 0.06);
-  --success:       #4ade80;
-  --error:         #f87171;
-  --skipped:       #6b7280;
-  --info:          #7db8fc;
-  --border:        rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
+  --bg:            #f7f9fc;
+  --bg-glow:       rgba(37, 99, 235, 0.035);
+  --surface:       #ffffff;
+  --surface-hover: #f7f9fc;
+  --text:          #0f172a;
+  --text-muted:    #64748b;
+  --accent:        #1943a8;
+  --accent-hover:  #2251be;
+  --accent-soft:   rgba(37, 99, 235, 0.07);
+  --btn-glow:      rgba(37, 99, 235, 0.35);
+  --success:       #16a34a;
+  --success-soft:  rgba(22, 163, 74, 0.07);
+  --error:         #dc2626;
+  --error-soft:    rgba(220, 38, 38, 0.06);
+  --skipped:       #94a3b8;
+  --info:          #2563eb;
+  --info-soft:     rgba(37, 99, 235, 0.06);
+  --border:        rgba(15, 23, 42, 0.06);
+  --border-strong: rgba(15, 23, 42, 0.10);
   --radius:        16px;
   --radius-sm:     10px;
-  --shadow:        0 8px 40px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow:        0 1px 3px rgba(15, 23, 42, 0.04),
+                   0 8px 32px rgba(15, 23, 42, 0.06);
   --transition:    0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Dark mode ------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #0b0f1a;
+    --bg-glow:       rgba(59, 130, 246, 0.05);
+    --surface:       #151c2c;
+    --surface-hover: #1c2640;
+    --text:          #f1f5f9;
+    --text-muted:    #94a3b8;
+    --accent:        #3b82f6;
+    --accent-hover:  #2563eb;
+    --accent-soft:   rgba(59, 130, 246, 0.10);
+    --btn-glow:      rgba(59, 130, 246, 0.25);
+    --success:       #4ade80;
+    --success-soft:  rgba(74, 222, 128, 0.06);
+    --error:         #f87171;
+    --error-soft:    rgba(248, 113, 113, 0.06);
+    --skipped:       #64748b;
+    --info:          #60a5fa;
+    --info-soft:     rgba(96, 165, 250, 0.08);
+    --border:        rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.10);
+    --shadow:        0 1px 3px rgba(0, 0, 0, 0.3),
+                     0 8px 32px rgba(0, 0, 0, 0.4);
+  }
 }
 
 html {
@@ -39,11 +92,19 @@ html {
 }
 
 body {
-  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(ellipse at 50% -10%, var(--bg-glow) 0%, transparent 50%),
+    var(--bg);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
+}
+
+/* --- Entrance animation --------------------------------------------- */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* --- Navbar --------------------------------------------------------- */
@@ -52,7 +113,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.8rem 1.5rem;
-  background: rgba(21, 24, 32, 0.8);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -69,7 +130,7 @@ body {
   font-size: 1rem;
   color: var(--text);
   text-decoration: none;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   transition: opacity var(--transition);
 }
 
@@ -88,13 +149,13 @@ body {
 }
 
 .user-info a {
-  color: var(--info);
+  color: var(--accent);
   text-decoration: none;
   transition: color var(--transition);
 }
 
 .user-info a:hover {
-  color: var(--info);
+  color: var(--accent-hover);
 }
 
 /* --- Layout --------------------------------------------------------- */
@@ -116,12 +177,13 @@ body {
   box-shadow: var(--shadow);
   padding: 2rem;
   position: relative;
+  animation: fadeSlideIn 0.35s ease-out;
 }
 
 .card h1 {
   font-size: 1.35rem;
   font-weight: 650;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   margin-bottom: 0.3rem;
   color: var(--text);
 }
@@ -148,7 +210,7 @@ body {
 .login-hero {
   width: 72px;
   height: 72px;
-  filter: drop-shadow(0 4px 12px rgba(30, 80, 200, 0.3));
+  filter: drop-shadow(0 4px 16px rgba(37, 99, 235, 0.3));
 }
 
 .login-hero-badge {
@@ -161,14 +223,14 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(30, 80, 200, 0.85);
+  background: var(--accent);
   padding: 0.15rem 0.5rem;
   border-radius: 8px;
   white-space: nowrap;
 }
 
 .login-hero-badge--logout {
-  background: rgba(100, 100, 120, 0.85);
+  background: var(--skipped);
 }
 
 .login-card h1 {
@@ -182,7 +244,6 @@ body {
   margin-right: auto;
 }
 
-/* Modifier: login page centered button */
 .btn-login {
   margin-top: 1.5rem;
   padding: 0.75rem 2.5rem;
@@ -214,7 +275,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a5ccc, #2878e6);
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
   border-color: transparent;
   color: #fff;
   font-size: 1.3rem;
@@ -267,7 +328,7 @@ body {
   max-width: 100%;
 }
 
-/* --- Buttons (single base) ------------------------------------------ */
+/* --- Buttons -------------------------------------------------------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -276,25 +337,29 @@ body {
   padding: 0.65rem 1.5rem;
   font-size: 0.9rem;
   font-weight: 600;
+  font-family: inherit;
   color: #fff;
-  background: #1943a8;
+  background: var(--accent);
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-decoration: none;
   letter-spacing: -0.01em;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background var(--transition),
+              box-shadow var(--transition),
+              transform var(--transition);
 }
 
 .btn:hover:not(:disabled) {
-  background: #2251be;
-  box-shadow: 0 4px 14px rgba(25, 67, 168, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background: var(--accent-hover);
+  box-shadow: 0 4px 14px var(--btn-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .btn:active:not(:disabled) {
   transform: scale(0.98);
-  background: #143788;
 }
 
 .btn:disabled {
@@ -304,14 +369,13 @@ body {
 
 .upload-disclaimer {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   text-align: center;
   margin-top: 1rem;
   margin-bottom: -0.25rem;
   line-height: 1.4;
 }
 
-/* Modifier: full-width block button */
 .btn-block {
   display: flex;
   width: 100%;
@@ -325,14 +389,12 @@ body {
 }
 
 .progress-panel h2 {
-  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.06em;
   margin-bottom: 0.6rem;
   color: var(--text-muted);
   text-transform: uppercase;
   font-size: 0.85rem;
-  letter-spacing: 0.06em;
 }
 
 .progress-list {
@@ -350,22 +412,12 @@ body {
   transition: background var(--transition);
 }
 
-.progress-list li.step.success {
-  background: rgba(74, 222, 128, 0.05);
-}
+.progress-list li.step.success  { background: var(--success-soft); }
+.progress-list li.step.failed   { background: var(--error-soft); }
+.progress-list li.step.active   { background: var(--info-soft); }
+.progress-list li.step.dry-run  { background: var(--info-soft); }
 
-.progress-list li.step.failed {
-  background: rgba(248, 113, 113, 0.06);
-}
-
-.progress-list li.step.active {
-  background: rgba(30, 64, 160, 0.08);
-}
-
-.progress-list li.step.dry-run {
-  background: rgba(74, 222, 128, 0.05);
-}
-
+/* Icon colours driven by CSS variables — SVGs use currentColor */
 .step-icon {
   flex-shrink: 0;
   width: 20px;
@@ -378,6 +430,13 @@ body {
 .step-icon svg {
   display: block;
 }
+
+.step.success  .step-icon { color: var(--success); }
+.step.failed   .step-icon { color: var(--error); }
+.step.skipped  .step-icon { color: var(--skipped); }
+.step.dry-run  .step-icon { color: var(--info); }
+.step.pending  .step-icon { color: var(--skipped); }
+.step.active   .step-icon { color: var(--info); }
 
 .step-label {
   font-weight: 500;
@@ -401,8 +460,8 @@ body {
   margin-top: 0.75rem;
   padding: 0.7rem 1rem;
   border-radius: var(--radius-sm);
-  background: rgba(74, 222, 128, 0.08);
-  border: 1px solid rgba(74, 222, 128, 0.2);
+  background: var(--success-soft);
+  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
   color: var(--success);
   font-weight: 600;
   font-size: 0.9rem;
@@ -412,14 +471,14 @@ body {
   margin-top: 0.75rem;
   padding: 0.7rem 1rem;
   border-radius: var(--radius-sm);
-  background: rgba(248, 113, 113, 0.08);
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  background: var(--error-soft);
+  border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
   color: var(--error);
   font-weight: 600;
   font-size: 0.9rem;
 }
 
-/* --- Step spinner (active / in-progress step) ----------------------- */
+/* --- Step spinner --------------------------------------------------- */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
