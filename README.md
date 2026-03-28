@@ -7,16 +7,16 @@ A self-hosted web application that lets users update their profile picture via a
 - **OpenID Connect login** via Authentik (scopes: `openid profile email`)
 - **Multiple Languages**: Automatically retrieved through OIDC `locale` attribute in `profile` scope. Currently supported English (default), German.
 - **Client-side cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs) (bundled locally, no external CDN)
-- **Multi-size output** -- 1024, 648, 512, 256, 128, 64 (configurable)
-- **Multi-format output** -- JPEG, PNG, WebP (configurable)
+- **Multi-size output**: 1024, 648, 512, 256, 128, 64 (configurable)
+- **Multi-format output**: JPEG, PNG, WebP (configurable)
 - **Unguessable filenames** (`uuid4` + `token_urlsafe` + nanosecond timestamp)
-- **Authentik API** -- sets `attributes.avatar-url` on the user object (configurable)
-- **LDAP Server** -- writes `thumbnailPhoto` (optional, toggle in config)
-- **JSON metadata** -- saves upload metadata (username, timestamp, sizes) per avatar
-- **Configurable branding** -- customise the application name in the UI
-- **Reverse proxy / subfolder support** -- respects `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Prefix`
-- **Optional TLS** -- serve HTTPS directly from the built-in server
-- **Distroless Docker image** for minimal attack surface
+- **Authentik API**: sets `attributes.avatar-url` on the user object (configurable)
+- **LDAP Server**: writes `thumbnailPhoto` (optional, toggle in config)
+- **JSON metadata**: saves upload metadata (username, timestamp, sizes) per avatar
+- **Configurable branding**: customise the application name in the UI
+- **Reverse proxy / subfolder support**: respects `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Prefix`
+- **Optional TLS**: serve HTTPS directly from the built-in server
+- **Distroless Docker image**: for minimal attack surface
 
 ## Quick start
 
@@ -26,34 +26,30 @@ The recommended way to run the application is via the **container image** (see [
 
 1. Create a `config.yml` from the example: `cp config.example.yml config.yml`
 2. Fill in the required settings (see [Configuration](docs/configuration.md), [Authentik OIDC Setup](docs/authentik-oidc-setup.md), [Authentik API Token](docs/authentik-api-token.md), and [Flask Session Key](docs/flask-session-key.md))
-3. Run:
-
-```bash
-docker run -d \
-  --name ak-avatar-updater \
-  --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp \
-  -p 5000:5000 \
-  -v /path/to/config.yml:/app/data/config/config.yml:ro \
-  -v ak-avatar-data:/app/data/user-avatars \
-  ghcr.io/patschi/ak-avatar-updater:latest
-```
+3. Set up and run the container as seen at [Running with Docker](#running-with-docker) below
 
 ### Manual setup (Python)
 
 1. Clone and install:
+
    ```bash
    git clone <repo-url> authentik-avatar-updater && cd authentik-avatar-updater
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt
    ```
+
 2. Configure:
+
    ```bash
    cp data/config/config.example.yml data/config/config.yml
    ```
+
    Fill in the required settings (see [Configuration](docs/configuration.md), [Flask Session Key](docs/flask-session-key.md))
+
 3. Run:
+
    ```bash
-   python app.py
+   python run.py
    ```
 
 ## Prerequisites
