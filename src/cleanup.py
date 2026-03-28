@@ -172,7 +172,7 @@ def _cleanup_loop() -> None:
         next_run = cron.get_next(datetime)
         now = datetime.now(timezone.utc)
         delay = max((next_run - now).total_seconds(), 0)
-        log.debug('Next cleanup scheduled at %s (in %.0f s).', next_run.isoformat(), delay)
+        log.debug('Next cleanup scheduled at %s (in %.0f seconds).', next_run.isoformat(), delay)
         time.sleep(delay)
 
         try:

@@ -121,7 +121,7 @@ def validate_upload(file) -> Image.Image:
             f'Image is too large ({w}x{h}). Maximum dimension is {MAX_DIMENSION}px.'
         )
 
-    log.debug(
+    log.info(
         'Upload accepted: content_type=%r, size=%d bytes, %dx%d, mode=%s, format=%s.',
         file.content_type, len(raw_bytes), w, h, image.mode, image.format,
     )

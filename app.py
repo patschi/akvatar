@@ -114,12 +114,14 @@ def _get_rss_mb() -> float | None:
 
 
 def _memory_log_loop() -> None:
-    """Log process RSS: every 2 s during startup, then every 60 s."""
+    """Log process RSS every x seconds, but only when the value has changed."""
+    last_mem = None
     while True:
-        rss = _get_rss_mb()
-        if rss is not None:
-            log.debug('Monitor: Process memory: %.1f MB', rss)
-        time.sleep(300)
+        mem = _get_rss_mb()
+        if mem is not None and mem != last_mem:
+            log.debug('Monitor: Process memory: %.1f MB', mem)
+            last_mem = mem
+        time.sleep(5)
 
 
 def _start_memory_monitor() -> None:

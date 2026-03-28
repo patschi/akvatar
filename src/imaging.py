@@ -194,9 +194,10 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
             file_size = out_path.stat().st_size
             total_bytes += file_size
             results[key][ext] = f'{_avatar_base_url}/{key}/{filename_base}.{ext}'
-            log.info('Saved %s/%s.%s (%s) – %d bytes.', key, filename_base, ext, ext.upper(), file_size)
+            log.debug('Saved %s/%s.%s (%s) – %d bytes.', key, filename_base, ext, ext.upper(), file_size)
 
-    log.info('Image processing complete – %d sizes x %d formats, %d bytes total.', len(sizes), len(formats), total_bytes)
+    log.info('Image processing complete – %d sizes x %d formats, %d bytes total. Filename: %s',
+             len(sizes), len(formats), total_bytes, filename_base)
     return results, total_bytes
 
 

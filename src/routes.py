@@ -4,7 +4,8 @@ routes.py – Flask route definitions.
 Contains:
   - GET  /              -> public login page (unauthenticated)
   - GET  /dashboard     -> avatar upload / crop page (authenticated)
-  - GET  /user-avatars/ -> serve stored avatar files
+  - GET  /user-avatars/<X>x<Y>/<file>  -> serve stored avatar images
+  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
   - POST /api/upload    -> accept cropped image, process, update backends
 """
 
@@ -83,11 +84,22 @@ def dashboard():
 # ---------------------------------------------------------------------------
 # Serve stored avatar files
 # ---------------------------------------------------------------------------
-@routes_bp.route('/user-avatars/<path:filepath>')
-def serve_avatar(filepath):
-    """Serve avatar files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
+@routes_bp.route('/user-avatars/<dimensions>/<filename>')
+def serve_avatar(dimensions, filename):
+    """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
+    filepath = f'{dimensions}/{filename}'
     log.debug('Serving avatar file: %s', filepath)
     return send_from_directory(AVATAR_ROOT, filepath)
+
+
+# ---------------------------------------------------------------------------
+# Serve avatar metadata files
+# ---------------------------------------------------------------------------
+@routes_bp.route('/user-avatars/_metadata/<filename>')
+def serve_avatar_metadata(filename):
+    """Serve avatar metadata JSON from the storage directory."""
+    log.debug('Serving metadata file: _metadata/%s', filename)
+    return send_from_directory(AVATAR_ROOT, f'_metadata/{filename}', mimetype='application/json')
 
 
 # ---------------------------------------------------------------------------
