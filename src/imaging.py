@@ -123,7 +123,7 @@ def generate_filename() -> str:
     return name
 
 
-def ensure_size_directories() -> None:
+def ensure_size_directories_existence() -> None:
     """Create all size sub-directories and the metadata directory under AVATAR_ROOT. Called once at startup."""
     for size in img_cfg['sizes']:
         (AVATAR_ROOT / f'{size}x{size}').mkdir(parents=True, exist_ok=True)

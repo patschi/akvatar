@@ -24,6 +24,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.cleanup_on_startup`](#app_cleanup_on_startup) | Boolean | Run cleanup once 60 s after startup |
 | [`app.log_level`](#app_log_level) | Enum | Log verbosity |
 | [`app.debug_full`](#app_debug_full) | Boolean | Full debug mode — never enable in production |
+| [`webserver.proxy_mode`](#webserver_proxy_mode) | Boolean | Enable reverse-proxy header support (ProxyFix) |
 | [`webserver.access_log`](#webserver_access_log) | Boolean | Log every HTTP request to the console |
 | [`webserver.workers`](#webserver_workers) | Integer | Number of gunicorn worker processes |
 | [`webserver.threads`](#webserver_threads) | Integer | Threads per worker |
@@ -231,6 +232,19 @@ Enables full debug mode. When active:
 ## Webserver
 
 These settings apply when running via `run.py` / gunicorn (production and Docker). When running via `app.py` (development), only `host`, `port`, and TLS settings are used.
+
+<a id="webserver_proxy_mode"></a>
+
+### `webserver.proxy_mode`
+
+| | |
+|---|---|
+| **Type** | Boolean |
+| **Default** | `true` |
+
+When enabled (default), applies the `ProxyFix` middleware which reads `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers set by a reverse proxy. This ensures `url_for()` generates correct external URLs and `remote_addr` reflects the real client IP.
+
+Set to `false` only when running without a reverse proxy (direct exposure to the internet or local access only). When disabled, any forwarded headers sent by clients are ignored.
 
 <a id="webserver_access_log"></a>
 

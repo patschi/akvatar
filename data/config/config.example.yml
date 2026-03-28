@@ -49,6 +49,11 @@ app:
 # These settings apply when running via run.py / gunicorn (production & Docker).
 # When running via app.py (development), only host, port, and TLS are used.
 webserver:
+  # Enable reverse-proxy support.  When true (default), the ProxyFix middleware
+  # reads X-Forwarded-For/Proto/Host/Prefix headers so that url_for() generates
+  # correct external URLs and remote_addr reflects the real client IP.
+  # Set to false only when running without a reverse proxy (e.g. direct exposure).
+  proxy_mode: true
   # Log every HTTP request to console (default: false).
   access_log: false
   # Number of gunicorn worker processes.

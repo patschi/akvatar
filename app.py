@@ -26,7 +26,7 @@ from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
-from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.cleanup import start_cleanup_thread
 
 log = logging.getLogger('app')
@@ -174,7 +174,7 @@ def create_app() -> Flask:
     # Ensure the avatar storage directory tree exists (root + all size sub-dirs)
     AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
     METADATA_ROOT.mkdir(parents=True, exist_ok=True)
-    ensure_size_directories()
+    ensure_size_directories_existence()
     log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
     log.debug('Metadata storage root: %s', METADATA_ROOT.resolve())
 
@@ -194,8 +194,12 @@ def create_app() -> Flask:
     # external URLs and remote_addr reflects the real client IP.
     # IMPORTANT: must wrap PrefixMiddleware so that when X-Forwarded-Prefix is
     # present, ProxyFix sets SCRIPT_NAME before PrefixMiddleware checks it.
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-    log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
+    # Disable via webserver.proxy_mode: false when running without a reverse proxy.
+    if web_cfg.get('proxy_mode', True):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+        log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
+    else:
+        log.info('Proxy mode disabled – ProxyFix middleware not applied.')
 
     # Initialise OIDC / OAuth
     init_oauth(app)
