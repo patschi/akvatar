@@ -1,14 +1,22 @@
 """
 cleanup.py – Avatar cleanup.
 
-Removes avatar files that belong to users who no longer exist in Authentik
-and enforces per-user retention (keeping only the N most recent uploads).
+Removes avatar files that belong to users who no longer exist in Authentik,
+enforces per-user retention (keeping only the N most recent uploads), and
+removes orphaned files left behind by configuration changes or incomplete
+uploads.
 
 How user matching works:
   - Each upload writes a .meta.json with the Authentik PK stored in the
     ``user_pk`` field.
   - Authentik's core users API returns the same PK for every active user.
   - A direct integer-equality check determines whether the user still exists.
+
+Orphan cleanup:
+  - Size directories that no longer appear in ``images.sizes`` are removed.
+  - Image files whose format (extension) is no longer in ``images.formats``
+    are deleted.
+  - Image files whose filename base has no matching .meta.json are deleted.
 
 Safety:
   - If the Authentik API returns zero active users (e.g. due to an expired
@@ -23,6 +31,8 @@ This module is used in two ways:
 """
 
 import logging
+import re
+import shutil
 import threading
 import time
 from collections import defaultdict
@@ -30,8 +40,8 @@ from datetime import datetime, timezone
 
 from croniter import croniter
 
-from src.config import app_cfg, dry_run
-from src.imaging import get_all_avatar_metadata, cleanup_avatar_files
+from src.config import app_cfg, img_cfg, dry_run
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, _FORMAT_MAP, get_all_avatar_metadata, cleanup_avatar_files
 from src.authentik_api import list_all_user_pks
 
 log = logging.getLogger('cleanup')
@@ -42,20 +52,28 @@ _cron_expr = str(app_cfg.get('cleanup_interval', '0 2 * * *')).strip()
 _run_on_startup = bool(app_cfg.get('cleanup_on_startup', False))
 _retention_count = app_cfg.get('avatar_retention_count', 2)
 
+# Currently configured sizes and on-disk file extensions (used to detect orphans).
+# Formats are resolved through _FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
+_configured_sizes = {f'{s}x{s}' for s in img_cfg['sizes']}
+_configured_formats = {_FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
 
-def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) -> int:
+# Regex to match size directory names like "128x128", "1024x1024"
+_SIZE_DIR_RE = re.compile(r'^\d+x\d+$')
+
+
+def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) -> tuple[int, set[str]]:
     """
     For each active user with more than ``_retention_count`` avatar sets,
     delete the oldest uploads beyond the limit.
 
-    Returns the number of avatar sets removed (or that would be removed in
-    dry-run mode).
+    Returns a tuple of (count removed, set of deleted filename bases).
     """
     if _retention_count <= 0:
         log.debug('Retention is disabled (avatar_retention_count=0).')
-        return 0
+        return 0, set()
 
     removed = 0
+    deleted: set[str] = set()
     for user_pk, entries in per_user.items():
         if user_pk not in active_pks:
             continue  # already handled by stale-user removal
@@ -73,6 +91,83 @@ def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) ->
             else:
                 log.info('Retention: removing old avatar set %s (user_pk=%s).', filename, user_pk)
                 cleanup_avatar_files(filename)
+            deleted.add(filename)
+            removed += 1
+
+    return removed, deleted
+
+
+def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
+    """
+    Remove orphaned image files from the avatar storage directory.
+
+    Targets three types of orphans:
+      1. Entire size directories that are no longer in ``images.sizes``.
+      2. Image files whose extension is no longer in ``images.formats``.
+      3. Image files whose filename base has no matching .meta.json.
+
+    ``known_filenames`` is the set of filename bases from all metadata files
+    that are still on disk (i.e. not already deleted by earlier phases).
+
+    Returns the number of files removed (or that would be removed in dry-run).
+    """
+    removed = 0
+
+    # Scan all subdirectories under the avatar root
+    for entry in AVATAR_ROOT.iterdir():
+        # Skip non-directories and the metadata directory
+        if not entry.is_dir() or entry.name == '_metadata':
+            continue
+
+        # Phase A: remove entire directories for sizes no longer configured
+        if _SIZE_DIR_RE.match(entry.name) and entry.name not in _configured_sizes:
+            if dry_run:
+                file_count = sum(1 for f in entry.iterdir() if f.is_file())
+                log.info('[DRY-RUN] Would remove obsolete size directory %s/ (%d file(s)).', entry.name, file_count)
+                removed += file_count
+            else:
+                log.info('Removing obsolete size directory %s/.', entry.name)
+                shutil.rmtree(entry)
+            continue
+
+        # Phase B+C: scan files inside configured size directories
+        if entry.name not in _configured_sizes:
+            continue
+
+        for file_path in entry.iterdir():
+            if not file_path.is_file():
+                continue
+
+            ext = file_path.suffix.lstrip('.').lower()
+
+            # Phase B: remove files with formats no longer configured
+            if ext not in _configured_formats:
+                if dry_run:
+                    log.info('[DRY-RUN] Would remove obsolete format file %s/%s.', entry.name, file_path.name)
+                else:
+                    log.info('Removing obsolete format file %s/%s.', entry.name, file_path.name)
+                    file_path.unlink()
+                removed += 1
+                continue
+
+            # Phase C: remove files with no matching metadata (orphaned)
+            if file_path.stem not in known_filenames:
+                if dry_run:
+                    log.info('[DRY-RUN] Would remove orphaned file %s/%s (no metadata).', entry.name, file_path.name)
+                else:
+                    log.info('Removing orphaned file %s/%s (no metadata).', entry.name, file_path.name)
+                    file_path.unlink()
+                removed += 1
+
+    # Phase D: remove orphaned metadata files with no matching images
+    for meta_path in METADATA_ROOT.glob('*.meta.json'):
+        filename_base = meta_path.name.removesuffix('.meta.json')
+        if filename_base not in known_filenames:
+            if dry_run:
+                log.info('[DRY-RUN] Would remove orphaned metadata %s.', meta_path.name)
+            else:
+                log.info('Removing orphaned metadata %s.', meta_path.name)
+                meta_path.unlink()
             removed += 1
 
     return removed
@@ -80,14 +175,15 @@ def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) ->
 
 def run_cleanup() -> int:
     """
-    Run both cleanup phases:
+    Run all cleanup phases:
       1. Remove avatar sets whose owner no longer exists in Authentik.
       2. Enforce per-user retention for active users.
+      3. Remove orphaned files (obsolete sizes/formats, images without metadata).
 
     Matching is done by ``user_pk`` (Authentik's integer primary key), which
     is immutable — unlike usernames, it survives renames and reveals no PII.
 
-    Returns the total number of avatar sets removed (or that would be removed
+    Returns the total number of files removed (or that would be removed
     in dry-run mode).
     """
     log.info('Starting avatar cleanup...')
@@ -121,6 +217,11 @@ def run_cleanup() -> int:
             continue
         per_user[user_pk].append(meta)
 
+    # Collect all known filename bases from metadata
+    all_filenames = {meta.get('filename', '') for entries in per_user.values() for meta in entries}
+    all_filenames.discard('')
+    deleted_filenames: set[str] = set()
+
     # Phase 1: remove avatar sets for users that no longer exist.
     removed = 0
     for user_pk, entries in per_user.items():
@@ -133,14 +234,23 @@ def run_cleanup() -> int:
             else:
                 log.info('Removing avatar set %s (user_pk=%s no longer active).', filename, user_pk)
                 cleanup_avatar_files(filename)
+            deleted_filenames.add(filename)
             removed += 1
 
     # Phase 2: enforce per-user retention for active users.
-    retained = _enforce_retention(per_user, active_pks)
+    retained, retention_deleted = _enforce_retention(per_user, active_pks)
     removed += retained
+    deleted_filenames |= retention_deleted
+
+    # Filenames that should still exist on disk after phases 1 and 2
+    surviving_filenames = all_filenames - deleted_filenames
+
+    # Phase 3: remove orphaned files (obsolete sizes, formats, no metadata).
+    orphans = _cleanup_orphaned_files(surviving_filenames)
+    removed += orphans
 
     if removed:
-        log.info('Cleanup complete: %s %d avatar set(s).', 'would remove' if dry_run else 'removed', removed)
+        log.info('Cleanup complete: %s %d file(s).', 'would remove' if dry_run else 'removed', removed)
     else:
         log.info('Cleanup complete: nothing to remove.')
 
