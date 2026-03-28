@@ -8,7 +8,7 @@ The Avatar Updater connects to LDAP (Active Directory) to write profile photos d
 
 - Be able to **bind** (authenticate) to the directory
 - **Search** for user objects within a specific OU
-- **Read** the `distinguishedName` attribute of matched users
+- **Read** the `objectSid` and `distinguishedName` attributes of matched users (`objectSid` is required to use it as a search filter)
 - **Write** only the `thumbnailPhoto` attribute (or whichever `photo_attribute` is configured)
 - Have **no other permissions** (no password reset, no group membership changes, no account creation)
 
@@ -28,7 +28,7 @@ The script below automates the complete setup using PowerShell and .NET `System.
 
 1. Creates a service account in a dedicated OU
 2. Generates a random 32-character password
-3. Delegates **Read** and **Write Property** on `thumbnailPhoto` to the service account, scoped to user objects within the target OU
+3. Delegates **Read Property** on `objectSid` and **Read/Write Property** on `thumbnailPhoto` to the service account, scoped to user objects within the target OU
 
 ### Prerequisites
 
@@ -169,6 +169,24 @@ if (-not $AttrResult) {
 $PhotoAttrGUID = [Guid]$AttrResult.Properties["schemaidguid"][0]
 Write-Host "Schema GUID for '$PhotoAttribute': $PhotoAttrGUID" -ForegroundColor Cyan
 
+# --- objectSid attribute GUID ---
+# Required so the service account can use objectSid as a search filter value.
+$SidSearcher = [System.DirectoryServices.DirectorySearcher]::new(
+    [System.DirectoryServices.DirectoryEntry]::new("LDAP://$SchemaDN"),
+    "(ldapDisplayName=objectSid)",
+    @("schemaIDGUID"),
+    [System.DirectoryServices.SearchScope]::Subtree
+)
+$SidResult = $SidSearcher.FindOne()
+
+if (-not $SidResult) {
+    Write-Error "Could not find attribute 'objectSid' in the AD schema."
+    exit 1
+}
+
+$ObjectSidGUID = [Guid]$SidResult.Properties["schemaidguid"][0]
+Write-Host "Schema GUID for 'objectSid':     $ObjectSidGUID" -ForegroundColor Cyan
+
 # --- User object class GUID ---
 $ClassSearcher = [System.DirectoryServices.DirectorySearcher]::new(
     [System.DirectoryServices.DirectoryEntry]::new("LDAP://$SchemaDN"),
@@ -213,7 +231,7 @@ $ACL.AddAccessRule($WriteACE)
 
 # --- ACE: Read Property on the photo attribute for user objects ---
 # (allows the service account to verify the current value if needed)
-$ReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
+$ReadPhotoACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
     [System.Security.Principal.IdentityReference]$ServiceAccountSID,
     [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
     [System.Security.AccessControl.AccessControlType]::Allow,
@@ -221,13 +239,28 @@ $ReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
     [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
     $UserClassGUID
 )
-$ACL.AddAccessRule($ReadACE)
+$ACL.AddAccessRule($ReadPhotoACE)
+
+# --- ACE: Read Property on objectSid for user objects ---
+# The default search filter (objectSid={ldap_uniq}) requires ReadProperty on
+# objectSid. Without this, AD treats the attribute as invisible to the account
+# and the filter returns no results.
+$ReadSidACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
+    [System.Security.Principal.IdentityReference]$ServiceAccountSID,
+    [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
+    [System.Security.AccessControl.AccessControlType]::Allow,
+    $ObjectSidGUID,
+    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
+    $UserClassGUID
+)
+$ACL.AddAccessRule($ReadSidACE)
 
 # Commit the ACL changes to Active Directory
 $TargetOU_DE.ObjectSecurity = $ACL
 $TargetOU_DE.CommitChanges()
 
 Write-Host "Delegated Read/Write Property on '$PhotoAttribute' to '$SamAccountName'" -ForegroundColor Green
+Write-Host "Delegated Read Property on 'objectSid' to '$SamAccountName'" -ForegroundColor Green
 Write-Host "  Scope: user objects under $TargetUsersOU" -ForegroundColor Green
 Write-Host ""
 
@@ -270,8 +303,9 @@ Write-Host "Distinguished DN: $($ServiceAccount.DistinguishedName)" -ForegroundC
 Write-Host "Password:         (see above — store securely)" -ForegroundColor White
 Write-Host ""
 Write-Host "Permissions granted on: $TargetUsersOU" -ForegroundColor White
-Write-Host "  - GenericRead on user objects (search and read attributes)" -ForegroundColor White
+Write-Host "  - GenericRead on user objects (search and read all attributes)" -ForegroundColor White
 Write-Host "  - Read/Write Property on '$PhotoAttribute' on user objects" -ForegroundColor White
+Write-Host "  - Read Property on 'objectSid' on user objects" -ForegroundColor White
 Write-Host ""
 Write-Host "Use the following values in config.yml:" -ForegroundColor Yellow
 Write-Host ""
@@ -290,9 +324,9 @@ Write-Host "  photo_attribute: `"$PhotoAttribute`"" -ForegroundColor Yellow
 | 1 | Generates a cryptographically random 32-character password |
 | 2 | Creates the Service Accounts OU (if it does not exist) |
 | 3 | Creates the service account with password-never-expires and cannot-change-password flags |
-| 4 | Looks up the `schemaIDGUID` for `thumbnailPhoto` and the `user` object class from the AD schema |
-| 5 | Delegates **Write Property** and **Read Property** on `thumbnailPhoto` for user objects under the target OU |
-| 6 | Delegates **GenericRead** on user objects under the target OU so the account can search and read attributes |
+| 4 | Looks up the `schemaIDGUID` for `thumbnailPhoto`, `objectSid`, and the `user` object class from the AD schema |
+| 5 | Delegates **Write Property** and **Read Property** on `thumbnailPhoto`, and **Read Property** on `objectSid` for user objects under the target OU |
+| 6 | Delegates **GenericRead** on user objects under the target OU so the account can search and read all attributes |
 
 ## Understanding the permissions
 
@@ -331,6 +365,7 @@ ActiveDirectoryRights ObjectType                           InheritedObjectType  
 --------------------- ----------                           -------------------                  ---------------
         WriteProperty 8d3bca50-1d7e-11d0-a081-00aa006c33ed bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
          ReadProperty 8d3bca50-1d7e-11d0-a081-00aa006c33ed bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
+         ReadProperty bf96798f-0de6-11d0-a285-00aa003049e2 bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
           GenericRead 00000000-0000-0000-0000-000000000000 bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
 ```
 

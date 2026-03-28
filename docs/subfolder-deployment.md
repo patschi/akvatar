@@ -44,20 +44,15 @@ Key points:
 - `proxy_pass http://127.0.0.1:5000/;`: The **trailing slash** strips `/avatar/` from the path before forwarding. The app receives requests at `/`, `/api/upload`, etc.
 - `X-Forwarded-Prefix /avatar`: Tells the app to prepend `/avatar` to all generated URLs.
 
-### No config.yml changes needed for `base_path`
+### No additional config.yml changes needed
 
-When using `X-Forwarded-Prefix`, leave `webserver.base_path` unset or empty. The prefix is determined dynamically from the header.
+When using `X-Forwarded-Prefix`, no additional configuration is needed beyond setting `app.public_base_url` to the full public URL including the subfolder (see [Required config.yml settings](#required-configyml-settings) below).
 
-## Option B: Set `base_path` in config.yml
+## Option B: Derive prefix from `app.public_base_url`
 
-If your reverse proxy does not support sending `X-Forwarded-Prefix`, set the path prefix statically in `config.yml`:
+If your reverse proxy does not support sending `X-Forwarded-Prefix`, the application automatically derives the path prefix from the path component of `app.public_base_url`. No separate config key is required: if `app.public_base_url` is set to `https://portal.example.com/avatar`, the app serves under `/avatar` automatically.
 
-```yaml
-webserver:
-  base_path: "/avatar"
-```
-
-The application applies this prefix using a WSGI middleware that wraps all routes under the given path. When `base_path` is set, the app expects to receive requests with the prefix included (e.g. `/avatar/`, `/avatar/api/upload`), so the reverse proxy must **not** strip it:
+When using this option, the reverse proxy must **not** strip the prefix before forwarding, because the app uses it to match incoming request paths:
 
 ```nginx
 location /avatar/ {
@@ -104,9 +99,9 @@ Update the **Redirect URIs/Origins** in your Authentik OAuth2/OpenID Provider to
 The application uses two middleware layers (applied during startup in `app.py`):
 
 1. **`ProxyFix`** (Werkzeug): Trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers from the reverse proxy.
-2. **`PrefixMiddleware`**: If `webserver.base_path` is set, this WSGI middleware strips the prefix from incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
+2. **`PrefixMiddleware`**: If `app.public_base_url` has a path component, this WSGI middleware strips the prefix from incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
 
-The two approaches can coexist: if both `X-Forwarded-Prefix` and `base_path` are set, the proxy header takes precedence for URL generation while `base_path` handles path routing.
+The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_base_url` are configured, the proxy header takes precedence — ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is already set.
 
 ## Verifying the setup
 
