@@ -5,16 +5,16 @@ This document explains the complete request lifecycle of the Authentik Avatar Up
 ## Architecture overview
 
 ```
-┌─────────┐      HTTPS       ┌───────────────┐       HTTP        ┌─────────────────────┐
-│ Browser  │ ◄──────────────► │ Reverse Proxy │ ◄──────────────►  │   Avatar Updater    │
-│          │                  │ (nginx/Caddy)  │                  │   (Flask/gunicorn)   │
+┌─────────┐      HTTPS       ┌───────────────┐       HTTP       ┌─────────────────────┐
+│ Browser │ ◄──────────────► │ Reverse Proxy │ ◄──────────────► │   Avatar Updater    │
+│         │                  │ (nginx/Caddy) │                  │   (Flask/gunicorn)  │
 └─────────┘                  └───────────────┘                  └──────────┬──────────┘
                                                                            │
                               ┌────────────────────────────────────────────┼────────────────┐
                               │                                            │                │
                               ▼                                            ▼                ▼
                      ┌─────────────────┐                         ┌──────────────┐  ┌──────────────┐
-                     │    Authentik     │                         │     Disk     │  │ LDAP Server  │
+                     │    Authentik    │                         │     Disk     │  │ LDAP Server  │
                      │  (OIDC + API)   │                         │  (avatars)   │  │  (optional)  │
                      └─────────────────┘                         └──────────────┘  └──────────────┘
 ```

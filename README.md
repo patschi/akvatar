@@ -11,12 +11,12 @@ A self-hosted web application that lets users update their profile picture via a
 - **Multi-format output**: JPEG, PNG, WebP (configurable)
 - **Unguessable filenames** (`uuid4` + `token_urlsafe` + nanosecond timestamp)
 - **Authentik API**: sets `attributes.avatar-url` on the user object (configurable)
-- **LDAP Server**: writes `thumbnailPhoto` (optional, toggle in config)
+- **LDAP Server**: writes `thumbnailPhoto` and `jpegPhoto` (optional, toggle in config)
 - **JSON metadata**: saves upload metadata (username, timestamp, sizes) per avatar
 - **Configurable branding**: customise the application name in the UI
 - **Reverse proxy / subfolder support**: respects `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Prefix`
-- **Optional TLS**: serve HTTPS directly from the built-in server
-- **Distroless Docker image**: for minimal attack surface
+- **Optional built-in TLS**: serve HTTPS directly from the built-in server
+- **Secure Container image**: using distroless for minimal attack surface, running as non-root, read-only filesystem, and dropping all capabilities
 
 ## Quick start
 
