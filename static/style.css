@@ -139,11 +139,36 @@ body {
   padding: 2.5rem 2rem;
 }
 
+.login-hero-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+
 .login-hero {
   width: 72px;
   height: 72px;
-  margin-bottom: 1.5rem;
   filter: drop-shadow(0 4px 12px rgba(30, 80, 200, 0.3));
+}
+
+.login-hero-badge {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(30, 80, 200, 0.85);
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.login-hero-badge--logout {
+  background: rgba(100, 100, 120, 0.85);
 }
 
 .login-card h1 {

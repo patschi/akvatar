@@ -51,7 +51,6 @@ args = [
     '--worker-class', 'gthread',
     '--worker-tmp-dir', wtmpdir,
     '--timeout', str(timeout),
-    '--access-logfile', '-',
 ]
 
 if tls_cert and tls_key:

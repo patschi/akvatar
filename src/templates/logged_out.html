@@ -26,7 +26,10 @@
 
   <main class="container container--narrow">
     <div class="card login-card">
-      <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+      <div class="login-hero-wrapper">
+        <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+        <span class="login-hero-badge login-hero-badge--logout">{{ t('title_logged_out') }}</span>
+      </div>
 
       <h1>{{ t('logout_heading') }}</h1>
       <p class="subtitle">{{ t('logout_subtitle') }}</p>

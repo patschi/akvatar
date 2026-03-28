@@ -5,7 +5,6 @@ Creates the Flask app, registers blueprints, initialises OAuth, applies reverse-
 and subfolder middleware, and starts the development server when run directly.
 """
 
-import os
 import logging
 import flask.cli
 from urllib.parse import urlparse
@@ -17,7 +16,7 @@ flask.cli.show_server_banner = lambda *a, **kw: None
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src.config import app_cfg, web_cfg, branding_cfg
+from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations
 from src.auth import auth_bp, init_oauth
 from src.routes import routes_bp
@@ -63,6 +62,12 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder='src/templates')
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
+
+    if debug_full:
+        app.debug = True
+        app.config['TEMPLATES_AUTO_RELOAD'] = True
+    else:
+        app.config['TEMPLATES_AUTO_RELOAD'] = False
 
     log.debug('Flask app created (max upload = %d MB).', app_cfg['max_upload_size_mb'])
 
@@ -114,12 +119,20 @@ def create_app() -> Flask:
         }
 
     # -- HTTP response headers & logging ------------------------------------
-    @app.after_request
-    def _after_request(response):
-        # Log non-static requests at DEBUG level
-        if not request.path.startswith('/static/'):
-            http_log.debug('%s %s %s (client=%s)', request.method, request.path, response.status_code, request.remote_addr)
-        return response
+    if access_log:
+        @app.after_request
+        def _after_request(response):
+            if not request.path.startswith('/static/'):
+                http_log.debug('%s %s %s (client=%s)', request.method, request.path, response.status_code, request.remote_addr)
+            return response
+
+    # -- Template cache warm-up --------------------------------------------
+    # Pre-compile all templates so workers forked via --preload inherit them
+    # and the first request per template has zero disk I/O.
+    if not debug_full:
+        for template_name in app.jinja_loader.list_templates():
+            app.jinja_env.get_template(template_name)
+        log.debug('Template cache warmed: %d template(s) pre-compiled.', len(app.jinja_loader.list_templates()))
 
     return app
 
@@ -130,8 +143,6 @@ if __name__ == '__main__':
     # Start the background cleanup thread (respects config interval; 0 = disabled)
     start_cleanup_thread()
 
-    flask_debug = os.environ.get('FLASK_DEBUG', '0') == '1'
-
     # -- TLS support -------------------------------------------------------
     tls_cert = web_cfg.get('tls_cert', '')
     tls_key = web_cfg.get('tls_key', '')
@@ -141,6 +152,4 @@ if __name__ == '__main__':
     port = web_cfg.get('port', 5000)
 
     log.info('Webserver starting on %s://%s:%s...', scheme, host, port)
-    if flask_debug:
-        log.warning('Flask debug mode is enabled – disable in production to hide internal details from users.')
-    app.run(host=host, port=port, debug=flask_debug, ssl_context=ssl_context)
+    app.run(host=host, port=port, debug=debug_full, ssl_context=ssl_context)

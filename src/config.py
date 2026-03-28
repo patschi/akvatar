@@ -36,6 +36,7 @@ oidc_cfg     = cfg['oidc']
 ak_cfg       = cfg['authentik_api']
 ldap_cfg     = cfg.get('ldap', {})  # May be absent if disabled
 img_cfg      = cfg['images']
+access_log   = bool(web_cfg.get('access_log', False))
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -48,8 +49,10 @@ _LOG_LEVELS = {
     'CRITICAL': logging.CRITICAL,
 }
 
+debug_full = bool(app_cfg.get('debug_full', False))
+
 _configured_level = app_cfg.get('log_level', 'INFO').upper()
-_level = _LOG_LEVELS.get(_configured_level, logging.INFO)
+_level = logging.DEBUG if debug_full else _LOG_LEVELS.get(_configured_level, logging.INFO)
 
 logging.basicConfig(
     level=_level,
@@ -62,6 +65,9 @@ from src import APP_NAME, APP_VERSION
 log = logging.getLogger('config')
 log.info('Starting %s v%s...', APP_NAME, APP_VERSION)
 log.debug('Configuration loaded from %r.', CONFIG_PATH)
+if debug_full:
+    log.warning('FULL DEBUG MODE is enabled – Flask debugger, template auto-reload, and verbose logging are active. Disable in production.')
+    log.debug('Log level forced to DEBUG by debug_full.')
 log.debug('Log level set to %s.', _configured_level)
 if dry_run:
     log.warning('DRY-RUN MODE is enabled – no changes will be pushed to Authentik or LDAP.')

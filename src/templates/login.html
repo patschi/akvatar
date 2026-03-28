@@ -32,8 +32,11 @@
   <!-- ================================================================== -->
   <main class="container container--narrow">
     <div class="card login-card">
-      <!-- Application logo as the hero element -->
-      <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+      <!-- Application logo with page-type overlay badge -->
+      <div class="login-hero-wrapper">
+        <img class="login-hero" src="{{ url_for('static', filename='logo.svg') }}" alt="{{ brand_name }}" />
+        <span class="login-hero-badge">{{ t('title_signin') }}</span>
+      </div>
 
       <h1>{{ t('login_heading') }}</h1>
       <p class="subtitle">{{ t('login_subtitle') }}</p>

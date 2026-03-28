@@ -70,6 +70,8 @@ def login_page():
         log.debug('User already authenticated – redirecting to dashboard.')
         return redirect(url_for('routes.dashboard'))
     error_key = request.args.get('error', '')
+    if not error_key and 'autologin' in request.args:
+        return redirect(url_for('auth.login'))
     if error_key:
         log.debug('Login page rendered with error=%r.', error_key)
     return render_template('login.html', error_key=error_key)
