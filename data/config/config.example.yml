@@ -43,9 +43,17 @@ app:
   log_level: "INFO"
 
 # --- Webserver ---
+# These settings apply when running via run.py / gunicorn (production & Docker).
+# When running via app.py (development), only host, port, and TLS are used.
 webserver:
-  # Number of gunicorn worker processes (only used in production / Docker).
+  # Number of gunicorn worker processes.
   workers: 2
+  # Number of threads per worker. Each thread handles one request concurrently.
+  threads: 4
+  # Worker timeout in seconds. A worker is restarted if it does not respond
+  # within this duration. Should be long enough for the slowest request
+  # (e.g. large image upload + processing).
+  timeout: 120
   # TLS certificate and private key paths for HTTPS.
   # When set, the server uses HTTPS on the same port.
   # Leave empty to run plain HTTP (a warning will be logged at startup).
