@@ -1,6 +1,6 @@
 # Active Directory Service Account Setup
 
-This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for the Authentik Avatar Updater's LDAP integration. The account will only have permission to **read user objects** and **write the `thumbnailPhoto` attribute** within a specific Organizational Unit (OU).
+This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for the Authentik Avatar Updater's LDAP integration. The account will only have permission to **read user objects** and **write photo attributes** (e.g. `thumbnailPhoto`, `jpegPhoto`) within a specific Organizational Unit (OU).
 
 ## Overview
 
@@ -9,7 +9,7 @@ The Avatar Updater connects to LDAP (Active Directory) to write profile photos d
 - Be able to **bind** (authenticate) to the directory
 - **Search** for user objects within a specific OU
 - **Read** the `objectSid` and `distinguishedName` attributes of matched users (`objectSid` is required to use it as a search filter)
-- **Write** only the `thumbnailPhoto` attribute (or whichever `photo_attribute` is configured)
+- **Write** only the photo attributes configured in `ldap.photos` (e.g. `thumbnailPhoto`, `jpegPhoto`)
 - Have **no other permissions** (no password reset, no group membership changes, no account creation)
 
 ## What the application does with LDAP
@@ -17,7 +17,7 @@ The Avatar Updater connects to LDAP (Active Directory) to write profile photos d
 1. **Bind** as the service account using the configured `bind_dn` and `bind_password`
 2. **Search** under `search_base` using `search_filter` (default: `(objectSid={ldap_uniq})`) to find the user
 3. **Read** the `distinguishedName` of the matched user
-4. **Modify** the `thumbnailPhoto` attribute with the new JPEG image bytes
+4. **Modify** all configured photo attributes (e.g. `thumbnailPhoto`, `jpegPhoto`) in a single operation
 5. **Unbind** (disconnect)
 
 Step 3 (reading `distinguishedName`) is typically allowed for all authenticated users in AD. The critical permission is step 4: writing `thumbnailPhoto`.
@@ -55,15 +55,15 @@ $ServiceAccountOU = "OU=Service Accounts,$DomainDN"
 # Service account name
 $SamAccountName = "sa-ak-avatar-updater"
 $DisplayName    = "Authentik Avatar Updater Service Account"
-$Description    = "Least-privilege service account for the Authentik Avatar Updater LDAP integration. Allowed to write thumbnailPhoto on user objects."
+$Description    = "Least-privilege service account for the Authentik Avatar Updater LDAP integration. Allowed to write photo attributes on user objects."
 
 # Target OU where user objects live (the service account will be granted
 # write access to thumbnailPhoto only on user objects within this OU)
 $TargetUsersOU = "OU=Users,$DomainDN"
 
-# LDAP attribute the application writes to (must match ldap.photo_attribute
-# in config.yml — default is thumbnailPhoto for Active Directory)
-$PhotoAttribute = "thumbnailPhoto"
+# LDAP attributes the application writes to (must match ldap.photos entries
+# in config.yml).  Add all attributes configured in your ldap.photos array.
+$PhotoAttributes = @("thumbnailPhoto", "jpegPhoto")
 
 # ============================================================================
 # Step 1: Generate a random 32-character password
@@ -152,22 +152,25 @@ Write-Host ""
 $RootDSE   = [System.DirectoryServices.DirectoryEntry]::new("LDAP://RootDSE")
 $SchemaDN  = $RootDSE.Properties["schemaNamingContext"].Value
 
-# --- Photo attribute GUID (e.g. thumbnailPhoto) ---
-$AttrSearcher = [System.DirectoryServices.DirectorySearcher]::new(
-    [System.DirectoryServices.DirectoryEntry]::new("LDAP://$SchemaDN"),
-    "(ldapDisplayName=$PhotoAttribute)",
-    @("schemaIDGUID"),
-    [System.DirectoryServices.SearchScope]::Subtree
-)
-$AttrResult = $AttrSearcher.FindOne()
+# --- Photo attribute GUIDs (e.g. thumbnailPhoto, jpegPhoto) ---
+$PhotoAttrGUIDs = @{}
+foreach ($Attr in $PhotoAttributes) {
+    $AttrSearcher = [System.DirectoryServices.DirectorySearcher]::new(
+        [System.DirectoryServices.DirectoryEntry]::new("LDAP://$SchemaDN"),
+        "(ldapDisplayName=$Attr)",
+        @("schemaIDGUID"),
+        [System.DirectoryServices.SearchScope]::Subtree
+    )
+    $AttrResult = $AttrSearcher.FindOne()
 
-if (-not $AttrResult) {
-    Write-Error "Could not find attribute '$PhotoAttribute' in the AD schema."
-    exit 1
+    if (-not $AttrResult) {
+        Write-Error "Could not find attribute '$Attr' in the AD schema."
+        exit 1
+    }
+
+    $PhotoAttrGUIDs[$Attr] = [Guid]$AttrResult.Properties["schemaidguid"][0]
+    Write-Host "Schema GUID for '$Attr': $($PhotoAttrGUIDs[$Attr])" -ForegroundColor Cyan
 }
-
-$PhotoAttrGUID = [Guid]$AttrResult.Properties["schemaidguid"][0]
-Write-Host "Schema GUID for '$PhotoAttribute': $PhotoAttrGUID" -ForegroundColor Cyan
 
 # --- objectSid attribute GUID ---
 # Required so the service account can use objectSid as a search filter value.
@@ -206,9 +209,9 @@ Write-Host "Schema GUID for 'user' class:     $UserClassGUID" -ForegroundColor C
 Write-Host ""
 
 # ============================================================================
-# Step 5: Delegate Write Property on the photo attribute
+# Step 5: Delegate Write Property on all photo attributes
 # ============================================================================
-# Grant the service account the ability to write (modify) only the specific
+# Grant the service account the ability to write (modify) each configured
 # photo attribute on user objects within the target OU.
 #
 # InheritanceType = Descendents: the ACE applies to child objects, not the OU itself
@@ -218,28 +221,34 @@ Write-Host ""
 $TargetOU_DE = [System.DirectoryServices.DirectoryEntry]::new("LDAP://$TargetUsersOU")
 $ACL = $TargetOU_DE.ObjectSecurity
 
-# --- ACE: Write Property on the photo attribute for user objects ---
-$WriteACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-    [System.Security.Principal.IdentityReference]$ServiceAccountSID,  # Who
-    [System.DirectoryServices.ActiveDirectoryRights]::WriteProperty,  # What
-    [System.Security.AccessControl.AccessControlType]::Allow,         # Allow/Deny
-    $PhotoAttrGUID,                                                   # Which attribute
-    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents, # Where
-    $UserClassGUID                                                    # On which object type
-)
-$ACL.AddAccessRule($WriteACE)
+# --- ACEs: Write + Read Property on each photo attribute for user objects ---
+foreach ($Attr in $PhotoAttributes) {
+    $AttrGUID = $PhotoAttrGUIDs[$Attr]
 
-# --- ACE: Read Property on the photo attribute for user objects ---
-# (allows the service account to verify the current value if needed)
-$ReadPhotoACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-    [System.Security.Principal.IdentityReference]$ServiceAccountSID,
-    [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
-    [System.Security.AccessControl.AccessControlType]::Allow,
-    $PhotoAttrGUID,
-    [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
-    $UserClassGUID
-)
-$ACL.AddAccessRule($ReadPhotoACE)
+    # Write Property
+    $WriteACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
+        [System.Security.Principal.IdentityReference]$ServiceAccountSID,  # Who
+        [System.DirectoryServices.ActiveDirectoryRights]::WriteProperty,  # What
+        [System.Security.AccessControl.AccessControlType]::Allow,         # Allow/Deny
+        $AttrGUID,                                                        # Which attribute
+        [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents, # Where
+        $UserClassGUID                                                    # On which object type
+    )
+    $ACL.AddAccessRule($WriteACE)
+
+    # Read Property (allows the service account to verify the current value)
+    $ReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
+        [System.Security.Principal.IdentityReference]$ServiceAccountSID,
+        [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
+        [System.Security.AccessControl.AccessControlType]::Allow,
+        $AttrGUID,
+        [System.DirectoryServices.ActiveDirectorySecurityInheritance]::Descendents,
+        $UserClassGUID
+    )
+    $ACL.AddAccessRule($ReadACE)
+
+    Write-Host "  Delegated Read/Write Property on '$Attr'" -ForegroundColor Green
+}
 
 # --- ACE: Read Property on objectSid for user objects ---
 # The default search filter (objectSid={ldap_uniq}) requires ReadProperty on
@@ -259,7 +268,7 @@ $ACL.AddAccessRule($ReadSidACE)
 $TargetOU_DE.ObjectSecurity = $ACL
 $TargetOU_DE.CommitChanges()
 
-Write-Host "Delegated Read/Write Property on '$PhotoAttribute' to '$SamAccountName'" -ForegroundColor Green
+Write-Host "Delegated Read/Write Property on photo attributes to '$SamAccountName'" -ForegroundColor Green
 Write-Host "Delegated Read Property on 'objectSid' to '$SamAccountName'" -ForegroundColor Green
 Write-Host "  Scope: user objects under $TargetUsersOU" -ForegroundColor Green
 Write-Host ""
@@ -304,7 +313,9 @@ Write-Host "Password:         (see above — store securely)" -ForegroundColor W
 Write-Host ""
 Write-Host "Permissions granted on: $TargetUsersOU" -ForegroundColor White
 Write-Host "  - GenericRead on user objects (search and read all attributes)" -ForegroundColor White
-Write-Host "  - Read/Write Property on '$PhotoAttribute' on user objects" -ForegroundColor White
+foreach ($Attr in $PhotoAttributes) {
+    Write-Host "  - Read/Write Property on '$Attr' on user objects" -ForegroundColor White
+}
 Write-Host "  - Read Property on 'objectSid' on user objects" -ForegroundColor White
 Write-Host ""
 Write-Host "Use the following values in config.yml:" -ForegroundColor Yellow
@@ -314,7 +325,6 @@ Write-Host "  bind_dn: `"$($ServiceAccount.DistinguishedName)`"" -ForegroundColo
 Write-Host "  bind_password: `"<the generated password>`"" -ForegroundColor Yellow
 Write-Host "  search_base: `"$TargetUsersOU`"" -ForegroundColor Yellow
 Write-Host "  search_filter: `"(objectSid={ldap_uniq})`"" -ForegroundColor Yellow
-Write-Host "  photo_attribute: `"$PhotoAttribute`"" -ForegroundColor Yellow
 ```
 
 ## What the script does
@@ -324,15 +334,15 @@ Write-Host "  photo_attribute: `"$PhotoAttribute`"" -ForegroundColor Yellow
 | 1 | Generates a cryptographically random 32-character password |
 | 2 | Creates the Service Accounts OU (if it does not exist) |
 | 3 | Creates the service account with password-never-expires and cannot-change-password flags |
-| 4 | Looks up the `schemaIDGUID` for `thumbnailPhoto`, `objectSid`, and the `user` object class from the AD schema |
-| 5 | Delegates **Write Property** and **Read Property** on `thumbnailPhoto`, and **Read Property** on `objectSid` for user objects under the target OU |
+| 4 | Looks up the `schemaIDGUID` for each configured photo attribute, `objectSid`, and the `user` object class from the AD schema |
+| 5 | Delegates **Write Property** and **Read Property** on each photo attribute, and **Read Property** on `objectSid` for user objects under the target OU |
 | 6 | Delegates **GenericRead** on user objects under the target OU so the account can search and read all attributes |
 
 ## Understanding the permissions
 
 ### Why Write Property (not GenericWrite)?
 
-`GenericWrite` includes Write Property, Write Validated, and Self membership changes. The service account only needs to replace a single attribute value, so `WriteProperty` scoped to the `thumbnailPhoto` attribute is the minimal permission.
+`GenericWrite` includes Write Property, Write Validated, and Self membership changes. The service account only needs to replace specific attribute values, so `WriteProperty` scoped to each individual photo attribute is the minimal permission.
 
 ### Why scope to user objects?
 
@@ -365,9 +375,13 @@ ActiveDirectoryRights ObjectType                           InheritedObjectType  
 --------------------- ----------                           -------------------                  ---------------
         WriteProperty 8d3bca50-1d7e-11d0-a081-00aa006c33ed bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
          ReadProperty 8d3bca50-1d7e-11d0-a081-00aa006c33ed bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
+        WriteProperty 9c979768-ba1a-4c08-9632-c6a5c1ed649a bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
+         ReadProperty 9c979768-ba1a-4c08-9632-c6a5c1ed649a bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
          ReadProperty bf96798f-0de6-11d0-a285-00aa003049e2 bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
           GenericRead 00000000-0000-0000-0000-000000000000 bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
 ```
+
+> The first pair of ObjectType GUIDs corresponds to `thumbnailPhoto`, the second to `jpegPhoto`. Actual GUIDs may differ between AD forests.
 
 ### Method 2: Active Directory Users and Computers (GUI)
 
@@ -376,7 +390,7 @@ ActiveDirectoryRights ObjectType                           InheritedObjectType  
 3. Right-click the target OU (e.g. `Users`) and select **Properties > Security**
 4. Click **Advanced**
 5. Look for entries with `sa-ak-avatar-updater` as the principal
-6. Verify the permissions match: Write/Read `thumbnailPhoto` on User objects
+6. Verify the permissions match: Write/Read on each configured photo attribute on User objects
 
 ## Testing the service account
 
@@ -389,8 +403,8 @@ $Cred = Get-Credential -UserName "sa-ak-avatar-updater"
 Get-ADUser -Filter "objectSid -eq 'S-1-5-21-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX'" `
     -Server "dc.corp.example.com" `
     -Credential $Cred `
-    -Properties distinguishedName, thumbnailPhoto |
-    Select-Object distinguishedName, @{N="HasPhoto"; E={$null -ne $_.thumbnailPhoto}}
+    -Properties distinguishedName, thumbnailPhoto, jpegPhoto |
+    Select-Object distinguishedName, @{N="HasThumbnail"; E={$null -ne $_.thumbnailPhoto}}, @{N="HasJpegPhoto"; E={$null -ne $_.jpegPhoto}}
 ```
 
 Replace the `objectSid` with a real user's SID from your environment.
@@ -410,9 +424,17 @@ ldap:
   bind_password: "<the generated password>"
   search_base: "OU=Users,DC=corp,DC=example,DC=com"
   search_filter: "(objectSid={ldap_uniq})"
-  photo_attribute: "thumbnailPhoto"
-  max_thumbnail_kb: 100
-  thumbnail_size: 128
+  photos:
+    - attribute: thumbnailPhoto
+      type: binary
+      image_type: jpeg
+      image_size: 96
+      max_file_size: 100
+    - attribute: jpegPhoto
+      type: binary
+      image_type: jpeg
+      image_size: 648
+      max_file_size: 0
 ```
 
 ## Removing the service account

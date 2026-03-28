@@ -17,21 +17,21 @@ from PIL import Image
 
 from flask import Blueprint, redirect, url_for, session, request, jsonify, send_from_directory, render_template, Response, stream_with_context
 
-from src.config import ldap_cfg, img_cfg, ak_cfg, app_cfg, dry_run
+from src.config import img_cfg, ak_cfg, app_cfg, dry_run
 from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, METADATA_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
     MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image,
-    cleanup_avatar_files,
+    cleanup_avatar_files, prepare_ldap_image,
 )
 from src.authentik_api import update_avatar_url
-from src.ldap_client import update_thumbnail as update_ldap_thumbnail, is_enabled as ldap_is_enabled
+from src.ldap_client import update_photos as update_ldap_photos, is_enabled as ldap_is_enabled, get_photos_config as ldap_photos_config
 
 # Cache immutable config values at module level (config never changes after startup)
 _ldap_enabled       = ldap_is_enabled()
+_ldap_photos        = ldap_photos_config()
 _ak_avatar_size     = ak_cfg.get('avatar_size', 1024)
-_ldap_thumb_size    = ldap_cfg.get('thumbnail_size', 128)
 log = logging.getLogger('routes')
 
 routes_bp = Blueprint('routes', __name__)
@@ -222,28 +222,48 @@ def api_upload():
                 yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
                 has_failure = True
 
-            # Update LDAP server (if enabled).
+            # Update LDAP server (if enabled and photos are configured).
             # Only attempt if the user has a `ldap_uniq` attribute in Authentik,
             # which proves they were synced from LDAP.  Users without it are
             # Authentik-only and have no corresponding LDAP object to update.
-            if _ldap_enabled:
+            if _ldap_enabled and _ldap_photos:
                 ldap_uniq = ak_attrs.get('ldap_uniq')
                 if ldap_uniq:
-                    log.debug('User has ldap_uniq=%r – proceeding with LDAP update.', ldap_uniq)
+                    log.debug('User has ldap_uniq=%r – preparing %d LDAP photo update(s).', ldap_uniq, len(_ldap_photos))
                     try:
-                        thumb_path = AVATAR_ROOT / f'{_ldap_thumb_size}x{_ldap_thumb_size}' / f'{filename_base}.jpg'
-                        log.debug('Reading LDAP thumbnail from %s.', thumb_path)
-                        jpeg_bytes = thumb_path.read_bytes()
-                        update_ldap_thumbnail(ldap_uniq, jpeg_bytes)
+                        ldap_updates = []
+                        for photo_cfg in _ldap_photos:
+                            attr = photo_cfg['attribute']
+                            ptype = photo_cfg['type']
+
+                            if ptype == 'binary':
+                                img_bytes = prepare_ldap_image(
+                                    image, filename_base,
+                                    photo_cfg['image_size'], photo_cfg['image_type'],
+                                    photo_cfg.get('max_file_size', 0),
+                                )
+                                ldap_updates.append({'attribute': attr, 'value': img_bytes})
+                                log.info('Prepared LDAP %s: %dx%d %s, %d bytes.',
+                                         attr, photo_cfg['image_size'], photo_cfg['image_size'],
+                                         photo_cfg['image_type'].upper(), len(img_bytes))
+                            elif ptype == 'url':
+                                size_key = f"{photo_cfg['image_size']}x{photo_cfg['image_size']}"
+                                ext = 'jpg' if photo_cfg['image_type'] in ('jpeg', 'jpg') else photo_cfg['image_type']
+                                url = urls[size_key][ext]
+                                ldap_updates.append({'attribute': attr, 'value': url})
+                                log.info('Prepared LDAP %s: URL → %s.', attr, url)
+
+                        update_ldap_photos(ldap_uniq, ldap_updates)
                         status = 'dry-run' if dry_run else 'success'
-                        yield _sse({'step': t('step_ldap_updated'), 'status': status})
+                        detail = ', '.join(u['attribute'] for u in ldap_updates)
+                        yield _sse({'step': t('step_ldap_updated'), 'status': status, 'detail': detail})
                     except Exception:
-                        log.exception('Failed to update LDAP photo attribute.')
+                        log.exception('Failed to update LDAP photo attributes.')
                         yield _sse({'step': t('step_ldap_updated'), 'status': 'failed'})
                         has_failure = True
                 else:
                     # User is not LDAP-synced — skip the LDAP step entirely
-                    log.info('User pk=%s has no ldap_uniq attribute – skipping LDAP thumbnail update.', user['pk'])
+                    log.info('User pk=%s has no ldap_uniq attribute – skipping LDAP photo updates.', user['pk'])
                     yield _sse({'step': t('step_ldap_updated'), 'status': 'skipped'})
 
             # Rollback on backend failure

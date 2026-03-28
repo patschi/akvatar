@@ -177,6 +177,125 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
     return results, total_bytes
 
 
+# ---------------------------------------------------------------------------
+# LDAP image preparation
+# ---------------------------------------------------------------------------
+# Mapping from config image_type to (Pillow format, file extension)
+_FORMAT_MAP = {
+    'jpeg': ('JPEG', 'jpg'),
+    'jpg':  ('JPEG', 'jpg'),
+    'png':  ('PNG', 'png'),
+    'webp': ('WEBP', 'webp'),
+}
+
+_QUALITY_STEP = 5
+_MIN_QUALITY = 10
+
+
+def prepare_ldap_image(
+    source_image: Image.Image,
+    filename_base: str,
+    target_size: int,
+    image_type: str,
+    max_file_size_kb: int,
+) -> bytes:
+    """
+    Prepare image bytes for an LDAP binary attribute.
+
+    Reuses a pre-generated file if it exists at the exact size/format and fits
+    within the file size limit.  Otherwise, resizes from the source image and
+    reduces quality iteratively until the output fits.
+
+    Returns encoded image bytes ready for LDAP.
+    Raises ValueError if the image cannot be compressed to fit.
+    """
+    import io as _io
+
+    pillow_fmt, file_ext = _FORMAT_MAP[image_type.lower()]
+    max_bytes = max_file_size_kb * 1024 if max_file_size_kb > 0 else 0
+
+    log.debug('Preparing LDAP image: %dx%d %s (max %d KB).',
+              target_size, target_size, pillow_fmt, max_file_size_kb)
+
+    # -- Try to reuse a pre-generated file ------------------------------------
+    existing_path = AVATAR_ROOT / f'{target_size}x{target_size}' / f'{filename_base}.{file_ext}'
+    if existing_path.is_file():
+        data = existing_path.read_bytes()
+        if max_bytes == 0 or len(data) <= max_bytes:
+            log.info('Reusing pre-generated %s (%d bytes) for LDAP.', existing_path.name, len(data))
+            return data
+        log.debug('Pre-generated file %s is %d bytes, exceeds limit of %d bytes – will re-encode.',
+                   existing_path.name, len(data), max_bytes)
+
+    # -- Resize from the closest equal-or-larger source -----------------------
+    # Check available pre-generated sizes (descending) for a suitable source.
+    # Fall back to the original source_image if nothing usable exists on disk.
+    source_for_resize = source_image
+    available_sizes = sorted(img_cfg['sizes'], reverse=True)
+    for sz in available_sizes:
+        if sz >= target_size:
+            candidate = AVATAR_ROOT / f'{sz}x{sz}' / f'{filename_base}.{file_ext}'
+            if candidate.is_file():
+                log.debug('Using pre-generated %dx%d as resize source for %dx%d.',
+                           sz, sz, target_size, target_size)
+                source_for_resize = Image.open(candidate)
+                source_for_resize.load()
+                break
+
+    log.debug('Resizing to %dx%d %s for LDAP attribute.', target_size, target_size, pillow_fmt)
+    resized = source_for_resize.resize((target_size, target_size), Image.LANCZOS)
+    if pillow_fmt == 'JPEG' and resized.mode != 'RGB':
+        resized = resized.convert('RGB')
+
+    # -- Determine starting quality -------------------------------------------
+    if pillow_fmt == 'JPEG':
+        quality = img_cfg.get('jpeg_quality', 90)
+    elif pillow_fmt == 'WEBP':
+        quality = img_cfg.get('webp_quality', 85)
+    else:
+        quality = None  # PNG is lossless
+
+    def _encode(q=None):
+        buf = _io.BytesIO()
+        if pillow_fmt == 'JPEG':
+            resized.save(buf, format='JPEG', quality=q, optimize=True)
+        elif pillow_fmt == 'PNG':
+            resized.save(buf, format='PNG', compress_level=img_cfg.get('png_compress_level', 6), optimize=True)
+        elif pillow_fmt == 'WEBP':
+            resized.save(buf, format='WEBP', quality=q, method=6)
+        return buf.getvalue()
+
+    data = _encode(quality)
+    log.debug('Encoded %dx%d %s: %d bytes (quality=%s).', target_size, target_size, pillow_fmt, len(data), quality)
+
+    if max_bytes == 0 or len(data) <= max_bytes:
+        log.info('LDAP image ready: %dx%d %s, %d bytes (quality=%s).', target_size, target_size, pillow_fmt, len(data), quality)
+        return data
+
+    # -- Quality reduction loop (JPEG / WebP only) ----------------------------
+    if quality is None:
+        raise ValueError(
+            f'PNG image at {target_size}x{target_size} is {len(data)} bytes, '
+            f'exceeding the {max_file_size_kb} KB limit. PNG is lossless and quality '
+            f'cannot be reduced. Use JPEG or WebP, or increase max_file_size.'
+        )
+
+    log.debug('Image exceeds %d KB limit – starting quality reduction from %d.', max_file_size_kb, quality)
+    while quality > _MIN_QUALITY:
+        quality = max(quality - _QUALITY_STEP, _MIN_QUALITY)
+        data = _encode(quality)
+        log.debug('Re-encoded at quality=%d: %d bytes.', quality, len(data))
+        if len(data) <= max_bytes:
+            log.info('LDAP image fits at quality=%d: %dx%d %s, %d bytes (limit %d KB).',
+                     quality, target_size, target_size, pillow_fmt, len(data), max_file_size_kb)
+            return data
+
+    raise ValueError(
+        f'{pillow_fmt} image at {target_size}x{target_size} is still {len(data)} bytes '
+        f'at quality={_MIN_QUALITY}, exceeding the {max_file_size_kb} KB limit.'
+    )
+
+
 def cleanup_avatar_files(filename_base: str) -> None:
     """
     Remove all generated image files and the metadata JSON for one avatar set.

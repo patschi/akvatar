@@ -47,9 +47,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`ldap.bind_password`](#ldap_bind_password) | String | Service account password |
 | [`ldap.search_base`](#ldap_search_base) | String | Base DN for user searches |
 | [`ldap.search_filter`](#ldap_search_filter) | String | LDAP filter to locate the user object |
-| [`ldap.photo_attribute`](#ldap_photo_attribute) | String | LDAP attribute to write the photo into |
-| [`ldap.max_thumbnail_kb`](#ldap_max_thumbnail_kb) | Integer | Maximum thumbnail size accepted by the LDAP server |
-| [`ldap.thumbnail_size`](#ldap_thumbnail_size) | Integer | Image size (px) used for the LDAP thumbnail |
+| [`ldap.photos`](#ldap_photos) | List | LDAP photo attributes to update (see details below) |
 | [`images.sizes`](#images_sizes) | List | Square output sizes to generate (px) |
 | [`images.formats`](#images_formats) | List | Output formats to save for each size |
 | [`images.jpeg_quality`](#images_jpeg_quality) | Integer | JPEG compression quality (1–100) |
@@ -500,40 +498,45 @@ The LDAP search filter used to locate the user object. The placeholder `{ldap_un
 
 The default uses `objectSid`, which is the standard unique identifier in Microsoft Active Directory. For other LDAP directories, change this to match your schema (e.g. `(uid={ldap_uniq})` for OpenLDAP).
 
-<a id="ldap_photo_attribute"></a>
+<a id="ldap_photos"></a>
 
-### `ldap.photo_attribute`
-
-| | |
-|---|---|
-| **Type** | String |
-| **Default** | `"thumbnailPhoto"` |
-
-The LDAP attribute to write the photo JPEG bytes into. The default `thumbnailPhoto` is standard in Microsoft Active Directory and is displayed in Outlook, Teams, and other Microsoft applications. For other directories, use the appropriate attribute (e.g. `jpegPhoto` for OpenLDAP).
-
-<a id="ldap_max_thumbnail_kb"></a>
-
-### `ldap.max_thumbnail_kb`
+### `ldap.photos`
 
 | | |
 |---|---|
-| **Type** | Integer (kilobytes) |
-| **Default** | `100` |
+| **Type** | List of objects |
 
-Maximum allowed size of the JPEG thumbnail in kilobytes. The application checks the thumbnail size before writing it to LDAP and raises an error if it exceeds this limit. Active Directory has a default limit of ~100 KB for `thumbnailPhoto`.
+A list of LDAP attributes to update after each successful avatar upload. Each entry defines one attribute and how to populate it.
 
-<a id="ldap_thumbnail_size"></a>
+**Fields per entry:**
 
-### `ldap.thumbnail_size`
+| Field | Type | Description |
+|---|---|---|
+| `attribute` | String | LDAP attribute name (e.g. `thumbnailPhoto`, `jpegPhoto`) |
+| `type` | String | `binary` (raw image bytes) or `url` (public URL string) |
+| `image_type` | String | Image format: `jpeg`, `png`, or `webp` |
+| `image_size` | Integer | Square pixel dimension (e.g. `96` = 96×96) |
+| `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. If the image exceeds this limit, quality is reduced automatically (JPEG/WebP). |
 
-| | |
-|---|---|
-| **Type** | Integer (pixels) |
-| **Default** | `128` |
+**Type `binary`:** Writes raw image bytes into the attribute. If a pre-generated file at the exact size and format already exists and fits within `max_file_size`, it is reused. Otherwise the image is generated on-the-fly from the closest equal-or-larger source and quality is reduced iteratively until the output fits.
 
-Which generated image size (in pixels) to use for the LDAP photo JPEG. This value **must** be one of the entries in `images.sizes`. The application validates this at startup and exits with an error if the size is not found.
+**Type `url`:** Writes the public URL of a pre-generated image file as a string. Requires `image_size` to be present in `images.sizes` and `image_type` to be present in `images.formats`.
 
-A smaller size (128 or 256) is recommended for LDAP to stay within the `max_thumbnail_kb` limit and because LDAP photo attributes are typically used for small thumbnails.
+**Example:**
+
+```yaml
+photos:
+  - attribute: thumbnailPhoto
+    type: binary
+    image_type: jpeg
+    image_size: 96
+    max_file_size: 100
+  - attribute: jpegPhoto
+    type: binary
+    image_type: jpeg
+    image_size: 648
+    max_file_size: 0
+```
 
 ---
 
@@ -548,7 +551,7 @@ A smaller size (128 or 256) is recommended for LDAP to stay within the `max_thum
 | **Type** | List of integers |
 | **Default** | `[1024, 648, 512, 256, 128, 64]` |
 
-The square pixel dimensions to generate for each uploaded avatar. Every uploaded image is resized to each of these sizes. The values in `authentik_api.avatar_size` and `ldap.thumbnail_size` must appear in this list.
+The square pixel dimensions to generate for each uploaded avatar. Every uploaded image is resized to each of these sizes. The value in `authentik_api.avatar_size` must appear in this list. LDAP photo entries with `type: url` also require their `image_size` to be in this list.
 
 <a id="images_formats"></a>
 

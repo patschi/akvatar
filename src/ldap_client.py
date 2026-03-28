@@ -1,15 +1,18 @@
 """
 ldap_client.py – LDAP server client.
 
-Writes the JPEG thumbnail into a configurable binary attribute (default:
-``thumbnailPhoto``) of the LDAP user object that matches the authenticated
-user's unique identifier synced from Authentik.
+Writes photo data (binary images or URL strings) into configurable LDAP
+attributes for the user object that matches the authenticated user's unique
+identifier synced from Authentik.
+
+Supports multiple photo attributes per user, each with independent format,
+size, and type (binary or URL) settings via the ``ldap.photos`` config array.
 
 Designed for any standards-compliant LDAP server.  Microsoft Active Directory
 is the primary and only tested target, but the search filter and photo
-attribute are fully configurable for other directories.
+attributes are fully configurable for other directories.
 
-The entire module is a no-op when `ldap.enabled` is `false` in config.yml.
+The entire module is a no-op when ``ldap.enabled`` is ``false`` in config.yml.
 """
 
 import ssl
@@ -25,9 +28,8 @@ log = logging.getLogger('ldap_client')
 # Pre-compute enabled state and config values at import time (config is immutable after startup)
 _enabled = ldap_cfg.get('enabled', False)
 _skip_verify = ldap_cfg.get('skip_cert_verify', False)
-_max_thumbnail_bytes = ldap_cfg.get('max_thumbnail_kb', 100) * 1024
 _search_filter_tpl = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
-_photo_attribute = ldap_cfg.get('photo_attribute', 'thumbnailPhoto')
+_photos = ldap_cfg.get('photos', [])
 
 # Pre-build the ldap3.Server object once so it is reused across connections.
 # The Server object holds DNS resolution, schema info, and TLS config — all of
@@ -49,29 +51,41 @@ def is_enabled() -> bool:
     return _enabled
 
 
-def update_thumbnail(ldap_uniq: str, jpeg_bytes: bytes) -> None:
+def get_photos_config() -> list[dict]:
+    """Return the configured ``ldap.photos`` list (may be empty)."""
+    return _photos
+
+
+def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
     """
-    Connect to the LDAP server and replace the photo attribute for the user
+    Connect to the LDAP server and replace photo attributes for the user
     matching the given ``ldap_uniq`` value.
 
-    ``ldap_uniq`` is the unique identifier stored in Authentik's user
-    attributes (e.g. an Active Directory ``objectSid`` like
-    ``S-1-5-21-466132232-558606507-1367596332-3607``).  The LDAP search
-    filter and photo attribute are configurable in ``config.yml`` so the
-    module works with any LDAP directory.
+    ``updates`` is a list of dicts, each with:
+      - ``attribute``: LDAP attribute name (e.g. ``thumbnailPhoto``)
+      - ``value``: ``bytes`` for binary attributes or ``str`` for URL attributes
 
-    Raises ValueError if the user is not found or the image exceeds the size limit.
+    All attribute changes are applied in a single LDAP modify operation.
+
+    Raises ValueError if the user is not found.
     Raises RuntimeError on LDAP modify failure.
     """
     if not _enabled:
-        log.info('LDAP integration is disabled – skipping thumbnail update.')
+        log.info('LDAP integration is disabled – skipping photo updates.')
+        return
+
+    if not updates:
+        log.debug('No LDAP photo updates to apply.')
         return
 
     if dry_run:
-        log.info('[DRY-RUN] Would update LDAP %s for ldap_uniq=%s (%d bytes).', _photo_attribute, ldap_uniq, len(jpeg_bytes))
+        for u in updates:
+            val_desc = f'{len(u["value"])} bytes' if isinstance(u['value'], bytes) else repr(u['value'])
+            log.info('[DRY-RUN] Would update LDAP %s for ldap_uniq=%s (%s).', u['attribute'], ldap_uniq, val_desc)
         return
 
-    log.debug('Connecting to LDAP server %s:%s (SSL=%s, skip_cert_verify=%s).', ldap_cfg['server'], ldap_cfg['port'], ldap_cfg.get('use_ssl', False), _skip_verify)
+    log.debug('Connecting to LDAP server %s:%s (SSL=%s, skip_cert_verify=%s).',
+              ldap_cfg['server'], ldap_cfg['port'], ldap_cfg.get('use_ssl', False), _skip_verify)
 
     conn = ldap3.Connection(_server, user=ldap_cfg['bind_dn'], password=ldap_cfg['bind_password'], auto_bind=True)
 
@@ -91,18 +105,24 @@ def update_thumbnail(ldap_uniq: str, jpeg_bytes: bytes) -> None:
         user_dn = conn.entries[0].entry_dn
         log.info('Found LDAP user DN: %s (ldap_uniq=%s)', user_dn, ldap_uniq)
 
-        # Enforce the thumbnail size limit
-        if len(jpeg_bytes) > _max_thumbnail_bytes:
-            raise ValueError(f'Thumbnail JPEG is {len(jpeg_bytes)} bytes, exceeding the limit of {_max_thumbnail_bytes} bytes.')
-        log.debug('Thumbnail size OK: %d bytes (limit %d).', len(jpeg_bytes), _max_thumbnail_bytes)
+        # Build a single modify operation with all attribute changes
+        changes = {}
+        for u in updates:
+            attr = u['attribute']
+            val = u['value']
+            changes[attr] = [(ldap3.MODIFY_REPLACE, [val])]
+            val_desc = f'{len(val)} bytes' if isinstance(val, bytes) else repr(val)
+            log.debug('Queuing LDAP modify: %s = %s on %r.', attr, val_desc, user_dn)
 
-        # Write the photo attribute
-        log.debug('Replacing %s on %r.', _photo_attribute, user_dn)
-        conn.modify(user_dn, {_photo_attribute: [(ldap3.MODIFY_REPLACE, [jpeg_bytes])]})
+        log.info('Applying %d attribute change(s) to %r.', len(changes), user_dn)
+        conn.modify(user_dn, changes)
 
         if conn.result['result'] != 0:
             raise RuntimeError(f'LDAP modify failed: {conn.result}')
 
-        log.info('LDAP %s updated for ldap_uniq=%s.', _photo_attribute, ldap_uniq)
+        for u in updates:
+            val = u['value']
+            val_desc = f'{len(val)} bytes' if isinstance(val, bytes) else repr(val)
+            log.info('LDAP %s updated for ldap_uniq=%s (%s).', u['attribute'], ldap_uniq, val_desc)
     finally:
         conn.unbind()

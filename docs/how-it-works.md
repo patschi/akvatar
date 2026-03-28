@@ -183,12 +183,13 @@ See [Authentik API Token](authentik-api-token.md) for setup instructions.
 
 ### LDAP Server (optional)
 
-When LDAP is enabled, the app writes the avatar as a JPEG binary blob directly into the user's LDAP object:
+When LDAP is enabled, the app writes avatar data into one or more LDAP attributes as defined in the `ldap.photos` configuration:
 
-1. **Bind** to the LDAP server as the configured service account
-2. **Search** for the user under `search_base` using `search_filter` (default: `(objectSid={ldap_uniq})` for Active Directory)
-3. **Modify** the `photo_attribute` (default: `thumbnailPhoto`) with the JPEG bytes of the configured thumbnail size (default: 128x128)
-4. **Unbind**
+1. **Prepare** each configured photo attribute – reuse a pre-generated file if the exact size/format exists and fits within `max_file_size`, otherwise resize from the closest larger source and reduce quality until it fits (JPEG/WebP)
+2. **Bind** to the LDAP server as the configured service account
+3. **Search** for the user under `search_base` using `search_filter` (default: `(objectSid={ldap_uniq})` for Active Directory)
+4. **Modify** all configured attributes in a single LDAP operation – binary attributes receive raw image bytes, URL attributes receive the public file URL
+5. **Unbind**
 
 The `ldap_uniq` value comes from the user's Authentik attributes (read during the Authentik API call). Users without `ldap_uniq` are Authentik-only accounts and the LDAP step is skipped.
 

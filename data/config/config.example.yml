@@ -110,14 +110,32 @@ ldap:
   # value of the user's ldap_uniq attribute from Authentik.
   # Default uses objectSid (Microsoft Active Directory).
   search_filter: "(objectSid={ldap_uniq})"
-  # LDAP attribute to write the photo JPEG into.
-  # Default: thumbnailPhoto (Microsoft Active Directory).
-  photo_attribute: "thumbnailPhoto"
-  # Maximum thumbnail size in KB the LDAP server accepts (default 100 KB)
-  max_thumbnail_kb: 100
-  # Which generated image size (px) to use for the LDAP photo JPEG.
-  # Must be one of the values in images.sizes below.
-  thumbnail_size: 128
+  # Photo attributes to update in LDAP.  Each entry defines one LDAP attribute
+  # to write after a successful avatar upload.
+  #
+  # Fields per entry:
+  #   attribute   – LDAP attribute name to write to
+  #   type        – "binary" (raw image bytes) or "url" (public URL string)
+  #   image_type  – image format: jpg, png, or webp
+  #   image_size  – square pixel dimension (e.g. 96 = 96x96)
+  #   max_file_size – maximum size in KB (binary only; 0 = unlimited).
+  #                   If exceeded, quality is reduced automatically (JPEG/WebP).
+  #
+  # For "url" type, image_size must be in images.sizes and image_type must be
+  # in images.formats below (the URL points to a pre-generated file).
+  # For "binary" type, images are generated on-the-fly if no pre-generated file
+  # at the exact size/format exists, using the closest larger source image.
+  photos:
+    - attribute: thumbnailPhoto
+      type: binary
+      image_type: jpeg
+      image_size: 128
+      max_file_size: 100
+    - attribute: jpegPhoto
+      type: binary
+      image_type: jpeg
+      image_size: 256
+      max_file_size: 250
 
 # --- Image Processing ---
 images:

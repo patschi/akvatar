@@ -97,17 +97,45 @@ if _ak_avatar_size not in _valid_sizes:
 log.debug('Authentik API will use %dx%d JPG for avatar URL.', _ak_avatar_size, _ak_avatar_size)
 
 if ldap_cfg.get('enabled', False):
-    _ldap_thumb_size = ldap_cfg.get('thumbnail_size', 128)
-    if _ldap_thumb_size not in _valid_sizes:
-        print(f'FATAL: ldap.thumbnail_size={_ldap_thumb_size} is not in images.sizes={_valid_sizes}.', file=sys.stderr)
-        sys.exit(1)
-    _ldap_photo_attr = ldap_cfg.get('photo_attribute', 'thumbnailPhoto')
+    _ldap_photos = ldap_cfg.get('photos', [])
+    if not _ldap_photos:
+        log.warning('LDAP is enabled but no photo attributes are configured (ldap.photos is empty).')
+
+    from src.imaging import _FORMAT_MAP
+    _valid_image_types = set(_FORMAT_MAP.keys())
+    _valid_photo_types = {'binary', 'url'}
+    _valid_formats_lower = [f.lower() for f in img_cfg.get('formats', [])]
+
+    for _i, _photo in enumerate(_ldap_photos):
+        _pfx = f'ldap.photos[{_i}]'
+        for _key in ('attribute', 'type', 'image_type', 'image_size'):
+            if _key not in _photo:
+                print(f'FATAL: {_pfx} is missing required key "{_key}".', file=sys.stderr)
+                sys.exit(1)
+        if _photo['type'] not in _valid_photo_types:
+            print(f'FATAL: {_pfx}.type={_photo["type"]!r} must be one of {sorted(_valid_photo_types)}.', file=sys.stderr)
+            sys.exit(1)
+        if _photo['image_type'] not in _valid_image_types:
+            print(f'FATAL: {_pfx}.image_type={_photo["image_type"]!r} must be one of {sorted(_valid_image_types)}.', file=sys.stderr)
+            sys.exit(1)
+        if _photo['type'] == 'url':
+            if _photo['image_size'] not in _valid_sizes:
+                print(f'FATAL: {_pfx}.image_size={_photo["image_size"]} is not in images.sizes={_valid_sizes} (required for type=url).', file=sys.stderr)
+                sys.exit(1)
+            _ext = 'jpg' if _photo['image_type'] in ('jpeg', 'jpg') else _photo['image_type']
+            if _ext not in _valid_formats_lower:
+                print(f'FATAL: {_pfx}.image_type={_photo["image_type"]!r} (ext={_ext}) is not in images.formats (required for type=url).', file=sys.stderr)
+                sys.exit(1)
+        log.debug('LDAP photo[%d]: attribute=%s, type=%s, image_type=%s, size=%d, max_file_size=%d KB.',
+                   _i, _photo['attribute'], _photo['type'], _photo['image_type'],
+                   _photo['image_size'], _photo.get('max_file_size', 0))
+
     _ldap_search_filter = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
-    log.debug('LDAP will use %dx%d JPG for %s.', _ldap_thumb_size, _ldap_thumb_size, _ldap_photo_attr)
     log.debug(
         'LDAP user identification: will search base %r with filter %r on server %s:%s.',
         ldap_cfg.get('search_base', ''), _ldap_search_filter, ldap_cfg.get('server', ''), ldap_cfg.get('port', 636),
     )
+    log.info('LDAP configured with %d photo attribute(s).', len(_ldap_photos))
 
 # ---------------------------------------------------------------------------
 # Validate Flask secret key
