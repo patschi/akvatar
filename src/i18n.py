@@ -42,7 +42,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # -- Dashboard --
         'upload_heading':           'Update your profile picture',
-        'upload_subtitle':          'Select an image, crop it to a square, and hit <strong>Upload</strong>. Your avatar will be updated across our systems automatically.',
+        'upload_subtitle':          'Select an image, crop it to a square, and hit Upload. Your avatar will be updated across our systems automatically.',
         'upload_choose':            'Choose image\u2026',
         'upload_disclaimer':        'By uploading, you confirm this is an appropriate image and that you have the right to use it.',
         'upload_button':            'Upload & Update Avatar',
@@ -94,7 +94,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # -- Dashboard --
         'upload_heading':           'Profilbild aktualisieren',
-        'upload_subtitle':          'W\u00e4hlen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf <strong>Hochladen</strong>. Ihr Avatar wird automatisch in unseren Systemen aktualisiert.',
+        'upload_subtitle':          'W\u00e4hlen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf Hochladen. Ihr Avatar wird automatisch in unseren Systemen aktualisiert.',
         'upload_choose':            'Bild ausw\u00e4hlen\u2026',
         'upload_disclaimer':        'Mit dem Hochladen best\u00e4tigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden.',
         'upload_button':            'Hochladen & Avatar aktualisieren',

@@ -5,6 +5,7 @@ Handles secure, unguessable filename generation, resizing to all configured
 square sizes, and saving in every configured format (jpg, png, webp).
 """
 
+import io
 import json
 import logging
 from pathlib import Path
@@ -129,6 +130,33 @@ def ensure_size_directories() -> None:
     log.debug('Ensured size directories under %s.', AVATAR_ROOT)
 
 
+# ---------------------------------------------------------------------------
+# Shared format mapping and save helper
+# ---------------------------------------------------------------------------
+_FORMAT_MAP = {
+    'jpeg': ('JPEG', 'jpg'),
+    'jpg':  ('JPEG', 'jpg'),
+    'png':  ('PNG', 'png'),
+    'webp': ('WEBP', 'webp'),
+}
+
+_QUALITY_STEP = 5
+_MIN_QUALITY = 10
+
+
+def _save_image(image: Image.Image, target, pillow_fmt: str, quality: int | None = None) -> None:
+    """Save *image* to *target* (file path or file-like) using format-specific settings."""
+    if pillow_fmt == 'JPEG':
+        image.save(target, format='JPEG',
+                   quality=quality if quality is not None else img_cfg['jpeg_quality'], optimize=True)
+    elif pillow_fmt == 'PNG':
+        image.save(target, format='PNG',
+                   compress_level=img_cfg['png_compress_level'], optimize=True)
+    elif pillow_fmt == 'WEBP':
+        image.save(target, format='WEBP',
+                   quality=quality if quality is not None else img_cfg['webp_quality'], method=6)
+
+
 def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dict[str, str]], int]:
     """
     Resize `image` to every configured square size and save in every configured format.
@@ -156,17 +184,12 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
 
         for fmt in formats:
             ext = fmt.lower()
+            pillow_fmt = _FORMAT_MAP[ext][0]
             out_path = size_dir / f'{filename_base}.{ext}'
             log.debug('Saving %s as %s.', key, ext.upper())
 
-            if ext in ('jpg', 'jpeg'):
-                resized_rgb.save(
-                    out_path, format='JPEG', quality=img_cfg['jpeg_quality'], optimize=True,
-                )
-            elif ext == 'png':
-                resized.save(out_path, format='PNG', compress_level=img_cfg['png_compress_level'], optimize=True)
-            elif ext == 'webp':
-                resized.save(out_path, format='WEBP', quality=img_cfg['webp_quality'], method=6)
+            target_img = resized_rgb if pillow_fmt == 'JPEG' else resized
+            _save_image(target_img, out_path, pillow_fmt)
 
             file_size = out_path.stat().st_size
             total_bytes += file_size
@@ -180,17 +203,6 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
 # ---------------------------------------------------------------------------
 # LDAP image preparation
 # ---------------------------------------------------------------------------
-# Mapping from config image_type to (Pillow format, file extension)
-_FORMAT_MAP = {
-    'jpeg': ('JPEG', 'jpg'),
-    'jpg':  ('JPEG', 'jpg'),
-    'png':  ('PNG', 'png'),
-    'webp': ('WEBP', 'webp'),
-}
-
-_QUALITY_STEP = 5
-_MIN_QUALITY = 10
-
 
 def prepare_ldap_image(
     source_image: Image.Image,
@@ -209,8 +221,6 @@ def prepare_ldap_image(
     Returns encoded image bytes ready for LDAP.
     Raises ValueError if the image cannot be compressed to fit.
     """
-    import io as _io
-
     pillow_fmt, file_ext = _FORMAT_MAP[image_type.lower()]
     max_bytes = max_file_size_kb * 1024 if max_file_size_kb > 0 else 0
 
@@ -219,50 +229,32 @@ def prepare_ldap_image(
 
     # -- Try to reuse a pre-generated file ------------------------------------
     existing_path = AVATAR_ROOT / f'{target_size}x{target_size}' / f'{filename_base}.{file_ext}'
-    if existing_path.is_file():
+    try:
         data = existing_path.read_bytes()
         if max_bytes == 0 or len(data) <= max_bytes:
             log.info('Reusing pre-generated %s (%d bytes) for LDAP.', existing_path.name, len(data))
             return data
         log.debug('Pre-generated file %s is %d bytes, exceeds limit of %d bytes – will re-encode.',
                    existing_path.name, len(data), max_bytes)
+    except FileNotFoundError:
+        pass
 
-    # -- Resize from the closest equal-or-larger source -----------------------
-    # Check available pre-generated sizes (descending) for a suitable source.
-    # Fall back to the original source_image if nothing usable exists on disk.
-    source_for_resize = source_image
-    available_sizes = sorted(img_cfg['sizes'], reverse=True)
-    for sz in available_sizes:
-        if sz >= target_size:
-            candidate = AVATAR_ROOT / f'{sz}x{sz}' / f'{filename_base}.{file_ext}'
-            if candidate.is_file():
-                log.debug('Using pre-generated %dx%d as resize source for %dx%d.',
-                           sz, sz, target_size, target_size)
-                source_for_resize = Image.open(candidate)
-                source_for_resize.load()
-                break
-
+    # -- Resize from source image and encode ----------------------------------
     log.debug('Resizing to %dx%d %s for LDAP attribute.', target_size, target_size, pillow_fmt)
-    resized = source_for_resize.resize((target_size, target_size), Image.LANCZOS)
+    resized = source_image.resize((target_size, target_size), Image.LANCZOS)
     if pillow_fmt == 'JPEG' and resized.mode != 'RGB':
         resized = resized.convert('RGB')
 
-    # -- Determine starting quality -------------------------------------------
     if pillow_fmt == 'JPEG':
-        quality = img_cfg.get('jpeg_quality', 90)
+        quality = img_cfg['jpeg_quality']
     elif pillow_fmt == 'WEBP':
-        quality = img_cfg.get('webp_quality', 85)
+        quality = img_cfg['webp_quality']
     else:
         quality = None  # PNG is lossless
 
     def _encode(q=None):
-        buf = _io.BytesIO()
-        if pillow_fmt == 'JPEG':
-            resized.save(buf, format='JPEG', quality=q, optimize=True)
-        elif pillow_fmt == 'PNG':
-            resized.save(buf, format='PNG', compress_level=img_cfg.get('png_compress_level', 6), optimize=True)
-        elif pillow_fmt == 'WEBP':
-            resized.save(buf, format='WEBP', quality=q, method=6)
+        buf = io.BytesIO()
+        _save_image(resized, buf, pillow_fmt, quality=q)
         return buf.getvalue()
 
     data = _encode(quality)

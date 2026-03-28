@@ -22,7 +22,7 @@ from src.i18n import t
 from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, METADATA_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
-    MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image,
+    MAX_SIZE, _FORMAT_MAP, normalize_image, check_magic_bytes, generate_filename, process_image,
     cleanup_avatar_files, prepare_ldap_image,
 )
 from src.authentik_api import update_avatar_url
@@ -248,10 +248,12 @@ def api_upload():
                                          photo_cfg['image_type'].upper(), len(img_bytes))
                             elif ptype == 'url':
                                 size_key = f"{photo_cfg['image_size']}x{photo_cfg['image_size']}"
-                                ext = 'jpg' if photo_cfg['image_type'] in ('jpeg', 'jpg') else photo_cfg['image_type']
+                                ext = _FORMAT_MAP[photo_cfg['image_type']][1]
                                 url = urls[size_key][ext]
                                 ldap_updates.append({'attribute': attr, 'value': url})
                                 log.info('Prepared LDAP %s: URL → %s.', attr, url)
+                            else:
+                                log.warning('Unknown LDAP photo type %r for attribute %s – skipping.', ptype, attr)
 
                         update_ldap_photos(ldap_uniq, ldap_updates)
                         status = 'dry-run' if dry_run else 'success'

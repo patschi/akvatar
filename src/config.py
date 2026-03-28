@@ -122,7 +122,7 @@ if ldap_cfg.get('enabled', False):
             if _photo['image_size'] not in _valid_sizes:
                 print(f'FATAL: {_pfx}.image_size={_photo["image_size"]} is not in images.sizes={_valid_sizes} (required for type=url).', file=sys.stderr)
                 sys.exit(1)
-            _ext = 'jpg' if _photo['image_type'] in ('jpeg', 'jpg') else _photo['image_type']
+            _ext = _FORMAT_MAP[_photo['image_type']][1]
             if _ext not in _valid_formats_lower:
                 print(f'FATAL: {_pfx}.image_type={_photo["image_type"]!r} (ext={_ext}) is not in images.formats (required for type=url).', file=sys.stderr)
                 sys.exit(1)

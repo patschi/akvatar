@@ -56,6 +56,11 @@ def get_photos_config() -> list[dict]:
     return _photos
 
 
+def _describe_value(val) -> str:
+    """Human-readable description of an LDAP attribute value for logging."""
+    return f'{len(val)} bytes' if isinstance(val, bytes) else repr(val)
+
+
 def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
     """
     Connect to the LDAP server and replace photo attributes for the user
@@ -80,7 +85,7 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
 
     if dry_run:
         for u in updates:
-            val_desc = f'{len(u["value"])} bytes' if isinstance(u['value'], bytes) else repr(u['value'])
+            val_desc = _describe_value(u['value'])
             log.info('[DRY-RUN] Would update LDAP %s for ldap_uniq=%s (%s).', u['attribute'], ldap_uniq, val_desc)
         return
 
@@ -111,7 +116,7 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
             attr = u['attribute']
             val = u['value']
             changes[attr] = [(ldap3.MODIFY_REPLACE, [val])]
-            val_desc = f'{len(val)} bytes' if isinstance(val, bytes) else repr(val)
+            val_desc = _describe_value(val)
             log.debug('Queuing LDAP modify: %s = %s on %r.', attr, val_desc, user_dn)
 
         log.info('Applying %d attribute change(s) to %r.', len(changes), user_dn)
@@ -122,7 +127,7 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
 
         for u in updates:
             val = u['value']
-            val_desc = f'{len(val)} bytes' if isinstance(val, bytes) else repr(val)
+            val_desc = _describe_value(val)
             log.info('LDAP %s updated for ldap_uniq=%s (%s).', u['attribute'], ldap_uniq, val_desc)
     finally:
         conn.unbind()
