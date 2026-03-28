@@ -10,6 +10,19 @@ import logging
 
 import yaml
 
+
+def _fatal(msg: str) -> None:
+    """Print a FATAL error and exit immediately."""
+    print(f'FATAL: {msg}', file=sys.stderr)
+    sys.exit(1)
+
+
+def _fatal_unless(condition: bool, msg: str) -> None:
+    """Exit with a FATAL error if *condition* is false."""
+    if not condition:
+        _fatal(msg)
+
+
 # ---------------------------------------------------------------------------
 # Load configuration
 # ---------------------------------------------------------------------------
@@ -19,11 +32,9 @@ try:
     with open(CONFIG_PATH, 'r', encoding='utf-8') as _f:
         cfg = yaml.safe_load(_f)
 except FileNotFoundError:
-    print(f'FATAL: Configuration file not found at {CONFIG_PATH!r}.', file=sys.stderr)
-    sys.exit(1)
+    _fatal(f'Configuration file not found at {CONFIG_PATH!r}.')
 except yaml.YAMLError as exc:
-    print(f'FATAL: Failed to parse {CONFIG_PATH!r}: {exc}', file=sys.stderr)
-    sys.exit(1)
+    _fatal(f'Failed to parse {CONFIG_PATH!r}: {exc}')
 
 # ---------------------------------------------------------------------------
 # Convenience references for each config section
@@ -91,9 +102,8 @@ if ldap_cfg.get('enabled', False) and ldap_cfg.get('skip_cert_verify', False):
 _valid_sizes = img_cfg.get('sizes', [])
 
 _ak_avatar_size = ak_cfg.get('avatar_size', 1024)
-if _ak_avatar_size not in _valid_sizes:
-    print(f'FATAL: authentik_api.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.', file=sys.stderr)
-    sys.exit(1)
+_fatal_unless(_ak_avatar_size in _valid_sizes,
+              f'authentik_api.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.')
 log.debug('Authentik API will use %dx%d JPG for avatar URL.', _ak_avatar_size, _ak_avatar_size)
 
 if ldap_cfg.get('enabled', False):
@@ -102,38 +112,44 @@ if ldap_cfg.get('enabled', False):
         log.warning('LDAP is enabled but no photo attributes are configured (ldap.photos is empty).')
 
     from src.imaging import _FORMAT_MAP
+
     _valid_image_types = set(_FORMAT_MAP.keys())
-    _valid_photo_types = {'binary', 'url'}
-    _valid_formats_lower = [f.lower() for f in img_cfg.get('formats', [])]
+    _valid_formats_lower = {f.lower() for f in img_cfg.get('formats', [])}
+    _REQUIRED_PHOTO_KEYS = ('attribute', 'type', 'image_type', 'image_size')
 
     for _i, _photo in enumerate(_ldap_photos):
         _pfx = f'ldap.photos[{_i}]'
-        for _key in ('attribute', 'type', 'image_type', 'image_size'):
+
+        # Every photo entry must have the four required keys
+        for _key in _REQUIRED_PHOTO_KEYS:
             if _key not in _photo:
-                print(f'FATAL: {_pfx} is missing required key "{_key}".', file=sys.stderr)
-                sys.exit(1)
-        if _photo['type'] not in _valid_photo_types:
-            print(f'FATAL: {_pfx}.type={_photo["type"]!r} must be one of {sorted(_valid_photo_types)}.', file=sys.stderr)
-            sys.exit(1)
-        if _photo['image_type'] not in _valid_image_types:
-            print(f'FATAL: {_pfx}.image_type={_photo["image_type"]!r} must be one of {sorted(_valid_image_types)}.', file=sys.stderr)
-            sys.exit(1)
+                _fatal(f'{_pfx} is missing required key "{_key}".')
+
+        # Validate type and image_type against known values
+        _fatal_unless(_photo['type'] in ('binary', 'url'),
+                      f'{_pfx}.type={_photo["type"]!r} must be "binary" or "url".')
+        _fatal_unless(_photo['image_type'] in _valid_image_types,
+                      f'{_pfx}.image_type={_photo["image_type"]!r} must be one of {sorted(_valid_image_types)}.')
+
+        # URL-type photos reference pre-generated files, so the size and format
+        # must exist in the images.sizes / images.formats lists.
         if _photo['type'] == 'url':
-            if _photo['image_size'] not in _valid_sizes:
-                print(f'FATAL: {_pfx}.image_size={_photo["image_size"]} is not in images.sizes={_valid_sizes} (required for type=url).', file=sys.stderr)
-                sys.exit(1)
+            _fatal_unless(_photo['image_size'] in _valid_sizes,
+                          f'{_pfx}.image_size={_photo["image_size"]} is not in images.sizes={_valid_sizes} (required for type=url).')
             _ext = _FORMAT_MAP[_photo['image_type']][1]
-            if _ext not in _valid_formats_lower:
-                print(f'FATAL: {_pfx}.image_type={_photo["image_type"]!r} (ext={_ext}) is not in images.formats (required for type=url).', file=sys.stderr)
-                sys.exit(1)
+            _fatal_unless(_ext in _valid_formats_lower,
+                          f'{_pfx}.image_type={_photo["image_type"]!r} (ext={_ext}) is not in images.formats (required for type=url).')
+
         log.debug('LDAP photo[%d]: attribute=%s, type=%s, image_type=%s, size=%d, max_file_size=%d KB.',
                    _i, _photo['attribute'], _photo['type'], _photo['image_type'],
                    _photo['image_size'], _photo.get('max_file_size', 0))
 
-    _ldap_search_filter = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
     log.debug(
-        'LDAP user identification: will search base %r with filter %r on server %s:%s.',
-        ldap_cfg.get('search_base', ''), _ldap_search_filter, ldap_cfg.get('server', ''), ldap_cfg.get('port', 636),
+        'LDAP user lookup: base=%r, filter=%r, server=%s:%s.',
+        ldap_cfg.get('search_base', ''),
+        ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})'),
+        ldap_cfg.get('server', ''),
+        ldap_cfg.get('port', 636),
     )
     log.info('LDAP configured with %d photo attribute(s).', len(_ldap_photos))
 
@@ -142,21 +158,11 @@ if ldap_cfg.get('enabled', False):
 # ---------------------------------------------------------------------------
 _secret_key = app_cfg.get('secret_key', '')
 _SECRET_KEY_MIN_LENGTH = 32
+_SECRET_KEY_HINT = 'Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"'
 
-if _secret_key == 'CHANGE-ME-to-a-random-secret-key':
-    print(
-        'FATAL: app.secret_key is still set to the default placeholder value.\n'
-        '       Generate a secure key with: python3 -c "import secrets; print(secrets.token_hex(32))"',
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-if len(_secret_key) < _SECRET_KEY_MIN_LENGTH:
-    print(
-        f'FATAL: app.secret_key is too short ({len(_secret_key)} characters, minimum {_SECRET_KEY_MIN_LENGTH}).\n'
-        f'       Generate a secure key with: python3 -c "import secrets; print(secrets.token_hex(32))"',
-        file=sys.stderr,
-    )
-    sys.exit(1)
+_fatal_unless(_secret_key != 'CHANGE-ME-to-a-random-secret-key',
+              f'app.secret_key is still set to the default placeholder value. {_SECRET_KEY_HINT}')
+_fatal_unless(len(_secret_key) >= _SECRET_KEY_MIN_LENGTH,
+              f'app.secret_key is too short ({len(_secret_key)} chars, minimum {_SECRET_KEY_MIN_LENGTH}). {_SECRET_KEY_HINT}')
 
 log.debug('Secret key validation passed (length=%d).', len(_secret_key))
