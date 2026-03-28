@@ -5,15 +5,19 @@ Creates the Flask app, registers blueprints, initialises OAuth, applies reverse-
 and subfolder middleware, and starts the development server when run directly.
 """
 
+import hashlib
 import logging
-import flask.cli
+import mimetypes
+from pathlib import Path
 from urllib.parse import urlparse
+
+import flask.cli
 
 # Suppress Flask's default startup banner ("Serving Flask app ...")
 # – we print our own startup info via the 'app' logger.
 flask.cli.show_server_banner = lambda *a, **kw: None
 
-from flask import Flask, request
+from flask import Flask, Response, abort, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
@@ -30,6 +34,35 @@ http_log = logging.getLogger('http')
 
 # Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
+# ---------------------------------------------------------------------------
+# In-memory static file cache
+# ---------------------------------------------------------------------------
+# All files in static/ are read once at import time and served from memory.
+# With gunicorn --preload, workers inherit the cache via fork (shared pages).
+_STATIC_DIR = Path(__file__).resolve().parent / 'static'
+
+
+def _build_static_cache() -> dict[str, tuple[bytes, str, str]]:
+    """Read every file under static/ into {rel_path: (data, mimetype, etag)}."""
+    cache = {}
+    for path in sorted(_STATIC_DIR.rglob('*')):
+        if not path.is_file():
+            continue
+        log.debug('Caching static file: %s', path)
+        rel = path.relative_to(_STATIC_DIR).as_posix()
+        data = path.read_bytes()
+        mime = mimetypes.guess_type(path.name)[0] or 'application/octet-stream'
+        etag = hashlib.sha256(data).hexdigest()[:16]
+        cache[rel] = (data, mime, etag)
+    log.debug('Static file cache built with %d file(s).', len(cache))
+    return cache
+
+
+_static_cache = _build_static_cache()
+log.info('Static file cache: %d file(s), %.1f KB total.',
+         len(_static_cache),
+         sum(len(d) for d, _, _ in _static_cache.values()) / 1024)
 
 
 class PrefixMiddleware:
@@ -59,7 +92,7 @@ class PrefixMiddleware:
 
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
-    app = Flask(__name__, template_folder='src/templates')
+    app = Flask(__name__, template_folder='src/templates', static_folder=None)
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
 
@@ -103,6 +136,19 @@ def create_app() -> Flask:
     # Register route blueprints
     app.register_blueprint(auth_bp)    # /login, /callback, /logout
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
+
+    # -- Serve static files from in-memory cache ----------------------------
+    @app.route('/static/<path:filename>', endpoint='static')
+    def _serve_static(filename):
+        entry = _static_cache.get(filename)
+        if entry is None:
+            abort(404)
+        data, mime, etag = entry
+        headers = {'ETag': f'"{etag}"', 'Cache-Control': 'public, max-age=86400'}
+        if request.if_none_match and etag in request.if_none_match:
+            return Response(status=304, headers=headers)
+        return Response(data, mimetype=mime, headers=headers)
+
     log.debug('Web routes registered.')
 
     # -- Template context processor -----------------------------------------
