@@ -110,7 +110,7 @@ def auth_callback():
     log.debug('OIDC locale claim: %r -> resolved to %r.', oidc_locale_raw, session['locale'])
 
     log.info('User %r (pk=%s) logged in successfully.', username, pk)
-    log.debug('Session user data: %s', session['user'])
+    log.debug('User session data: %s', session)
     return redirect(url_for('routes.dashboard'))
 
 
