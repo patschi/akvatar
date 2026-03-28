@@ -108,3 +108,27 @@ if ldap_cfg.get('enabled', False):
         'LDAP user identification: will search base %r with filter %r on server %s:%s.',
         ldap_cfg.get('search_base', ''), _ldap_search_filter, ldap_cfg.get('server', ''), ldap_cfg.get('port', 636),
     )
+
+# ---------------------------------------------------------------------------
+# Validate Flask secret key
+# ---------------------------------------------------------------------------
+_secret_key = app_cfg.get('secret_key', '')
+_SECRET_KEY_MIN_LENGTH = 32
+
+if _secret_key == 'CHANGE-ME-to-a-random-secret-key':
+    print(
+        'FATAL: app.secret_key is still set to the default placeholder value.\n'
+        '       Generate a secure key with: python3 -c "import secrets; print(secrets.token_hex(32))"',
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+if len(_secret_key) < _SECRET_KEY_MIN_LENGTH:
+    print(
+        f'FATAL: app.secret_key is too short ({len(_secret_key)} characters, minimum {_SECRET_KEY_MIN_LENGTH}).\n'
+        f'       Generate a secure key with: python3 -c "import secrets; print(secrets.token_hex(32))"',
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+log.debug('Secret key validation passed (length=%d).', len(_secret_key))
