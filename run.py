@@ -18,8 +18,14 @@ import sys
 import logging
 import tempfile
 
-# Prevent .pyc file clutter and ensure immediate log output
-os.environ.setdefault('PYTHONDONTWRITEBYTECODE', '1')
+# Prevent .pyc file clutter.
+# sys.dont_write_bytecode must be set here (before imports) to suppress bytecode
+# in this process.  os.environ is set so gunicorn and any subprocesses it spawns
+# inherit the setting without needing their own flag.
+sys.dont_write_bytecode = True
+os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+
+# Ensure immediate log output (no buffering)
 os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
 from src.config import web_cfg
