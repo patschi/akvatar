@@ -192,90 +192,115 @@ def api_upload():
     log.info('Image validated – mode=%s, size=%dx%d. Starting SSE stream.', image.mode, image.width, image.height)
 
     # -- Stream processing steps as Server-Sent Events ----------------------
+
+    def _build_ldap_updates(urls: dict, filename_base: str) -> list[dict]:
+        """
+        Build the list of LDAP attribute updates from the configured photo
+        entries.  For ``binary`` types the image is encoded on-the-fly (or
+        reused from disk); for ``url`` types the pre-generated URL is looked up.
+        """
+        updates = []
+        for photo_cfg in _ldap_photos:
+            attr = photo_cfg['attribute']
+            ptype = photo_cfg['type']
+            size = photo_cfg['image_size']
+            img_type = photo_cfg['image_type']
+
+            if ptype == 'binary':
+                img_bytes = prepare_ldap_image(
+                    image, filename_base, size, img_type,
+                    photo_cfg.get('max_file_size', 0),
+                )
+                updates.append({'attribute': attr, 'value': img_bytes})
+                log.info('Prepared LDAP %s: %dx%d %s, %d bytes.',
+                         attr, size, size, img_type.upper(), len(img_bytes))
+
+            elif ptype == 'url':
+                size_key = f'{size}x{size}'
+                ext = _FORMAT_MAP[img_type][1]
+                url = urls.get(size_key, {}).get(ext)
+                if not url:
+                    raise ValueError(
+                        f'No pre-generated URL for LDAP {attr}: '
+                        f'size={size_key}, ext={ext}. Check images.sizes/formats config.'
+                    )
+                updates.append({'attribute': attr, 'value': url})
+                log.info('Prepared LDAP %s: URL → %s.', attr, url)
+
+            else:
+                log.warning('Unknown LDAP photo type %r for attribute %s – skipping.', ptype, attr)
+
+        return updates
+
     def generate():
+        filename_base = None
         try:
             yield _sse({'step': t('step_validated'), 'status': 'success', 'detail': t('step_validated_detail')})
 
-            # Generate filename
+            # -- Step 1: Generate filename -------------------------------------
             filename_base = generate_filename()
             yield _sse({'step': t('step_filename'), 'status': 'success'})
 
-            # Resize & save
+            # -- Step 2: Resize & save all configured sizes/formats ------------
             urls, total_bytes = process_image(image, filename_base)
+            if not urls:
+                raise RuntimeError('Image processing returned no URLs – check images.sizes/formats config.')
             size_label = f'{total_bytes / 1_048_576:.1f} MB' if total_bytes >= 1_048_576 else f'{total_bytes / 1024:.0f} KB'
             yield _sse({'step': t('step_processed'), 'status': 'success', 'detail': t('step_processed_detail', sizes=len(img_cfg['sizes']), formats=len(img_cfg['formats']), total=size_label)})
 
-            log.debug('Using %dx%d JPG for Authentik avatar URL.', _ak_avatar_size, _ak_avatar_size)
-            canonical_url = urls[f'{_ak_avatar_size}x{_ak_avatar_size}']['jpg']
+            # -- Step 3: Resolve the canonical avatar URL for Authentik --------
+            ak_size_key = f'{_ak_avatar_size}x{_ak_avatar_size}'
+            canonical_url = urls.get(ak_size_key, {}).get('jpg')
+            if not canonical_url:
+                raise RuntimeError(
+                    f'Canonical avatar URL not found for size={ak_size_key}, format=jpg. '
+                    f'Ensure {_ak_avatar_size} is in images.sizes and "jpg" is in images.formats.'
+                )
+            log.debug('Canonical Authentik avatar URL: %s', canonical_url)
+
+            # -- Step 4: Push avatar URL to Authentik --------------------------
+            # Uses the PK stored in the session at login time.
+            # The returned attributes dict is inspected below for ldap_uniq.
             has_failure = False
             ak_attrs = {}
-
-            # Update Authentik — uses the PK stored in the session at login
-            # time so we don't need a username→PK lookup on every upload.
-            # The returned attributes dict is inspected below for ldap_uniq.
             try:
                 ak_attrs = update_avatar_url(user['pk'], canonical_url)
-                status = 'dry-run' if dry_run else 'success'
-                yield _sse({'step': t('step_profile_synced'), 'status': status})
+                if not isinstance(ak_attrs, dict):
+                    raise TypeError(f'Authentik API returned {type(ak_attrs).__name__} instead of dict.')
+                yield _sse({'step': t('step_profile_synced'), 'status': 'dry-run' if dry_run else 'success'})
             except Exception:
-                log.exception('Failed to update Authentik avatar.')
+                log.exception('Failed to update Authentik avatar for pk=%s.', user['pk'])
                 yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
                 has_failure = True
 
-            # Update LDAP server (if enabled and photos are configured).
-            # Only attempt if the user has a `ldap_uniq` attribute in Authentik,
-            # which proves they were synced from LDAP.  Users without it are
-            # Authentik-only and have no corresponding LDAP object to update.
+            # -- Step 5: Update LDAP photo attributes (if applicable) ----------
+            # Only attempted when LDAP is enabled, photos are configured, and
+            # the user has a ldap_uniq attribute (proving they were synced from LDAP).
             if _ldap_enabled and _ldap_photos:
                 ldap_uniq = ak_attrs.get('ldap_uniq')
                 if ldap_uniq:
                     log.debug('User has ldap_uniq=%r – preparing %d LDAP photo update(s).', ldap_uniq, len(_ldap_photos))
                     try:
-                        ldap_updates = []
-                        for photo_cfg in _ldap_photos:
-                            attr = photo_cfg['attribute']
-                            ptype = photo_cfg['type']
-
-                            if ptype == 'binary':
-                                img_bytes = prepare_ldap_image(
-                                    image, filename_base,
-                                    photo_cfg['image_size'], photo_cfg['image_type'],
-                                    photo_cfg.get('max_file_size', 0),
-                                )
-                                ldap_updates.append({'attribute': attr, 'value': img_bytes})
-                                log.info('Prepared LDAP %s: %dx%d %s, %d bytes.',
-                                         attr, photo_cfg['image_size'], photo_cfg['image_size'],
-                                         photo_cfg['image_type'].upper(), len(img_bytes))
-                            elif ptype == 'url':
-                                size_key = f"{photo_cfg['image_size']}x{photo_cfg['image_size']}"
-                                ext = _FORMAT_MAP[photo_cfg['image_type']][1]
-                                url = urls[size_key][ext]
-                                ldap_updates.append({'attribute': attr, 'value': url})
-                                log.info('Prepared LDAP %s: URL → %s.', attr, url)
-                            else:
-                                log.warning('Unknown LDAP photo type %r for attribute %s – skipping.', ptype, attr)
-
+                        ldap_updates = _build_ldap_updates(urls, filename_base)
                         update_ldap_photos(ldap_uniq, ldap_updates)
-                        status = 'dry-run' if dry_run else 'success'
                         detail = ', '.join(u['attribute'] for u in ldap_updates)
-                        yield _sse({'step': t('step_ldap_updated'), 'status': status, 'detail': detail})
+                        yield _sse({'step': t('step_ldap_updated'), 'status': 'dry-run' if dry_run else 'success', 'detail': detail})
                     except Exception:
-                        log.exception('Failed to update LDAP photo attributes.')
+                        log.exception('Failed to update LDAP photo attributes for ldap_uniq=%s.', ldap_uniq)
                         yield _sse({'step': t('step_ldap_updated'), 'status': 'failed'})
                         has_failure = True
                 else:
-                    # User is not LDAP-synced — skip the LDAP step entirely
                     log.info('User pk=%s has no ldap_uniq attribute – skipping LDAP photo updates.', user['pk'])
                     yield _sse({'step': t('step_ldap_updated'), 'status': 'skipped'})
 
-            # Rollback on backend failure
+            # -- Rollback on backend failure -----------------------------------
             if has_failure:
-                log.warning('Backend update failed – cleaning up saved avatar files.')
+                log.warning('Backend update failed – cleaning up saved avatar files for %s.', filename_base)
                 cleanup_avatar_files(filename_base)
                 yield _sse({'done': True, 'error': 'Could not update your avatar. Please try again later.'})
                 return
 
-            # Save metadata JSON.
+            # -- Step 6: Persist metadata JSON ---------------------------------
             # Uses the Authentik PK as the owner identifier (not the username)
             # because PKs are immutable and don't leak PII.
             metadata = {
@@ -291,11 +316,14 @@ def api_upload():
             meta_path.write_text(json.dumps(metadata, indent=2), encoding='utf-8')
             log.debug('Metadata saved to %s.', meta_path)
 
-            log.info('Upload pipeline complete for user %r.', user['username'])
+            log.info('Upload pipeline complete for user %r (pk=%s).', user['username'], user['pk'])
             yield _sse({'done': True, 'avatar_url': canonical_url})
 
         except Exception as exc:
-            log.exception('Upload processing failed.')
+            log.exception('Upload processing failed for user %r.', user['username'])
+            # Clean up any files that were written before the failure
+            if filename_base:
+                cleanup_avatar_files(filename_base)
             yield _sse({'step': t('step_processing_failed'), 'status': 'failed', 'detail': str(exc)})
             yield _sse({'done': True, 'error': str(exc)})
 
