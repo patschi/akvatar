@@ -1,0 +1,19 @@
+services:
+  ak-avatar-updater:
+    build: .
+    container_name: ak-avatar-updater-dev
+    restart: never
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges
+    tmpfs:
+      - /tmp
+    environment:
+      - DEBUG_MODE=true
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/config:/app/data/config:ro
+      - ./data/user-avatars:/app/data/user-avatars

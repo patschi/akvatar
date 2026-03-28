@@ -5,6 +5,7 @@ Reads config.yml once at import time so every other module can simply
 `from src.config import cfg`.
 """
 
+import os
 import sys
 import logging
 
@@ -60,7 +61,8 @@ _LOG_LEVELS = {
     'CRITICAL': logging.CRITICAL,
 }
 
-debug_full = bool(app_cfg.get('debug_full', False))
+# Environment variable DEBUG_MODE=true overrides the config file setting
+debug_full = os.environ.get('DEBUG_MODE', '').lower() == 'true' or bool(app_cfg.get('debug_full', False))
 
 _configured_level = app_cfg.get('log_level', 'INFO').upper()
 _level = logging.DEBUG if debug_full else _LOG_LEVELS.get(_configured_level, logging.INFO)

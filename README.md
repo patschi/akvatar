@@ -83,29 +83,7 @@ docker run -d \
 
 ### Docker Compose
 
-```yml
-services:
-  ak-avatar-updater:
-    image: ghcr.io/patschi/ak-avatar-updater:latest
-    container_name: ak-avatar-updater
-    restart: unless-stopped
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges
-    tmpfs:
-      - /tmp
-    ports:
-      - "5000:5000"
-    volumes:
-      - ak-avatar-config:/app/data/config:ro
-      - ak-avatar-data:/app/data/user-avatars
-
-volumes:
-  ak-avatar-data:
-  ak-avatar-config:
-```
+A ready-to-use [`docker-compose.yml`](docker-compose.yml) is included in the repository.
 
 Start with:
 
