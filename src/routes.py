@@ -22,8 +22,6 @@ from src.upload import validate_upload, generate_sse, ValidationError
 
 log = logging.getLogger('routes')
 
-_ldap_enabled = ldap_is_enabled()
-
 routes_bp = Blueprint('routes', __name__)
 
 
@@ -76,7 +74,7 @@ def dashboard():
     """Serve the authenticated avatar upload / crop page."""
     user = session['user']
     log.debug('Serving dashboard for user %r.', user['username'])
-    return render_template('dashboard.html', user=user, ldap_enabled=_ldap_enabled, max_size=MAX_SIZE)
+    return render_template('dashboard.html', user=user, ldap_enabled=ldap_is_enabled(), max_size=MAX_SIZE)
 
 
 # ---------------------------------------------------------------------------

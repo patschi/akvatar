@@ -29,10 +29,14 @@ log = logging.getLogger('ldap_client')
 # Module-level configuration (config is immutable after startup)
 # ---------------------------------------------------------------------------
 _enabled = ldap_cfg.get('enabled', False)
+_server_host = ldap_cfg.get('server', '')
+_server_port = ldap_cfg.get('port', 636)
+_use_ssl = ldap_cfg.get('use_ssl', False)
 _skip_verify = ldap_cfg.get('skip_cert_verify', False)
-_search_filter_tpl = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
-_search_base = ldap_cfg.get('search_base', '')
 _bind_dn = ldap_cfg.get('bind_dn', '')
+_bind_password = ldap_cfg.get('bind_password', '')
+_search_base = ldap_cfg.get('search_base', '')
+_search_filter_tpl = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
 _photos = ldap_cfg.get('photos', [])
 
 # Pre-build the ldap3.Server object once so it is reused across connections.
@@ -41,13 +45,13 @@ _photos = ldap_cfg.get('photos', [])
 _server: ldap3.Server | None = None
 if _enabled:
     _tls_config = None
-    if ldap_cfg.get('use_ssl', False) and _skip_verify:
+    if _use_ssl and _skip_verify:
         _tls_config = ldap3.Tls(validate=ssl.CERT_NONE)
     _server = ldap3.Server(
-        ldap_cfg['server'], port=ldap_cfg['port'],
-        use_ssl=ldap_cfg.get('use_ssl', False), tls=_tls_config, get_info=ldap3.ALL,
+        _server_host, port=_server_port,
+        use_ssl=_use_ssl, tls=_tls_config, get_info=ldap3.ALL,
     )
-    log.debug('Pre-built LDAP Server object for %s:%s.', ldap_cfg['server'], ldap_cfg['port'])
+    log.debug('Pre-built LDAP Server object for %s:%s.', _server_host, _server_port)
 
 
 # ---------------------------------------------------------------------------
@@ -80,12 +84,12 @@ def _connect() -> ldap3.Connection:
     Raises ConnectionError with a descriptive message on failure (network
     unreachable, bad credentials, TLS handshake failure, etc.).
     """
-    server_addr = f'{ldap_cfg["server"]}:{ldap_cfg["port"]}'
+    server_addr = f'{_server_host}:{_server_port}'
     log.debug('Connecting to LDAP server %s (SSL=%s, skip_cert_verify=%s).',
-              server_addr, ldap_cfg.get('use_ssl', False), _skip_verify)
+              server_addr, _use_ssl, _skip_verify)
     try:
         conn = ldap3.Connection(
-            _server, user=_bind_dn, password=ldap_cfg['bind_password'], auto_bind=True,
+            _server, user=_bind_dn, password=_bind_password, auto_bind=True,
         )
     except ldap3.core.exceptions.LDAPException as exc:
         raise ConnectionError(

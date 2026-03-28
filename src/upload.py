@@ -83,13 +83,11 @@ def validate_upload(file) -> Image.Image:
         )
 
     # -- Read bytes & magic signature ------------------------------------------
-    # Read file bytes into memory (Pillow will re-parse from bytes, so we can safely close the file after this)
     raw_bytes = file.read()
     if not raw_bytes:
         raise ValidationError('Uploaded file is empty.')
 
     # Check magic bytes to prevent fake extensions (e.g. .jpg that is actually a .exe).
-    # This is not a security boundary but helps catch invalid uploads early and provides better error messages.
     magic_err = check_magic_bytes(raw_bytes)
     if magic_err:
         log.warning('Magic byte check failed: %s', magic_err)
