@@ -266,7 +266,7 @@ def _step_sync_ldap(image: Image.Image, urls: dict, filename_base: str,
         return True
 
 
-def _save_metadata(filename_base: str, user_pk: int, canonical_url: str, total_bytes: int) -> None:
+def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
     """
     Persist upload metadata as JSON.  Uses the Authentik PK (immutable, no PII)
     as the owner identifier for cleanup/retention matching.
@@ -277,7 +277,6 @@ def _save_metadata(filename_base: str, user_pk: int, canonical_url: str, total_b
         'uploaded_at': datetime.now(timezone.utc).isoformat(),
         'sizes': img_cfg['sizes'],
         'formats': img_cfg['formats'],
-        'authentik_avatar_url': canonical_url,
         'total_bytes': total_bytes,
     }
     meta_path = METADATA_ROOT / f'{filename_base}.meta.json'
@@ -327,7 +326,7 @@ def generate_sse(user: dict, image: Image.Image):
             return
 
         # -- Step 6: Persist metadata ------------------------------------------
-        _save_metadata(filename_base, user_pk, canonical_url, total_bytes)
+        _save_metadata(filename_base, user_pk, total_bytes)
 
         log.info('Upload pipeline complete for user %r (pk=%s).', username, user_pk)
         yield _sse({'done': True, 'avatar_url': canonical_url})

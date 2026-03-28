@@ -180,11 +180,6 @@
         resetButton.addEventListener("click", function () {
             deleteCookie("theme");
             deleteCookie("locale");
-
-            // Apply auto theme immediately before reload
-            applyTheme("auto");
-            highlightActiveTheme("auto");
-
             location.reload();
         });
     }

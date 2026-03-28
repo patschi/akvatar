@@ -15,7 +15,7 @@
   <script>
     (function () {
       // Read the saved theme preference from cookie
-      var cookieMatch    = document.cookie.match(/(?:^|; )theme=(\w+)/);
+      var cookieMatch    = document.cookie.match(/(?:^|; )theme=([^;]*)/);
       var savedPreference = cookieMatch ? cookieMatch[1] : null;
 
       // Explicit light/dark wins; otherwise follow the OS preference

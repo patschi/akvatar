@@ -44,7 +44,7 @@ def robots_txt():
 # ---------------------------------------------------------------------------
 @routes_bp.route('/healthz')
 def healthz():
-    """Lightweight health probe for load balancers and orchestrators."""
+    """Lightweight health probe for load balancers or healthchecks."""
     return Response('OK', mimetype='text/plain')
 
 

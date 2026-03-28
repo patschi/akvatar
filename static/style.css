@@ -169,24 +169,28 @@ body {
 }
 
 /* --- Settings overlay ----------------------------------------------- */
-.settings-btn {
+.settings-btn,
+.settings-close {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
   border: none;
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 8px;
-  transition: color var(--transition), background var(--transition);
-  padding: 0;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
 }
 
-.settings-btn:hover {
+.settings-btn:hover,
+.settings-close:hover {
   color: var(--text);
   background: var(--accent-soft);
+}
+
+.settings-btn {
+  width: 30px;
+  height: 30px;
 }
 
 .settings-overlay {
@@ -238,23 +242,8 @@ body {
 }
 
 .settings-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 32px;
   height: 32px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-radius: 6px;
-  transition: color var(--transition), background var(--transition);
-  padding: 0;
-}
-
-.settings-close:hover {
-  color: var(--text);
-  background: var(--accent-soft);
 }
 
 .settings-group {
@@ -650,26 +639,25 @@ body {
 }
 
 /* --- Result messages ------------------------------------------------ */
-.result-success {
-  margin-top: 0.75rem;
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius-sm);
-  background: var(--success-soft);
-  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
-  color: var(--success);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
+.result-success,
 .result-error {
   margin-top: 0.75rem;
   padding: 0.7rem 1rem;
   border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.result-success {
+  background: var(--success-soft);
+  border: 1px solid color-mix(in srgb, var(--success) 25%, transparent);
+  color: var(--success);
+}
+
+.result-error {
   background: var(--error-soft);
   border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
   color: var(--error);
-  font-weight: 600;
-  font-size: 0.9rem;
 }
 
 /* --- Step spinner --------------------------------------------------- */
