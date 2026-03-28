@@ -32,6 +32,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'login_heading':            'Update your avatar',
         'login_subtitle':           'Sign in with your organisation account to upload and manage your profile picture.',
         'login_button':             'Sign in',
+        'login_error_oidc_failed':  'Authentication failed. Please try again or contact your administrator.',
+        'login_error_pk_failed':    'Login could not be completed — unable to retrieve your account. Please try again or contact your administrator.',
 
         # -- Logged-out page --
         'logout_heading':           'Logout successful',
@@ -81,6 +83,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'login_heading':            'Avatar aktualisieren',
         'login_subtitle':           'Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten.',
         'login_button':             'Anmelden',
+        'login_error_oidc_failed':  'Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator.',
+        'login_error_pk_failed':    'Anmeldung konnte nicht abgeschlossen werden \u2013 Ihr Konto konnte nicht abgerufen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator.',
 
         # -- Logged-out page --
         'logout_heading':           'Abmeldung erfolgreich',

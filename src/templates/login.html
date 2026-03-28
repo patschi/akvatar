@@ -38,6 +38,10 @@
       <h1>{{ t('login_heading') }}</h1>
       <p class="subtitle">{{ t('login_subtitle') }}</p>
 
+      {% if error_key %}
+        <p class="result-error">{{ t('login_error_' + error_key) }}</p>
+      {% endif %}
+
       <a href="{{ url_for('auth.login') }}" class="btn btn-login">
         {{ t('login_button') }}
       </a>

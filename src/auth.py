@@ -10,7 +10,7 @@ OIDC scopes are hardcoded to `openid profile email` and cannot be changed via co
 import logging
 from functools import wraps
 
-from flask import Blueprint, redirect, url_for, session, render_template
+from flask import Blueprint, redirect, url_for, session, render_template, request
 from authlib.integrations.flask_client import OAuth
 
 from src.config import oidc_cfg, app_cfg
@@ -78,7 +78,7 @@ def auth_callback():
         token = oauth.authentik.authorize_access_token()
     except Exception:
         log.exception('Failed to exchange OIDC authorization code.')
-        return redirect(url_for('routes.login_page'))
+        return redirect(url_for('routes.login_page', error='oidc_failed'))
 
     userinfo = token.get('userinfo')
     if userinfo is None:
@@ -94,7 +94,7 @@ def auth_callback():
         pk = resolve_user_pk(username)
     except Exception:
         log.exception('Failed to resolve Authentik PK for user %r – login aborted.', username)
-        return redirect(url_for('routes.login_page'))
+        return redirect(url_for('routes.login_page', error='pk_failed'))
 
     session['user'] = {
         'pk':       pk,

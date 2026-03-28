@@ -69,8 +69,10 @@ def login_page():
     if 'user' in session:
         log.debug('User already authenticated – redirecting to dashboard.')
         return redirect(url_for('routes.dashboard'))
-    log.debug('Serving login page.')
-    return render_template('login.html')
+    error_key = request.args.get('error', '')
+    if error_key:
+        log.debug('Login page rendered with error=%r.', error_key)
+    return render_template('login.html', error_key=error_key)
 
 
 # ---------------------------------------------------------------------------
