@@ -297,7 +297,7 @@ def cleanup_avatar_files(filename_base: str) -> None:
     corresponding file.  Used both for rollback on upload failure and for
     retention cleanup.
     """
-    log.debug('Cleaning up avatar files for %s.', filename_base)
+    log.info('Cleaning up avatar files for %s.', filename_base)
     sizes = img_cfg['sizes']
     formats = img_cfg['formats']
     removed = 0
