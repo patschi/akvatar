@@ -108,263 +108,260 @@
   <!-- Client-side logic                                                   -->
   <!-- ================================================================== -->
   <script>
-    // Server-provided constants (respects public_base_url path / reverse proxy prefix)
-    const UPLOAD_URL          = "{{ url_for('routes.api_upload') }}";
-    const MAX_SIZE            = {{ max_size }};
-    const I18N                = {{ i18n | tojson }};
-    const LDAP_ENABLED        = {{ ldap_enabled | tojson }};
-    const ALLOWED_EXTENSIONS  = new Set({{ allowed_extensions | tojson }});
+    // ── Server-provided constants ──────────────────────────────────────
+    const UPLOAD_URL         = "{{ url_for('routes.api_upload') }}";
+    const MAX_SIZE           = {{ max_size }};
+    const I18N               = {{ i18n | tojson }};
+    const LDAP_ENABLED       = {{ ldap_enabled | tojson }};
+    const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});
 
-    const uploadSection  = document.getElementById("uploadSection");
-    const filePicker     = document.getElementById("filePicker");
-    const fileInput      = document.getElementById("fileInput");
-    const fileName       = document.getElementById("fileName");
-    const cropperWrapper = document.getElementById("cropperWrapper");
-    const cropperImage   = document.getElementById("cropperImage");
-    const uploadBtn      = document.getElementById("uploadBtn");
-    const progressPanel  = document.getElementById("progressPanel");
-    const progressList   = document.getElementById("progressList");
-    const resultMessage  = document.getElementById("resultMessage");
+    // ── DOM references ─────────────────────────────────────────────────
+    const uploadSection    = document.getElementById("uploadSection");
+    const filePicker       = document.getElementById("filePicker");
+    const fileInput        = document.getElementById("fileInput");
+    const fileNameEl       = document.getElementById("fileName");
+    const cropperWrapper   = document.getElementById("cropperWrapper");
+    const cropperImage     = document.getElementById("cropperImage");
+    const uploadBtn        = document.getElementById("uploadBtn");
+    const uploadDisclaimer = document.getElementById("uploadDisclaimer");
+    const profileDivider   = document.getElementById("profileDivider");
+    const progressPanel    = document.getElementById("progressPanel");
+    const progressList     = document.getElementById("progressList");
+    const resultMessage    = document.getElementById("resultMessage");
 
     let cropper = null;
 
-    // ------------------------------------------------------------------
-    // Initialise Cropper.js when the user picks a file
-    // ------------------------------------------------------------------
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      // Validate file extension against the server-provided allow-list
-      const ext = file.name.includes(".")
-        ? file.name.split(".").pop().toLowerCase()
-        : "";
-      if (!ALLOWED_EXTENSIONS.has(ext)) {
-        alert(I18N.upload_invalid_ext
-          ? I18N.upload_invalid_ext.replace("{ext}", ext).replace("{allowed}", [...ALLOWED_EXTENSIONS].join(", "))
-          : `File type .${ext} is not allowed. Accepted: ${[...ALLOWED_EXTENSIONS].join(", ")}`);
-        fileInput.value = "";
-        return;
-      }
-
-      fileName.textContent = file.name;
-
-      // Clean up any previous instance
-      if (cropperImage.src.startsWith("blob:")) URL.revokeObjectURL(cropperImage.src);
-      if (cropper) { cropper.destroy(); cropper = null; }
-
-      cropperImage.src = URL.createObjectURL(file);
-      cropperWrapper.classList.remove("hidden");
-      document.getElementById("uploadDisclaimer").classList.remove("hidden");
-      uploadBtn.classList.remove("hidden");
-      uploadBtn.disabled = false;
-
-      // Square-only crop via Cropper.js
-      cropper = new Cropper(cropperImage, {
-        aspectRatio: 1,
-        viewMode: 1,
-        dragMode: "move",
-        autoCropArea: 0.9,
-        responsive: true,
-        restore: false,
-        guides: true,
-        center: true,
-        highlight: false,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-      });
-    });
-
-    // ------------------------------------------------------------------
-    // Step icons (keyed by status)
-    // ------------------------------------------------------------------
+    // ── SVG icons for each step status (currentColor adapts to theme) ──
+    const CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const STEP_ICONS = {
-      success:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-      failed:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-      skipped:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-      "dry-run":'<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-      pending:  '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
-      active:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/></svg>',
+        success:   CHECK_CIRCLE,
+        "dry-run": CHECK_CIRCLE,
+        failed:    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        skipped:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+        pending:   '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/></svg>',
+        active:    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/></svg>',
     };
 
-    // ------------------------------------------------------------------
-    // Helper: build inner HTML for a step row
-    // ------------------------------------------------------------------
+    // ── Step list helpers ──────────────────────────────────────────────
+
+    /** Build the inner HTML for a progress step row. */
     function buildStepHTML(label, status, detail) {
-      const icon = STEP_ICONS[status] || STEP_ICONS.pending;
-      return `<span class="step-icon">${icon}</span>` +
-             `<span class="step-label">${label}</span>` +
-             (detail ? `<span class="step-detail">${detail}</span>` : "");
+        const icon = STEP_ICONS[status] || STEP_ICONS.pending;
+        // NOTE: label/detail originate from server-controlled I18N strings or
+        // server SSE payloads — not from user input — so innerHTML is safe here.
+        return `<span class="step-icon">${icon}</span>` +
+               `<span class="step-label">${label}</span>` +
+               (detail ? `<span class="step-detail">${detail}</span>` : "");
     }
 
-    // ------------------------------------------------------------------
-    // Helper: append a new step row to the progress list; returns the <li>
-    // ------------------------------------------------------------------
+    /** Append a new step row and return the <li> element. */
     function addStep(label, status, detail) {
-      const li = document.createElement("li");
-      li.className = `step ${status}`;
-      li.innerHTML = buildStepHTML(label, status, detail);
-      progressList.appendChild(li);
-      return li;
+        const li = document.createElement("li");
+        li.className = `step ${status}`;
+        li.innerHTML = buildStepHTML(label, status, detail);
+        progressList.appendChild(li);
+        return li;
     }
 
-    // ------------------------------------------------------------------
-    // Helper: update an existing step row in place
-    // ------------------------------------------------------------------
-    function setStepStatus(li, label, status, detail) {
-      li.className = `step ${status}`;
-      li.innerHTML = buildStepHTML(label, status, detail);
+    /** Update an existing step row in place. */
+    function setStep(li, label, status, detail) {
+        li.className = `step ${status}`;
+        li.innerHTML = buildStepHTML(label, status, detail);
     }
 
-    // ------------------------------------------------------------------
-    // Upload flow  (reads Server-Sent Events for real-time progress)
-    // ------------------------------------------------------------------
-    uploadBtn.addEventListener("click", async () => {
-      if (!cropper) return;
-
-      uploadBtn.disabled = true;
-      uploadBtn.textContent = I18N.upload_processing;
-      filePicker.classList.add("hidden");
-      cropperWrapper.classList.add("hidden");
-      progressPanel.classList.remove("hidden");
-      progressList.innerHTML = "";
-      resultMessage.innerHTML = "";
-
-      // Client step: crop & resize to server's maximum dimension
-      addStep(I18N.step_crop, "pending");
-      const canvas = cropper.getCroppedCanvas({
-        width: MAX_SIZE, height: MAX_SIZE,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: "high",
-      });
-      progressList.lastChild.remove();
-      addStep(I18N.step_crop, "success");
-
-      // Client step: compress (WebP preferred, JPEG fallback)
-      addStep(I18N.step_compress, "pending");
-      let blob = await new Promise((r) => canvas.toBlob(r, "image/webp", 0.85));
-      let ext = "webp";
-      if (!blob || blob.type !== "image/webp") {
-        blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.85));
-        ext = "jpg";
-      }
-      progressList.lastChild.remove();
-      addStep(I18N.step_compress, "success", `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
-
-      // Client step: upload to server
-      addStep(I18N.step_upload, "pending");
-      const fd = new FormData();
-      fd.append("file", blob, `avatar.${ext}`);
-
-      try {
-        const resp = await fetch(UPLOAD_URL, { method: "POST", body: fd });
-
-        // Validation errors come back as JSON with a 4xx status code
-        const ct = resp.headers.get("content-type") || "";
-        if (ct.includes("application/json")) {
-          const data = await resp.json();
-          progressList.lastChild.remove();
-          addStep(I18N.step_upload, "failed", data.error || "");
-          resultMessage.innerHTML = `<p class="result-error">${I18N.result_error}</p>`;
-          uploadBtn.disabled = false;
-          uploadBtn.textContent = I18N.upload_button;
-          return;
-        }
-
-        // Server accepted the upload – now streaming SSE processing steps
-        progressList.lastChild.remove();
-        addStep(I18N.step_upload, "success");
-
-        // Pre-render all server-side steps as pending so the user can see
-        // what is coming, then immediately mark the first one as active.
-        const serverStepLabels = [
-          I18N.step_validated,
-          I18N.step_filename,
-          I18N.step_processed,
-          I18N.step_profile_synced,
-          ...(LDAP_ENABLED ? [I18N.step_ldap_updated] : []),
-        ];
-        const serverStepEls = serverStepLabels.map(label => addStep(label, "pending"));
-        let stepIdx = 0;
-        setStepStatus(serverStepEls[0], serverStepLabels[0], "active");
-
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let finalData = null;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          // SSE events are delimited by double newlines
-          const parts = buffer.split("\n\n");
-          buffer = parts.pop();  // keep any incomplete event in the buffer
-          if (buffer.length > 65536) buffer = ""; // discard if no event boundary found (malformed stream)
-
-          for (const part of parts) {
-            for (const line of part.split("\n")) {
-              if (line.startsWith("data: ")) {
-                const event = JSON.parse(line.slice(6));
-                if (event.done) {
-                  finalData = event;
-                } else if (event.step) {
-                  // Update the current pre-rendered row (or append if unexpected)
-                  if (stepIdx < serverStepEls.length) {
-                    setStepStatus(serverStepEls[stepIdx], event.step, event.status, event.detail || "");
-                  } else {
-                    addStep(event.step, event.status, event.detail || "");
-                  }
-                  stepIdx++;
-                  // Advance spinner to the next waiting step
-                  if (stepIdx < serverStepEls.length) {
-                    setStepStatus(serverStepEls[stepIdx], serverStepLabels[stepIdx], "active");
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        // Mark any remaining pre-rendered steps as skipped (e.g. on early failure)
-        for (let i = stepIdx; i < serverStepEls.length; i++) {
-          setStepStatus(serverStepEls[i], serverStepLabels[i], "skipped");
-        }
-
-        // Handle final result
-        if (finalData && finalData.avatar_url && !finalData.error) {
-          uploadSection.classList.add("hidden");
-          document.getElementById("profileDivider").classList.add("hidden");
-          progressPanel.style.marginTop = "0";
-          progressPanel.style.paddingTop = "10";
-          resultMessage.innerHTML =
-            `<p class="result-success">${I18N.result_success}</p>` +
-            `<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
-          // Refresh the profile avatar shown at the top of the page
-          const avatarEl = document.querySelector(".profile-avatar");
-          if (avatarEl && avatarEl.tagName === "IMG") {
-            avatarEl.src = finalData.avatar_url;
-          }
-        } else {
-          resultMessage.innerHTML =
-            `<p class="result-error">${(finalData && finalData.error) || I18N.result_error}</p>`;
-          uploadBtn.disabled = false;
-          uploadBtn.textContent = I18N.upload_button;
-        }
-      } catch (err) {
-        // Network error or stream failure
-        if (progressList.lastChild) {
-          const last = progressList.lastChild;
-          if (last.classList.contains("pending")) last.remove();
-        }
-        addStep(I18N.step_upload, "failed", err.message);
-        resultMessage.innerHTML =
-          `<p class="result-error">${I18N.result_network_error}</p>`;
+    /** Reset upload button to its default enabled state. */
+    function resetUploadBtn() {
         uploadBtn.disabled = false;
         uploadBtn.textContent = I18N.upload_button;
-      }
+    }
+
+    // ── File picker: validate extension & initialise cropper ───────────
+    fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Case-insensitive check against the server-provided allow-list
+        const ext = file.name.includes(".")
+            ? file.name.split(".").pop().toLowerCase()
+            : "";
+        if (!ALLOWED_EXTENSIONS.has(ext)) {
+            const allowed = [...ALLOWED_EXTENSIONS].join(", ");
+            alert(I18N.upload_invalid_ext.replace("{ext}", ext).replace("{allowed}", allowed));
+            fileInput.value = "";
+            return;
+        }
+
+        fileNameEl.textContent = file.name;
+
+        // Tear down previous cropper instance and revoke its object URL
+        if (cropperImage.src.startsWith("blob:")) URL.revokeObjectURL(cropperImage.src);
+        if (cropper) { cropper.destroy(); cropper = null; }
+
+        // Show cropper area and upload controls
+        cropperImage.src = URL.createObjectURL(file);
+        cropperWrapper.classList.remove("hidden");
+        uploadDisclaimer.classList.remove("hidden");
+        uploadBtn.classList.remove("hidden");
+        uploadBtn.disabled = false;
+
+        // Enforce square crop
+        cropper = new Cropper(cropperImage, {
+            aspectRatio: 1,
+            viewMode: 1,
+            dragMode: "move",
+            autoCropArea: 0.9,
+            responsive: true,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false,
+        });
+    });
+
+    // ── Upload flow (SSE streaming progress) ───────────────────────────
+    uploadBtn.addEventListener("click", async () => {
+        if (!cropper) return;
+
+        // Lock UI and show progress panel
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = I18N.upload_processing;
+        filePicker.classList.add("hidden");
+        cropperWrapper.classList.add("hidden");
+        progressPanel.classList.remove("hidden");
+        progressList.innerHTML = "";
+        resultMessage.innerHTML = "";
+
+        // ── Client step 1: crop to square at server's max dimension ──
+        const cropStep = addStep(I18N.step_crop, "active");
+        const canvas = cropper.getCroppedCanvas({
+            width: MAX_SIZE, height: MAX_SIZE,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: "high",
+        });
+        setStep(cropStep, I18N.step_crop, "success");
+
+        // ── Client step 2: compress (WebP preferred, JPEG fallback) ──
+        const compressStep = addStep(I18N.step_compress, "active");
+        let blob = await new Promise(r => canvas.toBlob(r, "image/webp", 0.85));
+        let ext = "webp";
+        if (!blob || blob.type !== "image/webp") {
+            blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.85));
+            ext = "jpg";
+        }
+        setStep(compressStep, I18N.step_compress, "success",
+            `${ext.toUpperCase()}, ${(blob.size / 1024).toFixed(0)} KB`);
+
+        // ── Client step 3: upload to server ──────────────────────────
+        const uploadStep = addStep(I18N.step_upload, "active");
+        const fd = new FormData();
+        fd.append("file", blob, `avatar.${ext}`);
+
+        try {
+            const resp = await fetch(UPLOAD_URL, { method: "POST", body: fd });
+
+            // Server returns JSON for validation errors (4xx)
+            const ct = resp.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+                const data = await resp.json();
+                setStep(uploadStep, I18N.step_upload, "failed", data.error || "");
+                resultMessage.innerHTML = `<p class="result-error">${I18N.result_error}</p>`;
+                resetUploadBtn();
+                return;
+            }
+
+            // Upload accepted — switch to streaming server-side processing steps
+            setStep(uploadStep, I18N.step_upload, "success");
+
+            // Pre-render server steps as pending so the user sees what's coming
+            const serverLabels = [
+                I18N.step_validated,
+                I18N.step_filename,
+                I18N.step_processed,
+                I18N.step_profile_synced,
+                ...(LDAP_ENABLED ? [I18N.step_ldap_updated] : []),
+            ];
+            const serverEls = serverLabels.map(label => addStep(label, "pending"));
+            let stepIdx = 0;
+            setStep(serverEls[0], serverLabels[0], "active");
+
+            // Read SSE stream chunk by chunk
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let finalData = null;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                // SSE frames are delimited by double newlines
+                const parts = buffer.split("\n\n");
+                buffer = parts.pop();
+                if (buffer.length > 65536) buffer = ""; // discard runaway buffer (malformed stream)
+
+                for (const part of parts) {
+                    for (const line of part.split("\n")) {
+                        if (!line.startsWith("data: ")) continue;
+                        const event = JSON.parse(line.slice(6));
+
+                        if (event.done) {
+                            finalData = event;
+                            continue;
+                        }
+
+                        // Update the pre-rendered step, or append if the server sends extra steps
+                        if (stepIdx < serverEls.length) {
+                            setStep(serverEls[stepIdx], event.step, event.status, event.detail || "");
+                        } else {
+                            addStep(event.step, event.status, event.detail || "");
+                        }
+                        stepIdx++;
+
+                        // Advance the spinner to the next pending step
+                        if (stepIdx < serverEls.length) {
+                            setStep(serverEls[stepIdx], serverLabels[stepIdx], "active");
+                        }
+                    }
+                }
+            }
+
+            // Mark leftover pre-rendered steps as skipped (early failure / partial pipeline)
+            for (let i = stepIdx; i < serverEls.length; i++) {
+                setStep(serverEls[i], serverLabels[i], "skipped");
+            }
+
+            // ── Handle final result ──────────────────────────────────
+            if (finalData?.avatar_url && !finalData.error) {
+                // Hide upload form, show success message, update displayed avatar
+                uploadSection.classList.add("hidden");
+                profileDivider.classList.add("hidden");
+                progressPanel.style.marginTop = "0";
+                progressPanel.style.paddingTop = "10";
+                resultMessage.innerHTML =
+                    `<p class="result-success">${I18N.result_success}</p>` +
+                    `<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">${I18N.result_retry}</button>`;
+                const avatarEl = document.querySelector(".profile-avatar");
+                if (avatarEl?.tagName === "IMG") {
+                    avatarEl.src = finalData.avatar_url;
+                }
+            } else {
+                resultMessage.innerHTML =
+                    `<p class="result-error">${finalData?.error || I18N.result_error}</p>`;
+                resetUploadBtn();
+            }
+        } catch (err) {
+            // Network error or stream read failure
+            if (progressList.lastChild?.classList.contains("pending")) {
+                progressList.lastChild.remove();
+            }
+            addStep(I18N.step_upload, "failed", err.message);
+            resultMessage.innerHTML = `<p class="result-error">${I18N.result_network_error}</p>`;
+            resetUploadBtn();
+        }
     });
   </script>
 
