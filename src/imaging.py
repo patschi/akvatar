@@ -209,55 +209,6 @@ def cleanup_avatar_files(filename_base: str) -> None:
     log.info('Cleanup: removed %d file(s) + metadata for %s.', removed, filename_base)
 
 
-def cleanup_old_avatars(user_pk: int, keep: int) -> int:
-    """
-    Enforce per-user avatar retention by deleting the oldest uploads beyond
-    the ``keep`` threshold.  Called after every successful upload.
-
-    Matches metadata files by ``user_pk`` (the Authentik integer primary key),
-    which is immutable even if the username is renamed.
-
-    Returns the number of avatar sets removed.
-    Does nothing if ``keep`` is 0 (unlimited retention).
-    """
-    if keep <= 0:
-        log.debug('Retention cleanup skipped (keep=0, unlimited).')
-        return 0
-
-    log.debug('Retention check for user_pk=%s (keep=%d).', user_pk, keep)
-
-    # Scan all metadata files and collect those belonging to this user.
-    entries: list[tuple[str, str]] = []  # (uploaded_at, filename_base)
-    for meta_path in METADATA_ROOT.glob('*.meta.json'):
-        try:
-            meta = json.loads(meta_path.read_text(encoding='utf-8'))
-            if meta.get('user_pk') == user_pk:
-                entries.append((meta.get('uploaded_at', ''), meta['filename']))
-        except (OSError, json.JSONDecodeError, KeyError) as exc:
-            log.warning('Skipping unreadable metadata file %s: %s', meta_path, exc)
-
-    log.debug('Found %d avatar set(s) for user_pk=%s.', len(entries), user_pk)
-
-    if len(entries) <= keep:
-        log.debug('Within retention limit – nothing to delete.')
-        return 0
-
-    # ISO 8601 timestamps sort lexicographically, so a simple string sort
-    # gives us chronological order without parsing dates.
-    entries.sort(key=lambda e: e[0], reverse=True)
-    to_delete = entries[keep:]
-
-    removed = 0
-    for uploaded_at, filename_base in to_delete:
-        log.info('Retention cleanup: removing avatar set %s (uploaded %s) for user_pk=%s.',
-                 filename_base, uploaded_at, user_pk)
-        cleanup_avatar_files(filename_base)
-        removed += 1
-
-    log.info('Retention cleanup for user_pk=%s: kept %d, removed %d avatar set(s).', user_pk, keep, removed)
-    return removed
-
-
 def get_all_avatar_metadata() -> list[dict]:
     """
     Read and return every .meta.json file from AVATAR_ROOT.

@@ -24,7 +24,7 @@ from src.auth import login_required
 from src.imaging import (
     AVATAR_ROOT, METADATA_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
     MAX_SIZE, normalize_image, check_magic_bytes, generate_filename, process_image,
-    cleanup_avatar_files, cleanup_old_avatars,
+    cleanup_avatar_files,
 )
 from src.authentik_api import update_avatar_url
 from src.ldap_client import update_thumbnail as update_ldap_thumbnail, is_enabled as ldap_is_enabled
@@ -33,8 +33,6 @@ from src.ldap_client import update_thumbnail as update_ldap_thumbnail, is_enable
 _ldap_enabled       = ldap_is_enabled()
 _ak_avatar_size     = ak_cfg.get('avatar_size', 1024)
 _ldap_thumb_size    = ldap_cfg.get('thumbnail_size', 128)
-_retention_count    = app_cfg.get('avatar_retention_count', 2)
-
 log = logging.getLogger('routes')
 
 routes_bp = Blueprint('routes', __name__)
@@ -266,10 +264,6 @@ def api_upload():
             meta_path = METADATA_ROOT / f'{filename_base}.meta.json'
             meta_path.write_text(json.dumps(metadata, indent=2), encoding='utf-8')
             log.debug('Metadata saved to %s.', meta_path)
-
-            # Enforce per-user retention (delete oldest uploads beyond the limit)
-            if _retention_count > 0:
-                cleanup_old_avatars(user['pk'], keep=_retention_count)
 
             log.info('Upload pipeline complete for user %r.', user['username'])
             yield _sse({'done': True, 'avatar_url': canonical_url})
