@@ -19,10 +19,12 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.avatar_storage_path`](#app_avatar_storage_path)                   | String  | Directory for stored avatar images                  |
 | [`app.public_base_url`](#app_public_base_url)                           | URL     | Public URL where the application is reachable       |
 | [`app.public_avatar_url`](#app_public_avatar_url)                       | URL     | Public URL where avatar files are served            |
-| [`app.avatar_retention_count`](#app_avatar_retention_count)             | Integer | Avatar sets to keep per user (0 = unlimited)        |
-| [`app.cleanup_interval`](#app_cleanup_interval)                         | Cron    | Cron schedule for the cleanup job                   |
-| [`app.cleanup_on_startup`](#app_cleanup_on_startup)                     | Boolean | Run cleanup once 60 s after startup                 |
 | [`app.web_session_lifetime_seconds`](#app_web_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
+| [`cleanup.interval`](#cleanup_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
+| [`cleanup.on_startup`](#cleanup_on_startup)                             | Boolean | Run cleanup once 60 s after startup                 |
+| [`cleanup.avatar_retention_count`](#cleanup_avatar_retention_count)     | Integer | Avatar sets to keep per user (0 = unlimited)        |
+| [`cleanup.when_user_deleted`](#cleanup_when_user_deleted)               | Boolean | Remove avatars of users deleted from Authentik      |
+| [`cleanup.when_user_deactivated`](#cleanup_when_user_deactivated)       | Boolean | Remove avatars of deactivated Authentik users       |
 | [`app.log_level`](#app_log_level)                                       | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#app_debug_full)                                     | Boolean | Full debug mode — never enable in production        |
 | [`webserver.proxy_mode`](#webserver_proxy_mode)                         | Boolean | Enable reverse-proxy header support (ProxyFix)      |
@@ -158,49 +160,6 @@ The public base URL where avatar files are accessible. This URL is used to build
 
 Must **not** have a trailing slash.
 
-<a id="app_avatar_retention_count"></a>
-
-### `app.avatar_retention_count`
-
-|             |         |
-| ----------- | ------- |
-| **Type**    | Integer |
-| **Default** | `2`     |
-
-Number of avatar sets to keep per user. When a user has more than this many uploaded avatars, the cleanup job deletes the oldest ones. Set to `0` to keep all uploads indefinitely (no retention cleanup).
-
-<a id="app_cleanup_interval"></a>
-
-### `app.cleanup_interval`
-
-|             |                                  |
-| ----------- | -------------------------------- |
-| **Type**    | String (cron expression)         |
-| **Default** | `"0 2 * * *"` (daily at 2:00 AM) |
-
-Cron schedule for the cleanup job. Uses standard 5-field crontab syntax
-(`minute hour day month weekday`). The schedule is evaluated in UTC.
-
-The cleanup job runs four phases:
-
-1. Remove avatar sets for users no longer active in Authentik
-2. Enforce per-user retention (keep the N most recent uploads)
-3. Remove size directories, format files, and image files that are no longer configured
-4. Remove orphaned metadata files with no matching images on disk
-
-Set to `""` (empty string) to disable the cleanup job entirely.
-
-<a id="app_cleanup_on_startup"></a>
-
-### `app.cleanup_on_startup`
-
-|             |         |
-| ----------- | ------- |
-| **Type**    | Boolean |
-| **Default** | `false` |
-
-When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the regular cron schedule. Useful for catching up after extended downtime.
-
 <a id="app_web_session_lifetime_seconds"></a>
 
 ### `app.web_session_lifetime_seconds`
@@ -247,6 +206,79 @@ Enables full debug mode. When active:
 - Template auto-reload is enabled (templates are re-read from disk on every request)
 
 **Never enable in production.** A warning is logged at startup when this is active.
+
+---
+
+## Cleanup
+
+<a id="cleanup_interval"></a>
+
+### `cleanup.interval`
+
+|             |                                  |
+| ----------- | -------------------------------- |
+| **Type**    | String (cron expression)         |
+| **Default** | `"0 2 * * *"` (daily at 2:00 AM) |
+
+Cron schedule for the cleanup job. Uses standard 5-field crontab syntax
+(`minute hour day month weekday`). The schedule is evaluated in UTC.
+
+The cleanup job runs four phases:
+
+1. Remove avatar sets for deleted (and optionally deactivated) users
+2. Enforce per-user retention (keep the N most recent uploads)
+3. Remove size directories, format files, and image files that are no longer configured
+4. Remove orphaned metadata files with no matching images on disk
+
+Set to `""` (empty string) to disable the cleanup job entirely.
+
+<a id="cleanup_on_startup"></a>
+
+### `cleanup.on_startup`
+
+|             |         |
+| ----------- | ------- |
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the regular cron schedule. Useful for catching up after extended downtime.
+
+<a id="cleanup_avatar_retention_count"></a>
+
+### `cleanup.avatar_retention_count`
+
+|             |         |
+| ----------- | ------- |
+| **Type**    | Integer |
+| **Default** | `2`     |
+
+Number of avatar sets to keep per user. When a user has more than this many uploaded avatars, the cleanup job deletes the oldest ones. Set to `0` to keep all uploads indefinitely (no retention cleanup).
+
+<a id="cleanup_when_user_deleted"></a>
+
+### `cleanup.when_user_deleted`
+
+|             |        |
+| ----------- | ------ |
+| **Type**    | Boolean |
+| **Default** | `true` |
+
+When enabled (default), the cleanup job removes all avatar sets belonging to users that have been deleted from Authentik entirely. A user is considered deleted when their PK no longer appears in any Authentik user listing.
+
+Disable this setting only if you want to retain avatars indefinitely even for users that no longer exist in Authentik.
+
+<a id="cleanup_when_user_deactivated"></a>
+
+### `cleanup.when_user_deactivated`
+
+|             |         |
+| ----------- | ------- |
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When enabled, the cleanup job also removes avatar sets for users that exist in Authentik but are currently deactivated (`is_active=false`). Disabled by default so that avatars are preserved for accounts that may be re-enabled later.
+
+Enable this setting if deactivated accounts should be treated the same as deleted ones for avatar storage purposes.
 
 ---
 

@@ -46,6 +46,7 @@ oidc_cfg     = cfg['oidc']
 ak_cfg       = cfg['authentik_api']
 ldap_cfg     = cfg.get('ldap', {})  # May be absent if disabled
 img_cfg      = cfg['images']
+cleanup_cfg  = cfg.get('cleanup', {})
 access_log   = bool(web_cfg.get('access_log', False))
 
 # Logging setup

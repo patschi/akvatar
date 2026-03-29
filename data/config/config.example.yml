@@ -32,16 +32,6 @@ app:
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
   public_avatar_url: "https://avatar.example.com/user-avatars"
-  # Number of avatar sets to keep per user. Older uploads are automatically
-  # deleted after each successful upload. Set to 0 to keep all (no cleanup).
-  avatar_retention_count: 2
-  # Cron schedule for orphan avatar cleanup (removes avatars of users that no
-  # longer exist in Authentik).  Uses standard 5-field crontab syntax.
-  # Important: The scheduler always uses the UTC time.
-  # Set to "" (empty string) to disable.  Default: "0 2 * * *" (daily at 2 AM).
-  cleanup_interval: "0 2 * * *"
-  # Run orphan cleanup once 60 seconds after application startup.
-  cleanup_on_startup: false
   # Web session lifetime in seconds.  After this period the session cookie
   # expires and the user must log in again.  Default: 1800 (30 minutes).
   web_session_lifetime_seconds: 1800
@@ -50,6 +40,24 @@ app:
   # Enable full debug mode: activates Flask debugger, forces log level to
   # DEBUG, and enables template auto-reload.  NEVER enable in production.
   debug_full: false
+
+# --- Cleanup ---
+cleanup:
+  # Cron schedule for the cleanup job.  Uses standard 5-field crontab syntax
+  # (minute hour day month weekday).  The scheduler always uses UTC time.
+  # Set to "" (empty string) to disable the cleanup job entirely.
+  interval: "0 2 * * *"
+  # Run cleanup once 60 seconds after application startup (in addition to cron).
+  # Cleanup can always be triggered via running `run_cleanup.py` when needed.
+  on_startup: false
+  # Number of avatar sets to keep per user.  Older uploads beyond this limit
+  # are removed by the cleanup job.  Set to 0 to keep all (no retention cleanup).
+  avatar_retention_count: 2
+  # Remove avatar sets for users that have been deleted from Authentik entirely.
+  when_user_deleted: true
+  # Remove avatar sets for users that exist in Authentik but are deactivated.
+  # Disabled by default so avatars are preserved for temporarily disabled accounts.
+  when_user_deactivated: false
 
 # --- Webserver ---
 # These settings apply when running via run.py / gunicorn (production & Docker).

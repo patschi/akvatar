@@ -138,21 +138,21 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
     return patched_attrs
 
 
-def list_all_user_pks() -> set[int]:
+def _list_user_pks(active_only: bool = False) -> set[int]:
     """
-    Paginate through Authentik's core users API and return the PK of every
-    active user.
+    Paginate through Authentik's core users API and return the collected PKs.
 
-    Used by the cleanup job: any avatar metadata whose ``user_pk``
-    is not in this set belongs to a deleted/deactivated user.
+    ``active_only=True`` adds ``is_active=true`` to the request, returning
+    only non-deactivated users.  The default returns every user regardless
+    of active status.
     """
     pks: set[int] = set()
     page = 0
 
-    # Only request active users — deactivated accounts should have their
-    # avatars cleaned up just like deleted ones.
     url: str | None = _users_url
-    params: dict | None = {'page_size': 100, 'is_active': 'true'}
+    params: dict | None = {'page_size': 100}
+    if active_only:
+        params['is_active'] = 'true'
 
     # Paginate through all result pages, collecting PKs from each page
     while url:
@@ -181,5 +181,32 @@ def list_all_user_pks() -> set[int]:
         url = data.get('pagination', {}).get('next')
         params = None
 
-    log.info('Fetched %d active user PK(s) from Authentik (%d page(s)).', len(pks), page)
+    return pks
+
+
+def list_all_user_pks() -> set[int]:
+    """
+    Return the PK of every user in Authentik (both active and deactivated).
+
+    Used by the cleanup job to detect truly deleted users: a metadata entry
+    whose ``user_pk`` is not in this set belongs to a user that no longer
+    exists in Authentik at all.
+    """
+    pks = _list_user_pks(active_only=False)
+    log.debug('Fetched %d user PK(s) from Authentik (active + deactivated).', len(pks))
+    return pks
+
+
+def list_active_user_pks() -> set[int]:
+    """
+    Return the PK of every *active* user in Authentik.
+
+    Used by the cleanup job when ``cleanup.when_user_deactivated`` is enabled,
+    to identify deactivated users (present in ``list_all_user_pks`` but absent
+    here) alongside deleted users (absent from ``list_all_user_pks`` entirely).
+    When both deleted and deactivated cleanup are enabled, only this function
+    is called — anything not in the active set is cleaned up.
+    """
+    pks = _list_user_pks(active_only=True)
+    log.debug('Fetched %d active user PK(s) from Authentik.', len(pks))
     return pks

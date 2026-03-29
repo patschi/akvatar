@@ -299,7 +299,7 @@ Each upload produces one image file per configured size per format, plus one met
 ## Cleanup
 
 The cleanup job runs in a background daemon thread on a configurable cron schedule
-(see [`app.cleanup_interval`](configuration.md#app_cleanup_interval)). It can also be triggered manually via
+(see [`cleanup.interval`](configuration.md#cleanup_interval)). It can also be triggered manually via
 `python run_cleanup.py`.
 
 ### Why cleanup is needed
@@ -307,7 +307,7 @@ The cleanup job runs in a background daemon thread on a configurable cron schedu
 Every successful upload writes multiple files to disk (one per configured size and format, plus metadata). Over
 time this accumulates from:
 
-- Users who have since been deleted or deactivated in Authentik
+- Users who have since been deleted from Authentik (and optionally deactivated, if [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) is enabled)
 - Users who have uploaded multiple times (only the latest few are needed)
 - Leftover files from configuration changes (e.g. removed sizes or formats)
 
@@ -322,16 +322,16 @@ API outage being mistaken for "no users exist".
 
 ```mermaid
 flowchart TD
-    A[Start cleanup] --> B[Fetch active user PKs from Authentik API]
+    A[Start cleanup] --> B[Fetch user PKs from Authentik API]
     B --> C{API returned 0 users?}
     C -- Yes --> ABORT[Abort — safety guard triggered]
     C -- No --> D[Load all .meta.json files from disk]
 
     D --> E[Phase 1: Stale users]
-    E --> E1["For each avatar set whose user_pk\nis NOT in active PKs:\ndelete all size×format files + metadata"]
+    E --> E1["For each avatar set whose user_pk matches\na deleted user (or deactivated, if configured):\ndelete all size×format files + metadata"]
 
     E1 --> F[Phase 2: Retention enforcement]
-    F --> F1["For each active user with more than\navatar_retention_count sets:\nsort by uploaded_at desc,\ndelete oldest beyond the limit"]
+    F --> F1["For each remaining user with more than\ncleanup.avatar_retention_count sets:\nsort by uploaded_at desc,\ndelete oldest beyond the limit"]
 
     F1 --> G[Phase 3: Orphaned files]
     G --> G1["Phase 3A: Remove entire size\ndirectories no longer in images.sizes"]
@@ -345,15 +345,21 @@ flowchart TD
 
 #### Phase 1 — Stale users
 
-Reads the `user_pk` from every `.meta.json` file and compares it against the set of
-active Authentik user PKs. Avatar sets owned by users who no longer exist (deleted or
-deactivated) are removed: all size × format image files and the metadata file are deleted.
+Reads the `user_pk` from every `.meta.json` file and compares it against user data
+fetched from Authentik. Which users trigger cleanup is controlled by two flags:
+
+- [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted) (default `true`): removes avatar sets for users
+  whose PK no longer exists in Authentik at all.
+- [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) (default `false`): also removes avatar sets
+  for users that exist in Authentik but are currently deactivated.
+
+For every targeted user, all size × format image files and the metadata file are deleted.
 
 #### Phase 2 — Retention enforcement
 
-For each active user, avatar sets are sorted newest-first by `uploaded_at` (ISO 8601
-sorts lexicographically). Sets beyond the configured
-[`app.avatar_retention_count`](configuration.md#app_avatar_retention_count) are deleted.
+For each user not targeted by Phase 1, avatar sets are sorted newest-first by `uploaded_at`
+(ISO 8601 sorts lexicographically). Sets beyond the configured
+[`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count) are deleted.
 
 #### Phase 3 — Orphaned files
 
@@ -392,12 +398,14 @@ what it would have done. The file count for avatar sets in dry-run is an estimat
 
 ### Cleanup configuration
 
-| Setting                                                                                     | Description                                         |
-| ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| [`app.cleanup_interval`](configuration.md#app_cleanup_interval)                             | Cron schedule (UTC) for when the job runs           |
-| [`app.cleanup_on_startup`](configuration.md#app_cleanup_on_startup)                         | Whether to also run once shortly after startup      |
-| [`app.avatar_retention_count`](configuration.md#app_avatar_retention_count)                 | How many avatar sets to keep per user               |
-| [`dry_run`](configuration.md#dry_run)                                                       | Log-only mode — no files are deleted                |
+| Setting                                                                                         | Description                                              |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`cleanup.interval`](configuration.md#cleanup_interval)                                         | Cron schedule (UTC) for when the job runs                |
+| [`cleanup.on_startup`](configuration.md#cleanup_on_startup)                                     | Whether to also run once shortly after startup           |
+| [`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count)             | How many avatar sets to keep per user                    |
+| [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted)                       | Remove avatars of users deleted from Authentik           |
+| [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated)               | Remove avatars of deactivated Authentik users            |
+| [`dry_run`](configuration.md#dry_run)                                                           | Log-only mode — no files are deleted                     |
 
 ## Server-Sent Events (SSE)
 

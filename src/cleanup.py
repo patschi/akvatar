@@ -1,16 +1,23 @@
 """
 cleanup.py – Avatar cleanup.
 
-Removes avatar files that belong to users who no longer exist in Authentik,
-enforces per-user retention (keeping only the N most recent uploads), and
-removes orphaned files left behind by configuration changes or incomplete
-uploads.
+Removes avatar files that belong to users who no longer exist in Authentik
+(and optionally users who are deactivated), enforces per-user retention
+(keeping only the N most recent uploads), and removes orphaned files left
+behind by configuration changes or incomplete uploads.
 
 How user matching works:
   - Each upload writes a .meta.json with the Authentik PK stored in the
     ``user_pk`` field.
-  - Authentik's core users API returns the same PK for every active user.
-  - A direct integer-equality check determines whether the user still exists.
+  - Authentik's core users API returns the same PK for every user.
+  - A direct integer-equality check determines whether the user still exists
+    and whether they are active.
+
+Deletion behaviour (Phase 1) is controlled by two config flags:
+  - ``cleanup.when_user_deleted`` (default true): remove avatar sets for users
+    that no longer exist in Authentik at all.
+  - ``cleanup.when_user_deactivated`` (default false): also remove avatar sets
+    for users that exist but are marked as inactive in Authentik.
 
 Orphan cleanup:
   - Size directories that no longer appear in ``images.sizes`` are removed.
@@ -19,9 +26,9 @@ Orphan cleanup:
   - Image files whose filename base has no matching .meta.json are deleted.
 
 Safety:
-  - If the Authentik API returns zero active users (e.g. due to an expired
-    token or network error), the cleanup aborts entirely to prevent accidental
-    mass deletion.
+  - If the Authentik API returns zero users (e.g. due to an expired token or
+    network error), the cleanup aborts entirely to prevent accidental mass
+    deletion.
   - Respects dry_run mode from config.yml — when enabled, only logs what
     would be deleted without touching the filesystem.
 
@@ -40,21 +47,23 @@ from datetime import datetime, timezone
 
 from croniter import croniter
 
-from src.config import app_cfg, img_cfg, dry_run
+from src.config import cleanup_cfg, img_cfg, dry_run
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, _FORMAT_MAP, get_all_avatar_metadata, cleanup_avatar_files
-from src.authentik_api import list_all_user_pks
+from src.authentik_api import list_all_user_pks, list_active_user_pks
 
 log = logging.getLogger('cleanup')
 
 # Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
-_cron_expr = str(app_cfg.get('cleanup_interval', '0 2 * * *')).strip()
-_run_on_startup = bool(app_cfg.get('cleanup_on_startup', False))
-_retention_count = app_cfg.get('avatar_retention_count', 2)
+_cron_expr         = str(cleanup_cfg.get('interval', '0 2 * * *')).strip()
+_run_on_startup    = bool(cleanup_cfg.get('on_startup', False))
+_retention_count   = cleanup_cfg.get('avatar_retention_count', 2)
+_cleanup_when_deleted     = bool(cleanup_cfg.get('when_user_deleted', True))
+_cleanup_when_deactivated = bool(cleanup_cfg.get('when_user_deactivated', False))
 
 # Currently configured sizes and on-disk file extensions (used to detect orphans).
 # Formats are resolved through _FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
-_configured_sizes = {f'{s}x{s}' for s in img_cfg['sizes']}
+_configured_sizes   = {f'{s}x{s}' for s in img_cfg['sizes']}
 _configured_formats = {_FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
 
 # Regex to match size directory names like "128x128", "1024x1024"
@@ -85,23 +94,26 @@ def _try_unlink(path, label: str) -> tuple[int, int]:
 _FILES_PER_SET = len(img_cfg['sizes']) * len(img_cfg['formats']) + 1
 
 
-def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) -> tuple[int, int, set[str]]:
+def _enforce_retention(per_user: dict[int, list[dict]], skip_pks: set[int]) -> tuple[int, int, set[str]]:
     """
-    For each active user with more than ``_retention_count`` avatar sets,
-    delete the oldest uploads beyond the limit.
+    For each user not in ``skip_pks`` that has more than ``_retention_count``
+    avatar sets, delete the oldest uploads beyond the limit.
+
+    ``skip_pks`` contains user PKs already handled by Phase 1 (whose avatars
+    are being removed entirely); retention is not applied to those users.
 
     Returns (file_deleted, file_failed, deleted_set_names).
     """
     if _retention_count <= 0:
-        log.debug('Retention is disabled (avatar_retention_count=0).')
+        log.debug('Retention is disabled (cleanup.avatar_retention_count=0).')
         return 0, 0, set()
 
     file_deleted = 0
     file_failed = 0
     deleted_sets: set[str] = set()
     for user_pk, entries in per_user.items():
-        if user_pk not in active_pks:
-            continue  # already handled by stale-user removal
+        if user_pk in skip_pks:
+            continue  # Phase 1 already handles removal for this user
         if len(entries) <= _retention_count:
             continue
 
@@ -205,8 +217,8 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> tuple[int, int, int]:
 def run_cleanup() -> int:
     """
     Run all cleanup phases:
-      1. Remove avatar sets whose owner no longer exists in Authentik.
-      2. Enforce per-user retention for active users.
+      1. Remove avatar sets for deleted users (and optionally deactivated users).
+      2. Enforce per-user retention for remaining users.
       3. Remove orphaned files (obsolete sizes/formats, images without metadata).
 
     Matching is done by ``user_pk`` (Authentik's integer primary key), which
@@ -217,24 +229,9 @@ def run_cleanup() -> int:
     """
     log.info('Starting avatar cleanup...')
 
-    # Fetch the full set of active user PKs from Authentik.
-    try:
-        active_pks = list_all_user_pks()
-    except Exception:
-        log.exception('Failed to fetch user list from Authentik – aborting cleanup.')
-        return 0
-
-    # Guard against an empty response — deleting everything would be
-    # catastrophic if the API simply returned no results due to a bug
-    # or authentication failure.
-    if not active_pks:
-        log.warning('Authentik returned zero active users – aborting to prevent accidental mass deletion.')
-        return 0
-
     all_metadata = get_all_avatar_metadata()
-    log.info('Found %d avatar set(s) on disk, %d active user(s) in Authentik.', len(all_metadata), len(active_pks))
 
-    # Group metadata by user_pk for both stale-user removal and retention.
+    # Group metadata by user_pk for both Phase 1 and retention.
     per_user: dict[int, list[dict]] = defaultdict(list)
     skipped = 0
     for meta in all_metadata:
@@ -255,26 +252,68 @@ def run_cleanup() -> int:
     total_failed = 0
     dry_run_sets = 0
 
-    # Phase 1: remove avatar sets for users that no longer exist.
-    for user_pk, entries in per_user.items():
-        if user_pk in active_pks:
-            continue
-        for meta in entries:
-            filename = meta.get('filename', '')
-            if dry_run:
-                log.info('[DRY-RUN] Would remove avatar set %s (user_pk=%s).', filename, user_pk)
-                dry_run_sets += 1
-            else:
-                log.info('Removing avatar set %s (user_pk=%s no longer active).', filename, user_pk)
-                d, f = cleanup_avatar_files(filename)
-                total_deleted += d
-                total_failed += f
-            deleted_filenames.add(filename)
+    # Phase 1: remove avatar sets for deleted (and optionally deactivated) users.
+    phase1_delete_pks: set[int] = set()
 
-    # Phase 2: enforce per-user retention for active users.
-    ret_deleted, ret_failed, retention_deleted = _enforce_retention(per_user, active_pks)
+    if not (_cleanup_when_deleted or _cleanup_when_deactivated):
+        log.debug('Phase 1 skipped (cleanup.when_user_deleted=false, cleanup.when_user_deactivated=false).')
+    else:
+        # Fetch user PKs from Authentik.  Minimise API calls based on which
+        # flags are set:
+        #   - both flags: only active PKs needed (clean everything not active)
+        #   - deleted only: all PKs needed (clean those absent from Authentik)
+        #   - deactivated only: both sets needed (clean in-Authentik-but-inactive)
+        try:
+            if _cleanup_when_deleted and _cleanup_when_deactivated:
+                active_pks = list_active_user_pks()
+                all_pks    = active_pks  # deleted users are also absent from active
+            elif _cleanup_when_deleted:
+                all_pks = list_all_user_pks()
+            else:  # only _cleanup_when_deactivated
+                all_pks    = list_all_user_pks()
+                active_pks = list_active_user_pks()
+        except Exception:
+            log.exception('Failed to fetch user list from Authentik – aborting cleanup.')
+            return 0
+
+        # Safety guard: if Authentik returned zero users the API is likely broken
+        # or the token expired.  Aborting prevents catastrophic mass deletion.
+        if not all_pks:
+            log.warning('Authentik returned zero users – aborting to prevent accidental mass deletion.')
+            return 0
+
+        log.info('Found %d avatar set(s) on disk, %d user(s) in Authentik.',
+                 len(all_metadata), len(all_pks))
+
+        # Determine which PKs to clean up based on each user's status.
+        # Short-circuit evaluation ensures active_pks is never accessed when
+        # _cleanup_when_deactivated is false (and thus active_pks is not set).
+        for user_pk in per_user:
+            if _cleanup_when_deleted and user_pk not in all_pks:
+                phase1_delete_pks.add(user_pk)
+            elif _cleanup_when_deactivated and user_pk in all_pks and user_pk not in active_pks:
+                phase1_delete_pks.add(user_pk)
+
+        # Delete avatar sets for every targeted user PK.
+        for user_pk in phase1_delete_pks:
+            reason = 'deleted' if user_pk not in all_pks else 'deactivated'
+            for meta in per_user[user_pk]:
+                filename = meta.get('filename', '')
+                if dry_run:
+                    log.info('[DRY-RUN] Would remove avatar set %s (user_pk=%s, %s).',
+                             filename, user_pk, reason)
+                    dry_run_sets += 1
+                else:
+                    log.info('Removing avatar set %s (user_pk=%s, %s).', filename, user_pk, reason)
+                    d, f = cleanup_avatar_files(filename)
+                    total_deleted += d
+                    total_failed  += f
+                deleted_filenames.add(filename)
+
+    # Phase 2: enforce per-user retention for users not handled in Phase 1.
+    ret_deleted, ret_failed, retention_deleted = _enforce_retention(per_user, phase1_delete_pks)
     total_deleted += ret_deleted
-    total_failed += ret_failed
+    total_failed  += ret_failed
     deleted_filenames |= retention_deleted
     if dry_run:
         dry_run_sets += len(retention_deleted)
@@ -285,7 +324,7 @@ def run_cleanup() -> int:
     # Phase 3: remove orphaned files (obsolete sizes, formats, no metadata).
     orph_expected, orph_deleted, orph_failed = _cleanup_orphaned_files(surviving_filenames)
     total_deleted += orph_deleted
-    total_failed += orph_failed
+    total_failed  += orph_failed
 
     if dry_run:
         dry_run_total = dry_run_sets * _FILES_PER_SET + orph_expected
@@ -316,7 +355,7 @@ def _cleanup_loop() -> None:
     main process shuts down.
     """
     if _run_on_startup:
-        log.info('cleanup_on_startup is enabled – running cleanup in 60 s.')
+        log.info('cleanup.on_startup is enabled – running cleanup in 60 s.')
         time.sleep(60)
         try:
             run_cleanup()
@@ -348,11 +387,11 @@ def start_cleanup_thread() -> None:
     process exits — no explicit shutdown logic needed.
     """
     if not _cron_expr:
-        log.info('Cleanup is disabled (cleanup_interval is empty).')
+        log.info('Cleanup is disabled (cleanup.interval is empty).')
         return
 
     if not croniter.is_valid(_cron_expr):
-        log.error('Invalid cron expression %r for cleanup_interval – cleanup is disabled.', _cron_expr)
+        log.error('Invalid cron expression %r for cleanup.interval – cleanup is disabled.', _cron_expr)
         return
 
     thread = threading.Thread(
