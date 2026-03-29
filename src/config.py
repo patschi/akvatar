@@ -11,6 +11,8 @@ import logging
 
 import yaml
 
+from src import APP_NAME, APP_VERSION
+
 
 def _fatal(msg: str) -> None:
     """Print a FATAL error and exit immediately."""
@@ -66,8 +68,6 @@ logging.basicConfig(
     format='[%(asctime)s] [%(levelname)-8s] [%(name)-10.10s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S %z',
 )
-
-from src import APP_NAME, APP_VERSION
 
 log = logging.getLogger('config')
 log.info('Starting %s v%s...', APP_NAME, APP_VERSION)

@@ -10,7 +10,7 @@ OIDC scopes are hardcoded to `openid profile email` and cannot be changed via co
 import logging
 from functools import wraps
 
-from flask import Blueprint, redirect, url_for, session, render_template, request
+from flask import Blueprint, redirect, url_for, session, render_template
 from authlib.integrations.flask_client import OAuth
 
 from src.config import oidc_cfg, app_cfg

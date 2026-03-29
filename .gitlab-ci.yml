@@ -21,7 +21,7 @@ ruff:
   stage: lint
   image: python:3.13-slim
   before_script:
-    - pip install --quiet ruff
+    - pip install --quiet --root-user-action=ignore ruff
   script:
     - ruff check src/
   rules:
