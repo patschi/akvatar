@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 {% set cropper_head %}
-  <!-- Cropper.js – served locally from static/vendor/ -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/cropper.min.css') }}" />
-  <script src="{{ url_for('static', filename='vendor/cropper.min.js') }}"></script>
+  <!-- Cropper.js – served locally from static/css+js/vendor/ -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/cropper.min.css') }}" />
+  <script src="{{ url_for('static', filename='js/vendor/cropper.min.js') }}"></script>
 {% endset %}
 {% with page_title=t('title_dashboard'), head_extra=cropper_head %}
   {% include 'partials/head.html' %}
@@ -419,7 +419,7 @@
         }
     });
   </script>
-  <script src="{{ url_for('static', filename='settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
 </body>
 </html>
