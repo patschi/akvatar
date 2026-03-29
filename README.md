@@ -183,3 +183,4 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 | [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)             | Full nginx config with TLS termination, SSE support, and optional static avatar serving   |
 | [Subfolder Deployment](docs/subfolder-deployment.md)           | Hosting the app under a URL path prefix (e.g. `/avatar/`)                                |
 | [MS AD Service Account](docs/ms-ad-service-account.md)         | Least-privilege Active Directory service account setup with PowerShell automation         |
+| [Troubleshooting](docs/troubleshooting.md)                     | General debugging tips, known issues, and their fixes                                    |
