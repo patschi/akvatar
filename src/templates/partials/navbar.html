@@ -8,7 +8,7 @@
     {% if user is defined and user %}
       <span class="user-info">
         {{ user.name or user.username }}
-        &middot;
+        <span class="nav-separator">&middot;</span>
         <a href="{{ url_for('auth.logout') }}">{{ t('nav_logout') }}</a>
       </span>
     {% endif %}

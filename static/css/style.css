@@ -123,6 +123,10 @@ body {
   z-index: 100;
 }
 
+.nav-separator {
+  margin: 0 0.3rem;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -145,7 +149,7 @@ body {
 }
 
 .user-info {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
 }
 
