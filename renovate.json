@@ -24,10 +24,10 @@
             "automerge": true
         },
         {
-            "matchManagers": ["dockerfile"],
+            "matchManagers": ["dockerfile", "gitlabci"],
             "matchDepNames": ["python"],
             "allowedVersions": "/^3\\.13/",
-            "description": "Pin builder Python to 3.13.x to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump this rule intentionally when moving to a new distroless base."
+            "description": "Pin Python to 3.13.x across Dockerfile and CI to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump this rule intentionally when moving to a new distroless base."
         },
         {
             "matchDatasources": ["docker"],

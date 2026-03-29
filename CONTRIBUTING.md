@@ -72,9 +72,10 @@ When bumping the Python version (e.g. moving to Python 3.14 with a new distroles
 
 1. Update the `FROM python:3.13-slim-...` line in `Dockerfile` to the new version and Debian codename
 2. Update the `FROM gcr.io/distroless/python3-debian13` line to the matching `python3-debian14` (or equivalent) tag
-3. Update the `allowedVersions` regex in `renovate.json` from `/^3\.13/` to `/^3\.14/`
+3. Update the `image: python:3.13-slim@sha256:...` line in `.gitlab-ci.yml` to the new version
+4. Update the `allowedVersions` regex in `renovate.json` from `/^3\.13/` to `/^3\.14/`
 
-All three must change together. Renovate is intentionally prevented from bumping the Python minor version automatically — the upgrade is a deliberate, coordinated change.
+All four must change together. Renovate is intentionally prevented from bumping the Python minor version automatically — the upgrade is a deliberate, coordinated change.
 
 ## License
 
