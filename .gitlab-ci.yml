@@ -26,10 +26,10 @@ lint-ruff:
   stage: lint
   image: python:3.13-slim
   before_script:
-    - pip install --upgrade pip
+    - pip install --quiet --root-user-action=ignore --upgrade pip
     - pip install --quiet --root-user-action=ignore ruff
   script:
-    - ruff check src/
+    - ruff check *.py src/
 
 # Push container to GitLab Container Registry
 push-container-gitlab:
