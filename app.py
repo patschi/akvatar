@@ -162,6 +162,25 @@ def create_app() -> Flask:
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
 
+    # Session cookie hardening.
+    # HttpOnly: cookie not accessible from JavaScript (mitigates XSS session theft).
+    # SameSite=Lax: browser refuses to send the cookie on cross-site POST requests,
+    #   which effectively prevents CSRF on /api/upload without a token library.
+    #   Lax (not Strict) is required so the OIDC redirect from Authentik back to
+    #   /callback still carries the session cookie for state verification.
+    # Secure: instructs the browser to only transmit the cookie over HTTPS connections.
+    #   The Secure flag is about what the *browser* sees, not the Flask-to-proxy link.
+    #   When a reverse proxy terminates TLS, the browser talks to the proxy over HTTPS
+    #   so it will honour the flag; the internal proxy→Flask link being plain HTTP is
+    #   irrelevant.  We therefore set Secure whenever the public URL uses https://, not
+    #   only when Flask's own built-in server has TLS configured.
+    # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
+    _tls_active = app_cfg.get('public_base_url', '').startswith('https://')
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = _tls_active
+    app.config['PERMANENT_SESSION_LIFETIME'] = app_cfg.get('web_session_lifetime_seconds', 1800)
+
     if debug_full:
         app.debug = True
         app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -235,6 +254,19 @@ def create_app() -> Flask:
             'lang': locale.split('_')[0],
             'i18n': get_js_translations(locale),
         }
+
+    # Security response headers – applied to every non-static response
+    @app.after_request
+    def _set_security_headers(response):
+        # Prevent MIME-type sniffing (e.g. serving a JPEG as text/html)
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Deny framing to block clickjacking attacks
+        response.headers['X-Frame-Options'] = 'DENY'
+        # Limit referrer information sent to cross-origin destinations
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        # Remove server identity header to reduce fingerprinting surface
+        response.headers.discard('Server')
+        return response
 
     # HTTP request logging (non-static requests only)
     if access_log:

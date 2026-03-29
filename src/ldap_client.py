@@ -99,6 +99,10 @@ def _find_user_dn(conn: ldap3.Connection, ldap_uniq: str) -> str:
 
     Raises ValueError if the user is not found or the DN is empty.
     """
+    # Guard against pathologically long identifiers that could cause excessive
+    # LDAP filter strings or log line bloat
+    if len(ldap_uniq) > 512:
+        raise ValueError(f'ldap_uniq is unreasonably long ({len(ldap_uniq)} chars); refusing search.')
     escaped = ldap3.utils.conv.escape_filter_chars(ldap_uniq)
     search_filter = _search_filter_tpl.replace('{ldap_uniq}', escaped)
     log.debug('Searching base=%r with filter=%s.', _search_base, search_filter)

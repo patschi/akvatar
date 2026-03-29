@@ -10,9 +10,10 @@ Contains:
 """
 
 import logging
+import re
 
 from flask import (
-    Blueprint, Response, redirect, url_for, session, request,
+    Blueprint, Response, abort, redirect, url_for, session, request,
     jsonify, send_from_directory, render_template, stream_with_context,
 )
 
@@ -55,6 +56,10 @@ def login_page():
     error_key = request.args.get('error', '')
     if not error_key and 'autologin' in request.args:
         return redirect(url_for('auth.login'))
+    # Whitelist error keys – reject arbitrary strings that could be reflected into templates
+    _VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
+    if error_key not in _VALID_ERROR_KEYS:
+        error_key = ''
     if error_key:
         log.debug('Login page rendered with error=%r.', error_key)
     return render_template('login.html', error_key=error_key)
@@ -74,9 +79,15 @@ def dashboard():
 
 
 # Serve stored avatar files
+# Dimensions must be NxN (e.g. "256x256") – reject anything else before touching the filesystem
+_DIMENSIONS_RE = re.compile(r'^\d{1,5}x\d{1,5}$')
+
 @routes_bp.route('/user-avatars/<dimensions>/<filename>')
 def serve_avatar(dimensions, filename):
     """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
+    if not _DIMENSIONS_RE.match(dimensions):
+        log.debug('Avatar request rejected – invalid dimensions: %r', dimensions)
+        abort(404)
     filepath = f'{dimensions}/{filename}'
     log.debug('Serving avatar file: %s', filepath)
     return send_from_directory(AVATAR_ROOT, filepath)

@@ -93,6 +93,10 @@ def auth_callback():
         log.exception('Failed to resolve Authentik PK for user %r – login aborted.', username)
         return redirect(url_for('routes.login_page', error='pk_failed'))
 
+    # Mark session as permanent so PERMANENT_SESSION_LIFETIME is enforced.
+    # Without this Flask uses a browser-session cookie with no server-side expiry.
+    session.permanent = True
+
     session['user'] = {
         'pk':       pk,
         'username': username,

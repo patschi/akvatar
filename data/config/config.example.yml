@@ -26,6 +26,8 @@ app:
   # The path component is used to host the app under a subfolder automatically
   # (e.g. "https://portal.example.com/avatar" serves the app under /avatar).
   # Must NOT have a trailing slash.
+  # When this URL starts with "https://", the session cookie is automatically
+  # marked Secure so browsers only transmit it over HTTPS connections.
   public_base_url: "https://avatar.example.com"
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
@@ -40,6 +42,9 @@ app:
   cleanup_interval: "0 2 * * *"
   # Run orphan cleanup once 60 seconds after application startup.
   cleanup_on_startup: false
+  # Web session lifetime in seconds.  After this period the session cookie
+  # expires and the user must log in again.  Default: 1800 (30 minutes).
+  web_session_lifetime_seconds: 1800
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
   # Enable full debug mode: activates Flask debugger, forces log level to
