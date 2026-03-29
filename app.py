@@ -16,10 +16,6 @@ from urllib.parse import urlparse
 
 import flask.cli
 
-# Suppress Flask's default startup banner ("Serving Flask app ...")
-# – we print our own startup info via the 'app' logger.
-flask.cli.show_server_banner = lambda *a, **kw: None
-
 from flask import Flask, Response, abort, request  # noqa: E402
 from jinja2 import BaseLoader  # noqa: E402
 from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
@@ -162,7 +158,7 @@ class _MinifyingTemplateLoader(BaseLoader):
     per-request overhead.  Template files on disk are left untouched.
     """
     _HTML_COMMENT = re.compile(r'<!--.*?-->', re.DOTALL)
-    _BLANK_LINES   = re.compile(r'\n{3,}')
+    _BLANK_LINES  = re.compile(r'\n{3,}')
 
     def __init__(self, loader: BaseLoader) -> None:
         self._loader = loader
@@ -306,8 +302,6 @@ def create_app() -> Flask:
             response.headers['X-Frame-Options'] = 'DENY'
         # Limit referrer information sent to cross-origin destinations
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        # Remove server identity header to reduce fingerprinting surface
-        response.headers.pop('Server', None)
         return response
 
     # HTTP request logging (non-static requests only)
