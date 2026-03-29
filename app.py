@@ -8,6 +8,7 @@ and subfolder middleware, and starts the development server when run directly.
 import hashlib
 import logging
 import mimetypes
+import re
 import threading
 import time
 from pathlib import Path
@@ -20,6 +21,7 @@ import flask.cli
 flask.cli.show_server_banner = lambda *a, **kw: None
 
 from flask import Flask, Response, abort, request  # noqa: E402
+from jinja2 import BaseLoader  # noqa: E402
 from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log  # noqa: E402
@@ -151,6 +153,27 @@ class PrefixMiddleware:
         return self.wsgi_app(environ, start_response)
 
 
+class _MinifyingTemplateLoader(BaseLoader):
+    """
+    Wraps Flask's Jinja2 template loader to strip HTML comments and collapse
+    excess blank lines from template source before compilation.
+
+    Runs once per template (Jinja2 caches compiled bytecode), so there is no
+    per-request overhead.  Template files on disk are left untouched.
+    """
+    _HTML_COMMENT = re.compile(r'<!--.*?-->', re.DOTALL)
+    _BLANK_LINES   = re.compile(r'\n{3,}')
+
+    def __init__(self, loader: BaseLoader) -> None:
+        self._loader = loader
+
+    def get_source(self, environment, template):
+        source, filename, uptodate = self._loader.get_source(environment, template)
+        source = self._HTML_COMMENT.sub('', source)
+        source = self._BLANK_LINES.sub('\n\n', source)
+        return source, filename, uptodate
+
+
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
 
@@ -161,6 +184,15 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder='src/templates', static_folder=None)
     app.secret_key = app_cfg['secret_key']
     app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
+
+    # Strip blank lines introduced by Jinja2 block tags in rendered HTML output.
+    # trim_blocks:   removes the newline after a block tag ({% ... %})
+    # lstrip_blocks: strips leading whitespace before block tags on their own line
+    app.jinja_env.trim_blocks = True
+    app.jinja_env.lstrip_blocks = True
+    # Wrap the loader so HTML comments and excess blank lines are stripped from
+    # template source at compile time (once per template, not per request).
+    app.jinja_env.loader = _MinifyingTemplateLoader(app.jinja_env.loader)
 
     # Session cookie hardening.
     # HttpOnly: cookie not accessible from JavaScript (mitigates XSS session theft).
