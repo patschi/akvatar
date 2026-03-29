@@ -74,36 +74,6 @@ mismatching_state: CSRF Warning! State not equal in request and response.
 | **Stale cookies from a previous deployment.** A crashed or misconfigured deployment may have left behind unusable session cookies. | Clear browser cookies for the application's domain, or test in a private window. |
 | **Reverse proxy stripping cookies.** Some proxy configurations strip or rewrite `Set-Cookie` headers. | Verify the proxy passes `Set-Cookie` and `Cookie` headers through unchanged. Check with the browser Network tab. |
 
-### OIDC login fails: `UnsupportedAlgorithmError`
-
-**Error:**
-
-```
-authlib.jose.errors.UnsupportedAlgorithmError: unsupported_algorithm:
-```
-
-**Cause:** The `cryptography` Python package is not installed. Authlib needs it to verify JWT signatures using RSA (RS256) or ECDSA (ES256) algorithms, which Authentik uses by default.
-
-**Fix:** Install the dependency:
-
-```bash
-pip install cryptography
-```
-
-The official container image already includes this dependency. This issue only affects manual (non-Docker) installations where `requirements.txt` was not fully installed.
-
-### Server error on every request: `AttributeError: 'Headers' object has no attribute 'discard'`
-
-**Error:**
-
-```
-AttributeError: 'Headers' object has no attribute 'discard'
-```
-
-**Cause:** Older versions of the application used `response.headers.discard('Server')` in a security-header middleware, but Flask/Werkzeug's `Headers` class does not have a `discard` method.
-
-**Fix:** Update to the latest version of the application. The call was replaced with `response.headers.pop('Server', None)`.
-
 ### Uploaded image not visible in Authentik
 
 **Symptoms:** Upload completes successfully (all steps green), but the user's avatar in Authentik still shows the old image or a default placeholder.
