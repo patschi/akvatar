@@ -290,13 +290,16 @@ def create_app() -> Flask:
             'i18n': get_js_translations(locale),
         }
 
-    # Security response headers – applied to every non-static response
+    # Security response headers – applied to every response
     @app.after_request
     def _set_security_headers(response):
         # Prevent MIME-type sniffing (e.g. serving a JPEG as text/html)
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        # Deny framing to block clickjacking attacks
-        response.headers['X-Frame-Options'] = 'DENY'
+        # Clickjacking protection only applies to HTML documents that a browser
+        # could render inside an <iframe>.  Setting it on images or JSON would
+        # be meaningless and clutters responses unnecessarily.
+        if response.content_type.startswith('text/html'):
+            response.headers['X-Frame-Options'] = 'DENY'
         # Limit referrer information sent to cross-origin destinations
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         # Remove server identity header to reduce fingerprinting surface
