@@ -1,9 +1,20 @@
 # Configuration Reference
 
-All settings are defined in `data/config/config.yml`. Copy the example file to get started:
+All settings are defined in `data/config/config.yml`. Two example files are provided:
+
+| File                        | Use when                                                    |
+| --------------------------- | ----------------------------------------------------------- |
+| `config.example-minimal.yml` | Getting started — only the required settings, short to read |
+| `config.example-full.yml`    | Full reference — every option with inline comments          |
+
+Copy whichever suits your situation:
 
 ```bash
-cp data/config/config.example.yml data/config/config.yml
+# Minimal (fill in your URLs and secrets, everything else uses defaults)
+cp data/config/config.example-minimal.yml data/config/config.yml
+
+# Full (all options visible and commented)
+cp data/config/config.example-full.yml data/config/config.yml
 ```
 
 The application reads the configuration file once at startup. Changes require a restart to take effect.

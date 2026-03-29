@@ -111,7 +111,7 @@ authentik_api:
   api_token: "CHANGE-ME"
   # Which generated image size (px) to use for the Authentik avatar URL.
   # Must be one of the values in images.sizes below.
-  avatar_size: 1024
+  avatar_size: 512
   # Authentik user attribute to store the avatar URL in
   avatar_attribute: "avatar-url"
 
