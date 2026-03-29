@@ -2,11 +2,11 @@
 routes.py – Flask route definitions.
 
 Contains:
-  - GET  /              -> public login page (unauthenticated)
-  - GET  /dashboard     -> avatar upload / crop page (authenticated)
-  - GET  /user-avatars/<X>x<Y>/<file>  -> serve stored avatar images
+  - GET  /                              -> public login page (unauthenticated)
+  - GET  /dashboard                     -> avatar upload / crop page (authenticated)
+  - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
-  - POST /api/upload    -> accept cropped image, process, update backends
+  - POST /api/upload                    -> accept cropped image, process, update backends
 """
 
 import logging
@@ -18,7 +18,7 @@ from flask import (
 )
 
 from src.auth import login_required
-from src.imaging import AVATAR_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.upload import validate_upload, generate_sse, ValidationError
 
@@ -104,8 +104,8 @@ def serve_avatar(dimensions, filename):
 @routes_bp.route('/user-avatars/_metadata/<filename>')
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory."""
-    log.debug('Serving metadata file: _metadata/%s', filename)
-    resp = send_from_directory(AVATAR_ROOT, f'_metadata/{filename}', mimetype='application/json')
+    log.debug('Serving metadata file: %s', filename)
+    resp = send_from_directory(METADATA_ROOT, filename, mimetype='application/json')
     resp.headers['Cache-Control'] = 'no-store'
     return resp
 
