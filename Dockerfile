@@ -11,7 +11,7 @@
 #   - No .dockerignore needed — only explicitly listed files are copied
 
 # ---------- Stage 1: build dependencies in a full Python image ----------
-FROM python:3.13-slim-trixie AS builder
+FROM python:3.13-slim-trixie@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d AS builder
 
 WORKDIR /build
 
@@ -53,7 +53,7 @@ RUN mkdir -p /data-skel/user-avatars /data-skel/config && \
 # gcr.io/distroless/python3 contains only the Python interpreter and its
 # core C libraries — no shell, no package manager, minimal attack surface.
 # The :nonroot tag sets the default user to 65532 (nonroot).
-FROM gcr.io/distroless/python3-debian13:nonroot
+FROM gcr.io/distroless/python3-debian13:nonroot@sha256:2882f4f2053db02a4c51fb88edc1488d1005971b28206fad7c699a93a4703737
 
 WORKDIR /app
 
