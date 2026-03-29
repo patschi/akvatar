@@ -59,7 +59,7 @@ push-container-gitlab:
       --annotation="org.opencontainers.image.licenses=GPLv3"
       --context="$CI_PROJECT_DIR"
       --dockerfile="$CI_PROJECT_DIR/Dockerfile"
-      --destination="$CI_REGISTRY_IMAGE:latest"
+      --destination="$CI_REGISTRY_IMAGE:dev"
   rules:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       when: always
@@ -81,8 +81,8 @@ push-container-gitlab:
 #    - >
 #      crane mutate
 #      --label="org.opencontainers.image.source=$GITHUB_PROJECT_URL"
-#      --tag="$GHCR_IMAGE:latest"
-#      "$CI_REGISTRY_IMAGE:latest"
+#      --tag="$GHCR_IMAGE:dev"
+#      "$CI_REGISTRY_IMAGE:dev"
 #  rules:
 #    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
 #      when: always
