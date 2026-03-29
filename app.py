@@ -265,7 +265,7 @@ def create_app() -> Flask:
         # Limit referrer information sent to cross-origin destinations
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         # Remove server identity header to reduce fingerprinting surface
-        response.headers.discard('Server')
+        response.headers.pop('Server', None)
         return response
 
     # HTTP request logging (non-static requests only)
