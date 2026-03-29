@@ -283,36 +283,49 @@ def prepare_ldap_image(
     )
 
 
-def cleanup_avatar_files(filename_base: str) -> None:
+def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
     """
     Remove all generated image files and the metadata JSON for one avatar set.
 
     Iterates every configured size × format combination and deletes the
     corresponding file.  Used both for rollback on upload failure and for
     retention cleanup.
+
+    Returns (deleted, failed): files successfully removed and files that raised
+    an OSError.  Files that simply do not exist are silently skipped (not
+    counted as failures).
     """
     log.info('Cleaning up avatar files for %s.', filename_base)
     sizes = img_cfg['sizes']
     formats = img_cfg['formats']
-    removed = 0
+    deleted = 0
+    failed = 0
     for size in sizes:
         size_dir = AVATAR_ROOT / f'{size}x{size}'
         for fmt in formats:
             path = size_dir / f'{filename_base}.{fmt.lower()}'
             try:
-                path.unlink(missing_ok=True)
-                removed += 1
+                path.unlink()
+                deleted += 1
                 log.debug('Deleted %s.', path)
+            except FileNotFoundError:
+                pass  # already gone – not a failure
             except OSError as exc:
                 log.warning('Failed to remove %s during cleanup: %s', path, exc)
+                failed += 1
     # Also remove the metadata file if present
     meta_path = METADATA_ROOT / f'{filename_base}.meta.json'
     try:
-        meta_path.unlink(missing_ok=True)
+        meta_path.unlink()
+        deleted += 1
         log.debug('Deleted metadata %s.', meta_path)
-    except OSError:
+    except FileNotFoundError:
         pass
-    log.info('Cleanup: removed %d file(s) + metadata for %s.', removed, filename_base)
+    except OSError as exc:
+        log.warning('Failed to remove metadata %s during cleanup: %s', meta_path, exc)
+        failed += 1
+    log.info('Cleanup: %d deleted, %d failed for %s.', deleted, failed, filename_base)
+    return deleted, failed
 
 
 def get_all_avatar_metadata() -> list[dict]:

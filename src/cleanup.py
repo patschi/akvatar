@@ -60,20 +60,25 @@ _configured_formats = {_FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
 # Regex to match size directory names like "128x128", "1024x1024"
 _SIZE_DIR_RE = re.compile(r'^\d+x\d+$')
 
+# Files per avatar set: one image per size×format combination, plus one metadata file.
+# Used in dry-run to estimate how many files would be removed for each targeted set.
+_FILES_PER_SET = len(img_cfg['sizes']) * len(img_cfg['formats']) + 1
 
-def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) -> tuple[int, set[str]]:
+
+def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) -> tuple[int, int, set[str]]:
     """
     For each active user with more than ``_retention_count`` avatar sets,
     delete the oldest uploads beyond the limit.
 
-    Returns a tuple of (count removed, set of deleted filename bases).
+    Returns (file_deleted, file_failed, deleted_set_names).
     """
     if _retention_count <= 0:
         log.debug('Retention is disabled (avatar_retention_count=0).')
-        return 0, set()
+        return 0, 0, set()
 
-    removed = 0
-    deleted: set[str] = set()
+    file_deleted = 0
+    file_failed = 0
+    deleted_sets: set[str] = set()
     for user_pk, entries in per_user.items():
         if user_pk not in active_pks:
             continue  # already handled by stale-user removal
@@ -90,14 +95,15 @@ def _enforce_retention(per_user: dict[int, list[dict]], active_pks: set[int]) ->
                 log.info('[DRY-RUN] Would remove old avatar set %s (user_pk=%s).', filename, user_pk)
             else:
                 log.info('Retention: removing old avatar set %s (user_pk=%s).', filename, user_pk)
-                cleanup_avatar_files(filename)
-            deleted.add(filename)
-            removed += 1
+                d, f = cleanup_avatar_files(filename)
+                file_deleted += d
+                file_failed += f
+            deleted_sets.add(filename)
 
-    return removed, deleted
+    return file_deleted, file_failed, deleted_sets
 
 
-def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
+def _cleanup_orphaned_files(known_filenames: set[str]) -> tuple[int, int, int]:
     """
     Remove orphaned image files from the avatar storage directory.
 
@@ -109,9 +115,12 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
     ``known_filenames`` is the set of filename bases from all metadata files
     that are still on disk (i.e. not already deleted by earlier phases).
 
-    Returns the number of files removed (or that would be removed in dry-run).
+    Returns (expected, deleted, failed): files targeted, successfully removed,
+    and files that could not be removed due to an OSError.
     """
-    removed = 0
+    expected = 0
+    deleted = 0
+    failed = 0
 
     # Scan all subdirectories under the avatar root
     for entry in AVATAR_ROOT.iterdir():
@@ -121,16 +130,19 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
 
         # Phase A: remove entire directories for sizes no longer configured
         if _SIZE_DIR_RE.match(entry.name) and entry.name not in _configured_sizes:
+            file_count = sum(1 for f in entry.iterdir() if f.is_file())
+            expected += file_count
             if dry_run:
-                file_count = sum(1 for f in entry.iterdir() if f.is_file())
                 log.info('[DRY-RUN] Would remove obsolete size directory %s/ (%d file(s)).', entry.name, file_count)
-                removed += file_count
+                deleted += file_count
             else:
                 try:
                     shutil.rmtree(entry)
-                    log.info('Removed obsolete size directory %s/.', entry.name)
+                    log.info('Removed obsolete size directory %s/ (%d file(s)).', entry.name, file_count)
+                    deleted += file_count
                 except OSError as exc:
                     log.warning('Failed to remove obsolete size directory %s/: %s', entry.name, exc)
+                    failed += file_count
             continue
 
         # Phase B+C: scan files inside configured size directories
@@ -145,44 +157,53 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> int:
 
             # Phase B: remove files with formats no longer configured
             if ext not in _configured_formats:
+                expected += 1
                 if dry_run:
                     log.info('[DRY-RUN] Would remove obsolete format file %s/%s.', entry.name, file_path.name)
+                    deleted += 1
                 else:
                     try:
                         file_path.unlink()
                         log.info('Removed obsolete format file %s/%s.', entry.name, file_path.name)
+                        deleted += 1
                     except OSError as exc:
                         log.warning('Failed to remove obsolete format file %s/%s: %s', entry.name, file_path.name, exc)
-                removed += 1
+                        failed += 1
                 continue
 
             # Phase C: remove files with no matching metadata (orphaned)
             if file_path.stem not in known_filenames:
+                expected += 1
                 if dry_run:
                     log.info('[DRY-RUN] Would remove orphaned file %s/%s (no metadata).', entry.name, file_path.name)
+                    deleted += 1
                 else:
                     try:
                         file_path.unlink()
                         log.info('Removed orphaned file %s/%s (no metadata).', entry.name, file_path.name)
+                        deleted += 1
                     except OSError as exc:
                         log.warning('Failed to remove orphaned file %s/%s: %s', entry.name, file_path.name, exc)
-                removed += 1
+                        failed += 1
 
     # Phase D: remove orphaned metadata files with no matching images
     for meta_path in METADATA_ROOT.glob('*.meta.json'):
         filename_base = meta_path.name.removesuffix('.meta.json')
         if filename_base not in known_filenames:
+            expected += 1
             if dry_run:
                 log.info('[DRY-RUN] Would remove orphaned metadata %s.', meta_path.name)
+                deleted += 1
             else:
                 try:
                     meta_path.unlink()
                     log.info('Removed orphaned metadata %s.', meta_path.name)
+                    deleted += 1
                 except OSError as exc:
                     log.warning('Failed to remove orphaned metadata %s: %s', meta_path.name, exc)
-            removed += 1
+                    failed += 1
 
-    return removed
+    return expected, deleted, failed
 
 
 def run_cleanup() -> int:
@@ -234,8 +255,11 @@ def run_cleanup() -> int:
     all_filenames.discard('')
     deleted_filenames: set[str] = set()
 
+    total_deleted = 0
+    total_failed = 0
+    dry_run_sets = 0
+
     # Phase 1: remove avatar sets for users that no longer exist.
-    removed = 0
     for user_pk, entries in per_user.items():
         if user_pk in active_pks:
             continue
@@ -243,30 +267,48 @@ def run_cleanup() -> int:
             filename = meta.get('filename', '')
             if dry_run:
                 log.info('[DRY-RUN] Would remove avatar set %s (user_pk=%s).', filename, user_pk)
+                dry_run_sets += 1
             else:
                 log.info('Removing avatar set %s (user_pk=%s no longer active).', filename, user_pk)
-                cleanup_avatar_files(filename)
+                d, f = cleanup_avatar_files(filename)
+                total_deleted += d
+                total_failed += f
             deleted_filenames.add(filename)
-            removed += 1
 
     # Phase 2: enforce per-user retention for active users.
-    retained, retention_deleted = _enforce_retention(per_user, active_pks)
-    removed += retained
+    ret_deleted, ret_failed, retention_deleted = _enforce_retention(per_user, active_pks)
+    total_deleted += ret_deleted
+    total_failed += ret_failed
     deleted_filenames |= retention_deleted
+    if dry_run:
+        dry_run_sets += len(retention_deleted)
 
     # Filenames that should still exist on disk after phases 1 and 2
     surviving_filenames = all_filenames - deleted_filenames
 
     # Phase 3: remove orphaned files (obsolete sizes, formats, no metadata).
-    orphans = _cleanup_orphaned_files(surviving_filenames)
-    removed += orphans
+    orph_expected, orph_deleted, orph_failed = _cleanup_orphaned_files(surviving_filenames)
+    total_deleted += orph_deleted
+    total_failed += orph_failed
 
-    if removed:
-        log.info('Cleanup complete: %s %d file(s).', 'would remove' if dry_run else 'removed', removed)
+    if dry_run:
+        dry_run_total = dry_run_sets * _FILES_PER_SET + orph_expected
+        if dry_run_total:
+            log.info('Cleanup complete: would remove ~%d file(s) (%d avatar set(s), %d orphan(s)).',
+                     dry_run_total, dry_run_sets, orph_expected)
+        else:
+            log.info('Cleanup complete: nothing to remove.')
+    elif total_deleted or total_failed:
+        total_targeted = total_deleted + total_failed
+        if total_failed:
+            log.info('Cleanup complete: %d deleted, %d failed (%d targeted).',
+                     total_deleted, total_failed, total_targeted)
+        else:
+            log.info('Cleanup complete: %d file(s) deleted.', total_deleted)
     else:
         log.info('Cleanup complete: nothing to remove.')
 
-    return removed
+    return total_deleted
 
 
 # Background daemon thread
