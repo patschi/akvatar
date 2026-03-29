@@ -425,7 +425,6 @@ body {
 }
 
 .btn-login {
-  margin-top: 1.5rem;
   padding: 0.75rem 2.5rem;
 }
 
@@ -655,6 +654,7 @@ body {
   background: var(--error-soft);
   border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
   color: var(--error);
+  margin-bottom: 1.5rem;
 }
 
 /* Step spinner */
