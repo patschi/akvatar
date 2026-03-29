@@ -32,6 +32,18 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --target /opt/site-packages -r requirements.txt
 
+# Resolve symlink chains for Pillow's shared libraries into a flat staging
+# directory. Kaniko cannot follow multi-level .so symlinks across stages,
+# so cp -L dereferences them to plain files before the COPY.
+RUN mkdir -p /lib-staging && \
+    cp -L \
+        /usr/lib/x86_64-linux-gnu/libjpeg*.so* \
+        /usr/lib/x86_64-linux-gnu/libpng*.so* \
+        /usr/lib/x86_64-linux-gnu/libwebp*.so* \
+        /usr/lib/x86_64-linux-gnu/libsharpyuv*.so* \
+        /usr/lib/x86_64-linux-gnu/libz*.so* \
+        /lib-staging/
+
 # Create data directory skeleton owned by nonroot (UID 65532) so Docker
 # initialises named volumes with correct ownership on first run.
 RUN mkdir -p /data-skel/user-avatars /data-skel/config && \
@@ -49,14 +61,8 @@ WORKDIR /app
 # directory that is on every Debian Python's default sys.path.
 COPY --from=builder /opt/site-packages /usr/lib/python3/dist-packages
 
-# Copy shared libraries that Pillow needs at runtime (single layer)
-COPY --from=builder \
-    /usr/lib/x86_64-linux-gnu/libjpeg*.so* \
-    /usr/lib/x86_64-linux-gnu/libpng*.so* \
-    /usr/lib/x86_64-linux-gnu/libwebp*.so* \
-    /usr/lib/x86_64-linux-gnu/libsharpyuv*.so* \
-    /usr/lib/x86_64-linux-gnu/libz*.so* \
-    /usr/lib/x86_64-linux-gnu/
+# Copy shared libraries that Pillow needs at runtime (symlinks resolved in builder)
+COPY --from=builder /lib-staging/ /usr/lib/x86_64-linux-gnu/
 
 ENV PYTHONDONTWRITEBYTECODE="1" \
     PYTHONUNBUFFERED="1"

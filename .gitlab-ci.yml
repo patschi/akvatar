@@ -12,22 +12,24 @@ include:
   - template: Security/Dependency-Scanning.gitlab-ci.yml
   - template: Jobs/Container-Scanning.gitlab-ci.yml
 
+# Ensure container scanning targets the image just built, not a potentially stale latest
+container_scanning:
+  needs:
+    - push-container-gitlab
+
 stages:
   - lint
   - build-container
   - test
 
-ruff:
+lint-ruff:
   stage: lint
   image: python:3.13-slim
   before_script:
+    - pip install --upgrade pip
     - pip install --quiet --root-user-action=ignore ruff
   script:
     - ruff check src/
-  rules:
-    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
-      when: always
-    - when: never
 
 # Push container to GitLab Container Registry
 push-container-gitlab:
@@ -62,11 +64,6 @@ push-container-gitlab:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       when: always
     - when: never
-
-# Ensure container scanning targets the image just built, not a potentially stale latest
-container_scanning:
-  needs:
-    - push-container-gitlab
 
 # temporary disabled for now. do not remove.
 # Copy container from GitLab to GitHub Container Registry, adding GitHub-specific label
