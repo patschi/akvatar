@@ -101,7 +101,7 @@ docker run -d \
   --security-opt no-new-privileges \
   --tmpfs /tmp \
   -p 5000:5000 \
-  -v akvatar-config:/app/data/config:ro \
+  -v akvatar-conf:/app/data/config:ro \
   -v akvatar-data:/app/data/user-avatars \
   ghcr.io/patschi/akvatar:latest
 ```
