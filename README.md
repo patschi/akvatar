@@ -1,32 +1,60 @@
 # Akvatar – Authentik Avatar Updater
 
-A self-hosted web application that lets users update their profile picture via a modern browser UI. The image is cropped client-side, processed into multiple sizes and formats on server-side, and then respective URLs pushed to **Authentik** (via API) and optionally to an **LDAP Server** (only tested Microsoft Active Directory, but any standards-compliant LDAP server should work).
+A self-hosted web application that lets users update their profile picture via a modern
+browser UI. The image is cropped client-side, processed into multiple sizes and formats
+server-side, then pushed to **Authentik** (via Admin API) and optionally to an
+**LDAP / Active Directory** server.
 
 ## Features
 
 - **OpenID Connect login** via Authentik (scopes: `openid profile email`)
-- **Multiple Languages**: Automatically retrieved through OIDC `locale` attribute in `profile` scope. Currently supported English (default), German.
-- **Client-side cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs) (bundled locally, no external CDN)
-- **Multi-size output**: 1024, 648, 512, 256, 128, 64 (configurable)
-- **Multi-format output**: JPEG, PNG, WebP (configurable)
-- **Unguessable filenames** (`uuid4` + `token_urlsafe` + nanosecond timestamp)
-- **Authentik API**: sets `attributes.avatar-url` on the user object (configurable)
-- **LDAP Server**: writes `thumbnailPhoto` and `jpegPhoto` (optional, toggle in config)
-- **JSON metadata**: saves upload metadata (username, timestamp, sizes) per avatar
+- **Multi-language UI**: locale resolved from the OIDC `locale` claim; currently
+  English (default) and German
+- **Client-side square cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs)
+  (bundled locally, no external CDN)
+- **Multi-size output**: 1024, 648, 512, 256, 128, 64 px (configurable)
+- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings
+- **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
+  stripped (GPS, device info, ICC profiles, XMP, IPTC)
+- **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
+  (~740 bits of entropy)
+- **Authentik Admin API**: sets a configurable user attribute (default: `avatar-url`) on
+  the user object via `PATCH /api/v3/core/users/{pk}/`
+- **LDAP / Active Directory**: writes one or more photo attributes (binary bytes or URL
+  string); optional, toggle in config
+- **Automatic cleanup**: cron-scheduled job removes avatars of deleted users, enforces
+  per-user retention limits, and clears orphaned files from obsolete sizes or formats
+- **Real-time progress**: Server-Sent Events stream each processing step with
+  success / failed / skipped / dry-run status
 - **Configurable branding**: customise the application name in the UI
-- **Reverse proxy / subfolder support**: respects `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Forwarded-Prefix`
-- **Optional built-in TLS**: serve HTTPS directly from the built-in server
-- **Secure Container image**: using distroless for minimal attack surface, running as non-root, read-only filesystem, and dropping all capabilities
+- **Reverse proxy / subfolder support**: honours `X-Forwarded-For`, `X-Forwarded-Proto`,
+  `X-Forwarded-Host`, `X-Forwarded-Prefix`
+- **Optional built-in TLS**: serve HTTPS directly without a reverse proxy
+- **Dry-run mode**: processes and saves images but skips all Authentik and LDAP writes;
+  logs what would have happened instead
+- **Secure container image**: distroless base, non-root (UID 65532), read-only root
+  filesystem, `cap_drop: ALL`
 
 ## Quick start
 
-The recommended way to run the application is via the **container image** (see [Running with Docker](#running-with-docker) below). For manual installation, see [Manual setup (Python)](#manual-setup-python).
+The recommended way to run the application is via the **container image**.
+For manual installation see [Manual setup (Python)](#manual-setup-python).
 
 ### Container (recommended)
 
-1. Create a `config.yml` from the example: `cp config.example.yml config.yml`
-2. Fill in the required settings (see [Configuration](docs/configuration.md), [Authentik OIDC Setup](docs/authentik-oidc-setup.md), [Authentik API Token](docs/authentik-api-token.md), and [Flask Session Key](docs/flask-session-key.md))
-3. Set up and run the container as seen at [Running with Docker](#running-with-docker) below
+1. Copy the example config:
+
+   ```bash
+   cp data/config/config.example.yml data/config/config.yml
+   ```
+
+2. Fill in the required settings — see
+   [Configuration](docs/configuration.md),
+   [Authentik OIDC Setup](docs/authentik-oidc-setup.md),
+   [Authentik API Token](docs/authentik-api-token.md), and
+   [Flask Session Key](docs/flask-session-key.md).
+
+3. Run with Docker Compose (see [Running with Docker](#running-with-docker) below).
 
 ### Manual setup (Python)
 
@@ -42,9 +70,8 @@ The recommended way to run the application is via the **container image** (see [
 
    ```bash
    cp data/config/config.example.yml data/config/config.yml
+   # Edit data/config/config.yml
    ```
-
-   Fill in the required settings (see [Configuration](docs/configuration.md), [Flask Session Key](docs/flask-session-key.md))
 
 3. Run:
 
@@ -54,10 +81,13 @@ The recommended way to run the application is via the **container image** (see [
 
 ## Prerequisites
 
-- An **Authentik** instance with an OIDC provider and API token (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and [Authentik API Token](docs/authentik-api-token.md))
-- *(Optional)* An LDAP server reachable via LDAPS/LDAP (tested with Microsoft Active Directory; see [MS AD Service Account](docs/ms-ad-service-account.md))
-- **For container deployment**: Docker or any OCI-compatible runtime
-- **For manual deployment**: Python 3.11+, Linux (Debian, Ubuntu, RHEL, Alpine, etc.)
+- An **Authentik** instance with an OIDC provider and an Admin API token
+  (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and
+  [Authentik API Token](docs/authentik-api-token.md))
+- *(Optional)* An LDAP server reachable via LDAPS/LDAP — tested with Microsoft Active
+  Directory; see [MS AD Service Account](docs/ms-ad-service-account.md)
+- **Container deployment:** Docker or any OCI-compatible runtime
+- **Manual deployment:** Python 3.11+, Linux (Debian, Ubuntu, RHEL, Alpine, etc.)
 
 ## Running with Docker
 
@@ -76,34 +106,31 @@ docker run -d \
   ghcr.io/patschi/akvatar:latest
 ```
 
-- The container runs as non-root (UID 65532) with a read-only root filesystem
-- `/tmp` is mounted as tmpfs for gunicorn worker temp files
-- Mount a volume at `/app/data/config` with a read-only bind for the configuration file (`config.yml`)
-- Mount a volume at `/app/data/user-avatars` for persistent avatar storage
+- Runs as non-root (UID 65532) with a read-only root filesystem
+- `/tmp` is a tmpfs mount — required for gunicorn worker temp files
+- `/app/data/config` — read-only volume containing `config.yml`
+- `/app/data/user-avatars` — writable volume for persistent avatar storage
 
-#### Using bind-mount directories instead of named volumes
+#### Bind-mount directories instead of named volumes
 
-If you prefer bind-mounting host directories instead of named Docker volumes, create them with the correct ownership first (the container runs as UID 65532):
+If you prefer host directories over named Docker volumes, create them with correct
+ownership first (container runs as UID 65532):
 
 ```bash
 mkdir -p ./data/config ./data/user-avatars
 chown -R 65532:65532 ./data/user-avatars
 ```
 
-Then replace the volume flags with bind-mount paths:
+Then replace the volume flags:
 
 ```bash
 -v ./data/config:/app/data/config:ro \
 -v ./data/user-avatars:/app/data/user-avatars \
 ```
 
-The config directory only needs to be readable. The `user-avatars` directory must be writable by UID 65532.
-
 ### Docker Compose
 
-A ready-to-use [`docker-compose.yml`](docker-compose.yml) is included in the repository.
-
-Start with:
+A ready-to-use [`docker-compose.yml`](docker-compose.yml) is included.
 
 ```bash
 docker compose up -d
@@ -111,39 +138,48 @@ docker compose up -d
 
 ## Reverse proxy / subfolder deployment
 
-The app fully supports running behind a reverse proxy (nginx, Caddy, Traefik, etc.) and under a subfolder path (e.g. `https://example.com/avatar/`). It honours `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers automatically.
+The app fully supports running behind a reverse proxy (nginx, Caddy, Traefik, etc.) and
+under a subfolder path (e.g. `https://example.com/avatar/`). It honours
+`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and
+`X-Forwarded-Prefix` automatically.
 
-See the detailed guides:
+Relevant guides:
 
-- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md):** Full nginx configuration with TLS termination, SSE support, and optional direct avatar file serving
-- **[Subfolder Deployment](docs/subfolder-deployment.md):** Hosting the app under a URL path prefix (e.g. `/avatar/`)
+- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS
+  termination, SSE support, and optional direct avatar file serving
+- **[Subfolder Deployment](docs/subfolder-deployment.md)**: hosting under a URL path
+  prefix (e.g. `/avatar/`)
 
 ## How it works
 
 1. User visits the app and clicks **Sign in**
-2. OIDC redirect -> Authentik login -> callback stores user info in session
+2. OIDC redirect → Authentik login → callback stores user info and PK in session
 3. Dashboard shows the user's current name and profile picture
-4. User picks an image -> Cropper.js enforces a square crop in the browser
+4. User picks an image → Cropper.js enforces a square crop in the browser →
+   compressed to WebP/JPEG via `canvas.toBlob()`
 5. Cropped image is uploaded to `POST /api/upload`
-6. Server validates, strips metadata, resizes to all configured sizes, and saves as JPG + PNG + WebP
-7. Server PATCHes `attributes.avatar-url` on the Authentik user via API
-8. *(If LDAP enabled)* Server writes the thumbnail JPEG into the configured LDAP photo attribute
-9. Browser shows step-by-step progress via Server-Sent Events with success/fail status
+6. Server validates (extension, magic bytes, Pillow decode, dimensions), strips all
+   metadata, then resizes to all configured sizes and saves as JPEG + PNG + WebP
+7. Server `PATCH`es the `avatar-url` attribute on the Authentik user via the Admin API
+8. *(If LDAP enabled)* Server writes the photo into configured LDAP attributes (binary
+   bytes or URL string)
+9. Browser shows step-by-step progress in real time via Server-Sent Events
+10. Cleanup job runs on a cron schedule to remove deleted users' avatars, enforce
+    per-user retention, and purge orphaned files
 
-For a detailed walkthrough with sequence diagrams, see **[How It Works](docs/how-it-works.md)**.
+For a full walkthrough with sequence diagrams and cleanup details, see
+**[How It Works](docs/how-it-works.md)**.
 
 ## Documentation
 
-Extended guides are available in the [`docs/`](docs/) folder:
-
-| Guide | Description |
-|---|---|
-| [Configuration](docs/configuration.md) | Complete reference for all `config.yml` settings with defaults and detailed explanations |
-| [Flask Session Key](docs/flask-session-key.md) | Generating and setting the Flask session secret key |
-| [Authentik OIDC Setup](docs/authentik-oidc-setup.md) | Creating the OIDC provider and application in Authentik |
-| [Authentik API Token](docs/authentik-api-token.md) | Creating an API token for the Authentik Admin API |
-| [TLS](docs/tls.md) | TLS certificate configuration and reverse proxy recommendation |
-| [How It Works](docs/how-it-works.md) | Detailed procedure walkthrough with sequence diagrams |
-| [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md) | Full nginx configuration with TLS termination and SSE support |
-| [Subfolder Deployment](docs/subfolder-deployment.md) | Hosting the app under a URL path prefix (e.g. `/avatar/`) |
-| [MS AD Service Account](docs/ms-ad-service-account.md) | Least-privilege Active Directory service account setup with PowerShell automation |
+| Guide                                                          | Description                                                                               |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Configuration](docs/configuration.md)                         | Complete reference for all `config.yml` settings with defaults and explanations           |
+| [How It Works](docs/how-it-works.md)                           | Full lifecycle walkthrough with sequence diagrams and cleanup flow                        |
+| [Flask Session Key](docs/flask-session-key.md)                 | Generating and setting the Flask session secret key                                       |
+| [Authentik OIDC Setup](docs/authentik-oidc-setup.md)           | Creating the OIDC provider and application in Authentik                                   |
+| [Authentik API Token](docs/authentik-api-token.md)             | Creating an API token for the Authentik Admin API                                         |
+| [TLS](docs/tls.md)                                             | TLS certificate configuration and reverse proxy recommendation                            |
+| [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)             | Full nginx config with TLS termination, SSE support, and optional static avatar serving   |
+| [Subfolder Deployment](docs/subfolder-deployment.md)           | Hosting the app under a URL path prefix (e.g. `/avatar/`)                                |
+| [MS AD Service Account](docs/ms-ad-service-account.md)         | Least-privilege Active Directory service account setup with PowerShell automation         |

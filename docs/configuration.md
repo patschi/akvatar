@@ -10,50 +10,50 @@ The application reads the configuration file once at startup. Changes require a 
 
 ## Settings overview
 
-| Setting | Type | Description |
-|---|---|---|
-| [`dry_run`](#dry_run) | Boolean | Skip Authentik/LDAP writes; log all actions instead |
-| [`branding.name`](#branding_name) | String | Application name shown in the UI |
-| [`app.secret_key`](#app_secret_key) | String | Flask session signing key |
-| [`app.max_upload_size_mb`](#app_max_upload_size_mb) | Integer | Maximum upload size in MB |
-| [`app.avatar_storage_path`](#app_avatar_storage_path) | String | Directory for stored avatar images |
-| [`app.public_base_url`](#app_public_base_url) | URL | Public URL where the application is reachable |
-| [`app.public_avatar_url`](#app_public_avatar_url) | URL | Public URL where avatar files are served |
-| [`app.avatar_retention_count`](#app_avatar_retention_count) | Integer | Avatar sets to keep per user (0 = unlimited) |
-| [`app.cleanup_interval`](#app_cleanup_interval) | Cron | Cron schedule for the cleanup job |
-| [`app.cleanup_on_startup`](#app_cleanup_on_startup) | Boolean | Run cleanup once 60 s after startup |
-| [`app.log_level`](#app_log_level) | Enum | Log verbosity |
-| [`app.debug_full`](#app_debug_full) | Boolean | Full debug mode — never enable in production |
-| [`webserver.proxy_mode`](#webserver_proxy_mode) | Boolean | Enable reverse-proxy header support (ProxyFix) |
-| [`webserver.access_log`](#webserver_access_log) | Boolean | Log every HTTP request to the console |
-| [`webserver.workers`](#webserver_workers) | Integer | Number of gunicorn worker processes |
-| [`webserver.threads`](#webserver_threads) | Integer | Threads per worker |
-| [`webserver.timeout`](#webserver_timeout) | Integer | Worker timeout in seconds |
-| [`webserver.tls_cert`](#webserver_tls_cert) | String | Path to TLS certificate file |
-| [`webserver.tls_key`](#webserver_tls_cert) | String | Path to TLS private key file |
-| [`oidc.issuer_url`](#oidc_issuer_url) | URL | Authentik OIDC provider URL |
-| [`oidc.client_id`](#oidc_client_id) | String | OAuth2 client ID |
-| [`oidc.client_secret`](#oidc_client_secret) | String | OAuth2 client secret |
-| [`oidc.username_claim`](#oidc_username_claim) | String | OIDC claim used as the username |
-| [`authentik_api.base_url`](#authentik_api_base_url) | URL | Authentik instance base URL |
-| [`authentik_api.api_token`](#authentik_api_api_token) | String | Authentik Admin API token |
-| [`authentik_api.avatar_size`](#authentik_api_avatar_size) | Integer | Image size (px) used for the Authentik avatar URL |
-| [`authentik_api.avatar_attribute`](#authentik_api_avatar_attribute) | String | Authentik user attribute to store the avatar URL |
-| [`ldap.enabled`](#ldap_enabled) | Boolean | Enable LDAP photo attribute updates |
-| [`ldap.server`](#ldap_server) | String | LDAP server address |
-| [`ldap.port`](#ldap_port) | Integer | LDAP server port |
-| [`ldap.use_ssl`](#ldap_use_ssl) | Boolean | Use SSL/TLS for the LDAP connection |
-| [`ldap.skip_cert_verify`](#ldap_skip_cert_verify) | Boolean | Skip TLS certificate verification |
-| [`ldap.bind_dn`](#ldap_bind_dn) | String | Service account DN for LDAP bind |
-| [`ldap.bind_password`](#ldap_bind_password) | String | Service account password |
-| [`ldap.search_base`](#ldap_search_base) | String | Base DN for user searches |
-| [`ldap.search_filter`](#ldap_search_filter) | String | LDAP filter to locate the user object |
-| [`ldap.photos`](#ldap_photos) | List | LDAP photo attributes to update (see details below) |
-| [`images.sizes`](#images_sizes) | List | Square output sizes to generate (px) |
-| [`images.formats`](#images_formats) | List | Output formats to save for each size |
-| [`images.jpeg_quality`](#images_jpeg_quality) | Integer | JPEG compression quality (1–100) |
-| [`images.webp_quality`](#images_webp_quality) | Integer | WebP compression quality (1–100) |
-| [`images.png_compress_level`](#images_png_compress_level) | Integer | PNG compression level (0–9) |
+| Setting                                                              | Type    | Description                                                     |
+| -------------------------------------------------------------------- | ------- | --------------------------------------------------------------- |
+| [`dry_run`](#dry_run)                                                | Boolean | Skip Authentik/LDAP writes; log all actions instead             |
+| [`branding.name`](#branding_name)                                    | String  | Application name shown in the UI                                |
+| [`app.secret_key`](#app_secret_key)                                  | String  | Flask session signing key                                       |
+| [`app.max_upload_size_mb`](#app_max_upload_size_mb)                  | Integer | Maximum upload size in MB                                       |
+| [`app.avatar_storage_path`](#app_avatar_storage_path)                | String  | Directory for stored avatar images                              |
+| [`app.public_base_url`](#app_public_base_url)                        | URL     | Public URL where the application is reachable                   |
+| [`app.public_avatar_url`](#app_public_avatar_url)                    | URL     | Public URL where avatar files are served                        |
+| [`app.avatar_retention_count`](#app_avatar_retention_count)          | Integer | Avatar sets to keep per user (0 = unlimited)                    |
+| [`app.cleanup_interval`](#app_cleanup_interval)                      | Cron    | Cron schedule for the cleanup job                               |
+| [`app.cleanup_on_startup`](#app_cleanup_on_startup)                  | Boolean | Run cleanup once 60 s after startup                             |
+| [`app.log_level`](#app_log_level)                                    | Enum    | Log verbosity                                                   |
+| [`app.debug_full`](#app_debug_full)                                  | Boolean | Full debug mode — never enable in production                    |
+| [`webserver.proxy_mode`](#webserver_proxy_mode)                      | Boolean | Enable reverse-proxy header support (ProxyFix)                  |
+| [`webserver.access_log`](#webserver_access_log)                      | Boolean | Log every HTTP request to the console                           |
+| [`webserver.workers`](#webserver_workers)                            | Integer | Number of gunicorn worker processes                             |
+| [`webserver.threads`](#webserver_threads)                            | Integer | Threads per worker                                              |
+| [`webserver.timeout`](#webserver_timeout)                            | Integer | Worker timeout in seconds                                       |
+| [`webserver.tls_cert`](#webserver_tls_cert)                          | String  | Path to TLS certificate file                                    |
+| [`webserver.tls_key`](#webserver_tls_cert)                           | String  | Path to TLS private key file                                    |
+| [`oidc.issuer_url`](#oidc_issuer_url)                                | URL     | Authentik OIDC provider URL                                     |
+| [`oidc.client_id`](#oidc_client_id)                                  | String  | OAuth2 client ID                                                |
+| [`oidc.client_secret`](#oidc_client_secret)                          | String  | OAuth2 client secret                                            |
+| [`oidc.username_claim`](#oidc_username_claim)                        | String  | OIDC claim used as the username                                 |
+| [`authentik_api.base_url`](#authentik_api_base_url)                  | URL     | Authentik instance base URL                                     |
+| [`authentik_api.api_token`](#authentik_api_api_token)                | String  | Authentik Admin API token                                       |
+| [`authentik_api.avatar_size`](#authentik_api_avatar_size)            | Integer | Image size (px) used for the Authentik avatar URL               |
+| [`authentik_api.avatar_attribute`](#authentik_api_avatar_attribute)  | String  | Authentik user attribute to store the avatar URL                |
+| [`ldap.enabled`](#ldap_enabled)                                      | Boolean | Enable LDAP photo attribute updates                             |
+| [`ldap.server`](#ldap_server)                                        | String  | LDAP server address                                             |
+| [`ldap.port`](#ldap_port)                                            | Integer | LDAP server port                                                |
+| [`ldap.use_ssl`](#ldap_use_ssl)                                      | Boolean | Use SSL/TLS for the LDAP connection                             |
+| [`ldap.skip_cert_verify`](#ldap_skip_cert_verify)                    | Boolean | Skip TLS certificate verification                               |
+| [`ldap.bind_dn`](#ldap_bind_dn)                                      | String  | Service account DN for LDAP bind                                |
+| [`ldap.bind_password`](#ldap_bind_password)                          | String  | Service account password                                        |
+| [`ldap.search_base`](#ldap_search_base)                              | String  | Base DN for user searches                                       |
+| [`ldap.search_filter`](#ldap_search_filter)                          | String  | LDAP filter to locate the user object                           |
+| [`ldap.photos`](#ldap_photos)                                        | List    | LDAP photo attributes to update (see details below)             |
+| [`images.sizes`](#images_sizes)                                      | List    | Square output sizes to generate (px)                            |
+| [`images.formats`](#images_formats)                                  | List    | Output formats to save for each size                            |
+| [`images.jpeg_quality`](#images_jpeg_quality)                        | Integer | JPEG compression quality (1–100)                                |
+| [`images.webp_quality`](#images_webp_quality)                        | Integer | WebP compression quality (1–100)                                |
+| [`images.png_compress_level`](#images_png_compress_level)            | Integer | PNG compression level (0–9)                                     |
 
 ---
 
@@ -101,8 +101,9 @@ The application name displayed in the browser title bar and the navigation heade
 The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an attacker can forge sessions.
 
 The application **refuses to start** if:
+
 - The key is still set to the default placeholder value
-- The key is shorter than 16 characters
+- The key is shorter than 32 characters
 
 See [Flask Session Key](flask-session-key.md) for generation instructions.
 
@@ -176,7 +177,15 @@ Number of avatar sets to keep per user. When a user has more than this many uplo
 | **Type** | String (cron expression) |
 | **Default** | `"0 2 * * *"` (daily at 2:00 AM) |
 
-Cron schedule for the cleanup job that removes avatars of deleted users and enforces per-user retention limits. Uses standard 5-field crontab syntax (`minute hour day month weekday`).
+Cron schedule for the cleanup job. Uses standard 5-field crontab syntax
+(`minute hour day month weekday`). The schedule is evaluated in UTC.
+
+The cleanup job runs four phases:
+
+1. Remove avatar sets for users no longer active in Authentik
+2. Enforce per-user retention (keep the N most recent uploads)
+3. Remove size directories, format files, and image files that are no longer configured
+4. Remove orphaned metadata files with no matching images on disk
 
 Set to `""` (empty string) to disable the cleanup job entirely.
 
@@ -203,13 +212,13 @@ When enabled, the cleanup job runs once 60 seconds after application startup, in
 
 Controls the verbosity of log output:
 
-| Level | What gets logged |
-|---|---|
-| `DEBUG` | Every action: OIDC flow, image resize steps, LDAP bind, API calls, HTTP requests to non-static assets, uploaded image metadata |
-| `INFO` | Key events: login, upload, save, API/LDAP updates |
-| `WARNING` | Rejected uploads, missing TLS configuration, LDAP without SSL |
-| `ERROR` | Failures in Authentik API or LDAP calls |
-| `CRITICAL` | Fatal startup errors (missing config, etc.) |
+| Level      | What gets logged                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------- |
+| `DEBUG`    | Every action: OIDC flow, image resize steps, LDAP bind, API calls, HTTP requests, image metadata       |
+| `INFO`     | Key events: login, upload, save, API/LDAP updates                                                       |
+| `WARNING`  | Rejected uploads, missing TLS configuration, LDAP without SSL, LDAP cert verification disabled         |
+| `ERROR`    | Failures in Authentik API or LDAP calls                                                                 |
+| `CRITICAL` | Fatal startup errors (missing or invalid config)                                                        |
 
 <a id="app_debug_full"></a>
 
@@ -524,13 +533,13 @@ A list of LDAP attributes to update after each successful avatar upload. Each en
 
 **Fields per entry:**
 
-| Field | Type | Description |
-|---|---|---|
-| `attribute` | String | LDAP attribute name (e.g. `thumbnailPhoto`, `jpegPhoto`) |
-| `type` | String | `binary` (raw image bytes) or `url` (public URL string) |
-| `image_type` | String | Image format: `jpeg`, `png`, or `webp` |
-| `image_size` | Integer | Square pixel dimension (e.g. `96` = 96×96) |
-| `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. If the image exceeds this limit, quality is reduced automatically (JPEG/WebP). |
+| Field           | Type    | Description                                                                                             |
+| --------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `attribute`     | String  | LDAP attribute name (e.g. `thumbnailPhoto`, `jpegPhoto`)                                                |
+| `type`          | String  | `binary` (raw image bytes) or `url` (public URL string)                                                 |
+| `image_type`    | String  | Image format: `jpeg`, `png`, or `webp`                                                                  |
+| `image_size`    | Integer | Square pixel dimension (e.g. `96` = 96×96 px)                                                          |
+| `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. Quality is reduced iteratively for JPEG/WebP.     |
 
 **Type `binary`:** Writes raw image bytes into the attribute. If a pre-generated file at the exact size and format already exists and fits within `max_file_size`, it is reused. Otherwise the image is generated on-the-fly from the closest equal-or-larger source and quality is reduced iteratively until the output fits.
 
