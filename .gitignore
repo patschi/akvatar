@@ -17,7 +17,5 @@ Thumbs.db
 Desktop.ini
 
 # App runtime data
-data/
-
-# Secrets (never commit)
-config.yml
+data/config/config.yml
+data/user-avatars/*

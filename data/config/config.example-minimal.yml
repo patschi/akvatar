@@ -1,0 +1,67 @@
+# ============================================================================
+# Authentik Avatar Updater – Minimal Configuration
+# ============================================================================
+# Only the settings you must provide are listed here.
+# Everything else uses the documented defaults.
+#
+# For all available options and their defaults, see:
+#   data/config/config.example-full.yml  (full annotated example)
+#   docs/configuration.md                (complete reference)
+# ============================================================================
+
+app:
+  # Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "CHANGE-ME-to-a-random-secret-key"
+  # Public URL where the app is reachable (no trailing slash)
+  public_base_url: "https://avatar.example.com"
+  # Public URL where avatar files are served (no trailing slash)
+  public_avatar_url: "https://avatar.example.com/user-avatars"
+
+# All webserver settings are optional.
+# Defaults: proxy_mode=true, workers=2, threads=4, timeout=120, host=0.0.0.0, port=5000
+# Set proxy_mode: false if running without a reverse proxy.
+webserver: {}
+
+# Avatar file retention and scheduled cleanup.
+# Defaults: runs daily at 02:00 UTC, keeps 2 avatar sets per user.
+# Adjust avatar_retention_count or interval if the defaults don't fit.
+cleanup: {}
+
+# Rate limiting for avatar/metadata serving endpoints (per client IP).
+# Recommended to enable in production to prevent URL-guessing abuse.
+# Disabled by default. Set enabled: true and adjust requests/window as needed.
+# See config.example-full.yml for all options.
+rate_limiting: {}
+
+# OIDC login via Authentik. All three values come from the Authentik provider.
+# See docs/authentik-oidc-setup.md for setup instructions.
+oidc:
+  issuer_url: "https://auth.example.com/application/o/avatar-updater"
+  client_id: "avatar-updater"
+  client_secret: "CHANGE-ME"
+
+# Authentik Admin API credentials used to write the avatar URL back to the
+# user's profile after a successful upload.
+# See docs/authentik-api-token.md for the required token permissions.
+authentik_api:
+  base_url: "https://auth.example.com"
+  api_token: "CHANGE-ME"
+
+# LDAP is disabled by default. Enable and configure it here if you want
+# thumbnailPhoto / jpegPhoto attributes updated in Active Directory or similar.
+# See config.example-full.yml for all options.
+ldap: {}
+
+# Output image sizes and formats generated for each upload.
+# authentik_api.avatar_size (default: 1024) must be present in sizes.
+# Add or remove sizes and formats to match your storage and bandwidth needs.
+images:
+  sizes:
+    - 1024
+    - 512
+    - 256
+    - 128
+    - 64
+  formats:
+    - "jpg"
+    - "webp"

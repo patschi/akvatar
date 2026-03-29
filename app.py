@@ -261,6 +261,10 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)    # /login, /callback, /logout
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
 
+    # Rate limiting on avatar/metadata serving endpoints (before_request hook)
+    from src.rate_limit import init_rate_limiting
+    init_rate_limiting(app)
+
     # Serve static files from in-memory cache
     @app.route('/static/<path:filename>', endpoint='static')
     def _serve_static(filename):

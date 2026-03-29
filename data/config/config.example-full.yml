@@ -68,6 +68,42 @@ cleanup:
   # Disabled by default so avatars are preserved for temporarily disabled accounts.
   when_user_deactivated: false
 
+# --- Rate Limiting ---
+# Throttle avatar and metadata serving endpoints by client IP address to
+# prevent URL guessing abuse and ensure fair usage.
+# Each gunicorn worker process maintains its own counters independently,
+# so with N workers a client can make up to N × max_requests total before
+# every worker blocks them.
+rate_limiting:
+  # Master switch – set to false to disable all rate limiting.
+  enabled: false
+  # IPs or CIDR ranges that are never rate-limited.
+  # Supports individual IPs (e.g. "10.0.0.1") and CIDR notation
+  # (e.g. "192.168.0.0/16").  IPv4 and IPv6 are both supported.
+  ip_whitelist:
+    - "127.0.0.1"
+    - "::1"
+    # - "10.0.0.0/8"
+    # - "192.168.0.0/16"
+  # How often (in seconds) stale IP tracking entries are evicted from memory.
+  # Lower values reclaim memory sooner; higher values reduce lock contention.
+  eviction_interval: 60
+  # Per-endpoint-type limits.  Each type can be independently enabled/disabled
+  # and configured with its own request count and time window.
+  # `enabled` is whatever if the ratelimiting is enabled and active.
+  # `requests` is the maximum number of requests allowed per client IP within the time window.
+  # `window` is the time window in seconds.
+  # Limits for avatar requests
+  avatars:
+    enabled: true
+    requests: 100
+    window: 60
+  # Limits for metadata requests
+  metadata:
+    enabled: true
+    requests: 60
+    window: 60
+
 # --- Webserver ---
 # These settings apply when running via run.py / gunicorn (production & Docker).
 # When running via app.py (development), only host, port, and TLS are used.

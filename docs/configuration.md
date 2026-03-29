@@ -32,11 +32,16 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.session_cookie_secure`](#app_session_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
 | [`app.public_avatar_url`](#app_public_avatar_url)                       | URL     | Public URL where avatar files are served            |
 | [`app.web_session_lifetime_seconds`](#app_web_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
-| [`cleanup.interval`](#cleanup_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
+| [`cleanup.interval`](#eviction_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanup_on_startup)                             | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanup_avatar_retention_count)     | Integer | Avatar sets to keep per user (0 = unlimited)        |
 | [`cleanup.when_user_deleted`](#cleanup_when_user_deleted)               | Boolean | Remove avatars of users deleted from Authentik      |
 | [`cleanup.when_user_deactivated`](#cleanup_when_user_deactivated)       | Boolean | Remove avatars of deactivated Authentik users       |
+| [`rate_limiting.enabled`](#rate_limiting_enabled)                       | Boolean | Master switch for rate limiting                     |
+| [`rate_limiting.ip_whitelist`](#rate_limiting_ip_whitelist)             | List    | IPs/CIDRs exempt from rate limiting                 |
+| [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)     | Integer | Stale-entry cleanup interval in seconds             |
+| [`rate_limiting.avatars`](#rate_limiting_avatars)                       | Object  | Rate limit settings for avatar image requests       |
+| [`rate_limiting.metadata`](#rate_limiting_metadata)                     | Object  | Rate limit settings for metadata JSON requests      |
 | [`app.log_level`](#app_log_level)                                       | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#app_debug_full)                                     | Boolean | Full debug mode — never enable in production        |
 | [`webserver.proxy_mode`](#webserver_proxy_mode)                         | Boolean | Enable reverse-proxy header support (ProxyFix)      |
@@ -242,7 +247,7 @@ Enables full debug mode. When active:
 
 ## Cleanup
 
-<a id="cleanup_interval"></a>
+<a id="eviction_interval"></a>
 
 ### `cleanup.interval`
 
@@ -310,6 +315,85 @@ Disable this setting only if you want to retain avatars indefinitely even for us
 When enabled, the cleanup job also removes avatar sets for users that exist in Authentik but are currently deactivated (`is_active=false`). Disabled by default so that avatars are preserved for accounts that may be re-enabled later.
 
 Enable this setting if deactivated accounts should be treated the same as deleted ones for avatar storage purposes.
+
+---
+
+## Rate Limiting
+
+Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks are never rate-limited.
+
+Each gunicorn worker process maintains its own counters independently. With N workers, a client can make up to N × `requests` total before every worker blocks them. This is by design — cross-process shared state would add significant complexity for minimal benefit.
+
+Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` header and a JSON body:
+
+```json
+{"error": "Too Many Requests", "retry_after": 5}
+```
+
+<a id="rate_limiting_enabled"></a>
+
+### `rate_limiting.enabled`
+
+|             |         |
+| ----------- | ------- |
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+Master switch for rate limiting. When `false`, no rate limiting is applied and no background threads are started.
+
+<a id="rate_limiting_ip_whitelist"></a>
+
+### `rate_limiting.ip_whitelist`
+
+|             |                          |
+| ----------- | ------------------------ |
+| **Type**    | List of strings          |
+| **Default** | `["127.0.0.1", "::1"]`  |
+
+IP addresses or CIDR ranges that are never rate-limited. Supports both individual IPs (e.g. `10.0.0.1`) and CIDR notation (e.g. `192.168.0.0/16`). Both IPv4 and IPv6 are supported. Invalid entries are logged as warnings and ignored.
+
+<a id="rate_limiting_eviction_interval"></a>
+
+### `rate_limiting.eviction_interval`
+
+|             |                   |
+| ----------- | ----------------- |
+| **Type**    | Integer (seconds) |
+| **Default** | `60`              |
+
+How often the background cleanup thread removes stale tracking entries from memory. Lower values reclaim memory sooner; higher values reduce lock contention. The cleanup thread runs as a daemon in each worker process.
+
+<a id="rate_limiting_avatars"></a>
+
+### `rate_limiting.avatars`
+
+|             |        |
+| ----------- | ------ |
+| **Type**    | Object |
+
+Rate limit settings for avatar image requests (`/user-avatars/<dimensions>/<filename>`).
+
+| Field      | Type    | Default | Description                                                  |
+| ---------- | ------- | ------- | ------------------------------------------------------------ |
+| `enabled`  | Boolean | `true`  | Enable rate limiting for this endpoint type                  |
+| `requests` | Integer | `100`   | Maximum number of requests allowed per client IP per window  |
+| `window`   | Integer | `60`    | Time window in seconds                                       |
+
+<a id="rate_limiting_metadata"></a>
+
+### `rate_limiting.metadata`
+
+|             |        |
+| ----------- | ------ |
+| **Type**    | Object |
+
+Rate limit settings for avatar metadata JSON requests (`/user-avatars/_metadata/<filename>`).
+
+| Field      | Type    | Default | Description                                                  |
+| ---------- | ------- | ------- | ------------------------------------------------------------ |
+| `enabled`  | Boolean | `true`  | Enable rate limiting for this endpoint type                  |
+| `requests` | Integer | `60`    | Maximum number of requests allowed per client IP per window  |
+| `window`   | Integer | `60`    | Time window in seconds                                       |
 
 ---
 
