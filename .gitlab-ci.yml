@@ -16,6 +16,17 @@ include:
 container_scanning:
   needs:
     - push-container-gitlab
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+      changes:
+        - "**/*.py"
+        - "Dockerfile"
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+        - "static/**"
+        - "src/**"
+      when: always
+    - when: never
 
 stages:
   - lint
