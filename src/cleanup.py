@@ -60,6 +60,26 @@ _configured_formats = {_FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
 # Regex to match size directory names like "128x128", "1024x1024"
 _SIZE_DIR_RE = re.compile(r'^\d+x\d+$')
 
+
+def _try_unlink(path, label: str) -> tuple[int, int]:
+    """
+    Delete a single file, respecting dry_run mode.
+
+    Returns (deleted, failed) counts.  ``label`` is used for log messages
+    (e.g. "obsolete format file 128x128/abc.png").
+    """
+    if dry_run:
+        log.info('[DRY-RUN] Would remove %s.', label)
+        return 1, 0
+    try:
+        path.unlink()
+        log.info('Removed %s.', label)
+        return 1, 0
+    except OSError as exc:
+        log.warning('Failed to remove %s: %s', label, exc)
+        return 0, 1
+
+
 # Files per avatar set: one image per size×format combination, plus one metadata file.
 # Used in dry-run to estimate how many files would be removed for each targeted set.
 _FILES_PER_SET = len(img_cfg['sizes']) * len(img_cfg['formats']) + 1
@@ -158,50 +178,26 @@ def _cleanup_orphaned_files(known_filenames: set[str]) -> tuple[int, int, int]:
             # Phase B: remove files with formats no longer configured
             if ext not in _configured_formats:
                 expected += 1
-                if dry_run:
-                    log.info('[DRY-RUN] Would remove obsolete format file %s/%s.', entry.name, file_path.name)
-                    deleted += 1
-                else:
-                    try:
-                        file_path.unlink()
-                        log.info('Removed obsolete format file %s/%s.', entry.name, file_path.name)
-                        deleted += 1
-                    except OSError as exc:
-                        log.warning('Failed to remove obsolete format file %s/%s: %s', entry.name, file_path.name, exc)
-                        failed += 1
+                d, f = _try_unlink(file_path, f'obsolete format file {entry.name}/{file_path.name}')
+                deleted += d
+                failed += f
                 continue
 
             # Phase C: remove files with no matching metadata (orphaned)
             if file_path.stem not in known_filenames:
                 expected += 1
-                if dry_run:
-                    log.info('[DRY-RUN] Would remove orphaned file %s/%s (no metadata).', entry.name, file_path.name)
-                    deleted += 1
-                else:
-                    try:
-                        file_path.unlink()
-                        log.info('Removed orphaned file %s/%s (no metadata).', entry.name, file_path.name)
-                        deleted += 1
-                    except OSError as exc:
-                        log.warning('Failed to remove orphaned file %s/%s: %s', entry.name, file_path.name, exc)
-                        failed += 1
+                d, f = _try_unlink(file_path, f'orphaned file {entry.name}/{file_path.name} (no metadata)')
+                deleted += d
+                failed += f
 
     # Phase D: remove orphaned metadata files with no matching images
     for meta_path in METADATA_ROOT.glob('*.meta.json'):
         filename_base = meta_path.name.removesuffix('.meta.json')
         if filename_base not in known_filenames:
             expected += 1
-            if dry_run:
-                log.info('[DRY-RUN] Would remove orphaned metadata %s.', meta_path.name)
-                deleted += 1
-            else:
-                try:
-                    meta_path.unlink()
-                    log.info('Removed orphaned metadata %s.', meta_path.name)
-                    deleted += 1
-                except OSError as exc:
-                    log.warning('Failed to remove orphaned metadata %s: %s', meta_path.name, exc)
-                    failed += 1
+            d, f = _try_unlink(meta_path, f'orphaned metadata {meta_path.name}')
+            deleted += d
+            failed += f
 
     return expected, deleted, failed
 

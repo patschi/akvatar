@@ -172,6 +172,14 @@
         uploadButton.textContent = I18N.upload_button;
     }
 
+    /** Switch from the upload form to the result view (hides upload controls, shows progress panel). */
+    function showResultView() {
+        uploadSection.classList.add("hidden");
+        profileDivider.classList.add("hidden");
+        progressPanel.style.marginTop = "0";
+        progressPanel.style.paddingTop = "10";
+    }
+
     // File selection: validate extension and initialise cropper
     fileInput.addEventListener("change", function (event) {
         var selectedFile = event.target.files[0];
@@ -368,12 +376,8 @@
 
             // Display final result
             if (finalResult && finalResult.avatar_url && !finalResult.error) {
-                // Success: hide the upload form and show the updated avatar
-                uploadSection.classList.add("hidden");
-                profileDivider.classList.add("hidden");
-                progressPanel.style.marginTop = "0";
-                progressPanel.style.paddingTop = "10";
-
+                // Success: show the updated avatar
+                showResultView();
                 resultMessage.innerHTML =
                     '<p class="result-success">' + I18N.result_success + '</p>' +
                     '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
@@ -385,11 +389,8 @@
                     profileAvatar.src = finalResult.avatar_url;
                 }
             } else {
-                // Failure: hide the upload form and show the error with a retry button
-                uploadSection.classList.add("hidden");
-                profileDivider.classList.add("hidden");
-                progressPanel.style.marginTop = "0";
-                progressPanel.style.paddingTop = "10";
+                // Failure: show the error with a retry button
+                showResultView();
 
                 // Map server error codes to translated messages, fall back to generic error
                 var errorCode = finalResult && finalResult.error;
@@ -409,12 +410,8 @@
             }
             appendStep(I18N.step_upload, "failed", networkError.message);
 
-            // Hide the upload form and show the error with a retry button
-            uploadSection.classList.add("hidden");
-            profileDivider.classList.add("hidden");
-            progressPanel.style.marginTop = "0";
-            progressPanel.style.paddingTop = "10";
-
+            // Show the error with a retry button
+            showResultView();
             resultMessage.innerHTML =
                 '<p class="result-error">' + I18N.result_network_error + '</p>' +
                 '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'

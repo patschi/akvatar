@@ -96,8 +96,8 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
     """
     url = f'{_users_url}{pk}/'
 
-    # Fetch current attributes (always performed — callers rely on the returned dict) — callers rely on the returned dict (e.g. to read
-    # ldap_uniq before attempting an LDAP update).
+    # Fetch current attributes (always performed — callers rely on the returned dict,
+    # e.g. to read ldap_uniq before attempting an LDAP update).
     log.debug('GET %s – fetching current user attributes.', url)
     resp = _session.get(url, timeout=_TIMEOUT)
     resp.raise_for_status()

@@ -26,6 +26,9 @@ log = logging.getLogger('routes')
 
 routes_bp = Blueprint('routes', __name__)
 
+# Allowed error keys for the login page (reject arbitrary reflected strings)
+_VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
+
 
 # robots.txt – block all search engine crawling
 @routes_bp.route('/robots.txt')
@@ -56,8 +59,6 @@ def login_page():
     error_key = request.args.get('error', '')
     if not error_key and 'autologin' in request.args:
         return redirect(url_for('auth.login'))
-    # Whitelist error keys – reject arbitrary strings that could be reflected into templates
-    _VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
     if error_key not in _VALID_ERROR_KEYS:
         error_key = ''
     if error_key:
