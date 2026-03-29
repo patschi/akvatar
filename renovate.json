@@ -24,6 +24,12 @@
             "automerge": true
         },
         {
+            "matchManagers": ["dockerfile"],
+            "matchDepNames": ["python"],
+            "allowedVersions": "/^3\\.13/",
+            "description": "Pin builder Python to 3.13.x to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump this rule intentionally when moving to a new distroless base."
+        },
+        {
             "matchDatasources": ["docker"],
             "matchDepNames": ["gcr.io/distroless/python3-debian13"],
             "matchFileNames": ["Dockerfile"],

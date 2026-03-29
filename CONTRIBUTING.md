@@ -64,6 +64,18 @@ When submitting a pull request:
 - [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md) / [Subfolder Deployment](docs/subfolder-deployment.md) - deployment guides
 - [Cropper.js documentation](https://github.com/fengyuanchen/cropperjs) - client-side image cropping library
 
+## Python version alignment
+
+The builder stage in `Dockerfile` (`python:3.13-slim-trixie`) and the runtime stage (`gcr.io/distroless/python3-debian13`) must always use the **same Python minor version**. They are intentionally tied to the same Debian release (Trixie = Debian 13).
+
+When bumping the Python version (e.g. moving to Python 3.14 with a new distroless base):
+
+1. Update the `FROM python:3.13-slim-...` line in `Dockerfile` to the new version and Debian codename
+2. Update the `FROM gcr.io/distroless/python3-debian13` line to the matching `python3-debian14` (or equivalent) tag
+3. Update the `allowedVersions` regex in `renovate.json` from `/^3\.13/` to `/^3\.14/`
+
+All three must change together. Renovate is intentionally prevented from bumping the Python minor version automatically — the upgrade is a deliberate, coordinated change.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [GPLv3 License](LICENSE).
