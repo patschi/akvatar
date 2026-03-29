@@ -21,7 +21,7 @@ os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 # Ensure immediate log output (no buffering)
 os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
-from src.cleanup import run_cleanup
+from src.cleanup import run_cleanup  # noqa: E402
 
 if __name__ == '__main__':
     run_cleanup()

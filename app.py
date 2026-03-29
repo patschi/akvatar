@@ -19,16 +19,16 @@ import flask.cli
 # – we print our own startup info via the 'app' logger.
 flask.cli.show_server_banner = lambda *a, **kw: None
 
-from flask import Flask, Response, abort, request
-from werkzeug.middleware.proxy_fix import ProxyFix
+from flask import Flask, Response, abort, request  # noqa: E402
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
-from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
-from src.i18n import t, get_locale, get_js_translations
-from src import APP_VERSION
-from src.auth import auth_bp, init_oauth
-from src.routes import routes_bp
-from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
-from src.cleanup import start_cleanup_thread
+from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log  # noqa: E402
+from src.i18n import t, get_locale, get_js_translations  # noqa: E402
+from src import APP_VERSION  # noqa: E402
+from src.auth import auth_bp, init_oauth  # noqa: E402
+from src.routes import routes_bp  # noqa: E402
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence  # noqa: E402
+from src.cleanup import start_cleanup_thread  # noqa: E402
 
 log = logging.getLogger('app')
 

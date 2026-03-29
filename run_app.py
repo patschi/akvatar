@@ -28,8 +28,8 @@ os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 # Ensure immediate log output (no buffering)
 os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
-from src.config import web_cfg
-from src.cleanup import start_cleanup_thread
+from src.config import web_cfg  # noqa: E402
+from src.cleanup import start_cleanup_thread  # noqa: E402
 
 log = logging.getLogger('run')
 
@@ -69,5 +69,5 @@ log.info('Starting gunicorn on %s://%s:%s (workers=%d, threads=%d, timeout=%ds).
 
 # Launch gunicorn in-process (replaces the current Python execution context)
 sys.argv = args
-from gunicorn.app.wsgiapp import run
+from gunicorn.app.wsgiapp import run  # noqa: E402
 run()
