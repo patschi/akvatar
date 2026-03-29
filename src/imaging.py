@@ -27,7 +27,7 @@ log = logging.getLogger('imaging')
 Image.MAX_IMAGE_PIXELS = 50_000_000
 
 # Resolve the avatar storage root from config
-AVATAR_ROOT = Path(app_cfg['avatar_storage_path'])
+AVATAR_ROOT = Path(app_cfg.get('avatar_storage_path', 'data/avatars'))
 
 # Metadata JSON files live in a dedicated subfolder so they don't clutter
 # the avatar root alongside the size subdirectories.
