@@ -2,7 +2,7 @@ variables:
   SECRET_DETECTION_ENABLED: "true"
   GITLAB_ADVANCED_SAST_ENABLED: "true"
   CI_APPLICATION_REPOSITORY: "$CI_REGISTRY_IMAGE"
-  CI_APPLICATION_TAG: "latest"
+  CI_APPLICATION_TAG: "dev"
   GHCR_IMAGE: "ghcr.io/patschi/akvatar"
   GITHUB_PROJECT_URL: "https://github.com/patschi/akvatar"
 
@@ -30,6 +30,13 @@ lint-ruff:
     - pip install --quiet --root-user-action=ignore ruff
   script:
     - ruff check *.py src/
+  rules:
+    - changes:
+        - "**/*.py"
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+      when: always
+    - when: never
 
 # Push container to GitLab Container Registry
 push-container-gitlab:
@@ -59,9 +66,16 @@ push-container-gitlab:
       --annotation="org.opencontainers.image.licenses=GPLv3"
       --context="$CI_PROJECT_DIR"
       --dockerfile="$CI_PROJECT_DIR/Dockerfile"
-      --destination="$CI_REGISTRY_IMAGE:dev"
+      --destination="$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
   rules:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+      changes:
+        - "**/*.py"
+        - "Dockerfile"
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+        - "static/**"
+        - "src/**"
       when: always
     - when: never
 
@@ -81,8 +95,8 @@ push-container-gitlab:
 #    - >
 #      crane mutate
 #      --label="org.opencontainers.image.source=$GITHUB_PROJECT_URL"
-#      --tag="$GHCR_IMAGE:dev"
-#      "$CI_REGISTRY_IMAGE:dev"
+#      --tag="$GHCR_IMAGE:$CI_APPLICATION_TAG"
+#      "$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
 #  rules:
 #    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
 #      when: always
