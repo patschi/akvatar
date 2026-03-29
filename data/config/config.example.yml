@@ -35,6 +35,7 @@ app:
   avatar_retention_count: 2
   # Cron schedule for orphan avatar cleanup (removes avatars of users that no
   # longer exist in Authentik).  Uses standard 5-field crontab syntax.
+  # Important: The scheduler always uses the UTC time.
   # Set to "" (empty string) to disable.  Default: "0 2 * * *" (daily at 2 AM).
   cleanup_interval: "0 2 * * *"
   # Run orphan cleanup once 60 seconds after application startup.
