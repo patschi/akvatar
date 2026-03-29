@@ -73,6 +73,15 @@ args.append('app:create_app()')
 log.info('Initializing gunicorn on %s://%s:%s (workers=%d, threads=%d, timeout=%ds)...',
          scheme, host, port, workers, threads, timeout)
 
+# Override gunicorn's Server header before it is imported by wsgiapp.
+# gunicorn always injects SERVER_SOFTWARE as a default header after Flask
+# returns the response, so the Flask after_request hook cannot remove it.
+# Patching the module-level variable here (before wsgiapp triggers the import)
+# replaces it with the app name instead.
+import gunicorn.http.wsgi # noqa: E402
+from src import APP_NAME  # noqa: E402
+gunicorn.http.wsgi.SERVER = APP_NAME
+
 # Launch gunicorn in-process (replaces the current Python execution context)
 sys.argv = args
 from gunicorn.app.wsgiapp import run  # noqa: E402
