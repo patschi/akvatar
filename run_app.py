@@ -28,10 +28,16 @@ os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 # Ensure immediate log output (no buffering)
 os.environ.setdefault('PYTHONUNBUFFERED', '1')
 
+# Gunicorn 23+ creates a control-server socket under ~/.gunicorn/.
+# The container runs with a read-only root filesystem, so /home/nonroot is not
+# writable.  Redirect HOME to /tmp (already a tmpfs mount) so gunicorn can
+# write its socket there without error.
+os.environ['HOME'] = '/tmp'
+
 from src.config import web_cfg  # noqa: E402
 from src.cleanup import start_cleanup_thread  # noqa: E402
 
-log = logging.getLogger('run')
+log = logging.getLogger('run_app')
 
 host = web_cfg.get('host', '0.0.0.0')
 port = web_cfg.get('port', 5000)
@@ -64,7 +70,7 @@ if tls_cert and tls_key:
 
 args.append('app:create_app()')
 
-log.info('Starting gunicorn on %s://%s:%s (workers=%d, threads=%d, timeout=%ds)...',
+log.info('Initializing gunicorn on %s://%s:%s (workers=%d, threads=%d, timeout=%ds)...',
          scheme, host, port, workers, threads, timeout)
 
 # Launch gunicorn in-process (replaces the current Python execution context)
