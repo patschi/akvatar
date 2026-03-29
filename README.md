@@ -12,8 +12,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   English (default) and German
 - **Client-side square cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs)
   (bundled locally, no external CDN)
-- **Multi-size output**: 1024, 648, 512, 256, 128, 64 px (configurable)
-- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings
+- **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
+- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings (see [Configuration](docs/configuration.md#images_formats))
 - **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp

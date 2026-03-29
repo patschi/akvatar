@@ -130,8 +130,8 @@ Before the image reaches the server, the browser performs two steps:
 
 1. **Cropping**: [Cropper.js](https://github.com/fengyuanchen/cropperjs) enforces a
    square crop area. The user can reposition and resize the crop box. The result is
-   rendered onto an HTML canvas at the server's maximum configured dimension
-   (default: 1024×1024 px).
+   rendered onto an HTML canvas at the configured maximum dimension
+   (see [`images.sizes`](configuration.md#images_sizes)).
 
 2. **Compression**: The canvas is exported via `canvas.toBlob()`. The browser first
    attempts **WebP** (quality 0.85). If WebP encoding is not supported (older browsers),
@@ -170,10 +170,10 @@ After validation, the image is normalised and processed:
 3. **Mode normalisation**: the image is converted to RGB or RGBA if it is not already.
 
 4. **Resizing**: the normalised image is resized to every configured square size
-   (default: 1024, 648, 512, 256, 128, 64 px) using Lanczos resampling.
+   (see [`images.sizes`](configuration.md#images_sizes)) using Lanczos resampling.
 
-5. **Multi-format save**: each size is saved in every configured format (default: JPEG,
-   PNG, WebP) with configurable quality settings. RGBA images are converted to RGB before
+5. **Multi-format save**: each size is saved in every configured format
+   (see [`images.formats`](configuration.md#images_formats)) with configurable quality settings. RGBA images are converted to RGB before
    JPEG encoding (JPEG does not support alpha).
 
 ## Filename generation
@@ -209,7 +209,7 @@ The app updates the user's avatar URL in Authentik via the Admin API:
 3. **Write** the updated dict: `PATCH /api/v3/core/users/{pk}/` with
    `{"attributes": {..., "avatar-url": "<url>"}}`
 
-The URL points to the JPEG at the configured size (default: 1024×1024 px). Authentik
+The URL points to the JPEG at the configured size (see [`authentik_api.avatar_size`](configuration.md#authentik_api_avatar_size)). Authentik
 uses this URL to display the avatar in its UI (login portals, admin panel, etc.).
 
 See [Authentik API Token](authentik-api-token.md) for setup instructions.
@@ -293,18 +293,18 @@ data/user-avatars/
     └── {filename}.meta.json
 ```
 
-Each upload produces `len(sizes) × len(formats)` image files plus one metadata file. With
-the defaults that is 6 × 3 = 18 image files per upload.
+Each upload produces one image file per configured size per format, plus one metadata file
+(see [`images.sizes`](configuration.md#images_sizes) and [`images.formats`](configuration.md#images_formats)).
 
 ## Cleanup
 
 The cleanup job runs in a background daemon thread on a configurable cron schedule
-(default: daily at 02:00 UTC). It can also be triggered manually via
+(see [`app.cleanup_interval`](configuration.md#app_cleanup_interval)). It can also be triggered manually via
 `python run_cleanup.py`.
 
 ### Why cleanup is needed
 
-Every successful upload writes 18+ files to disk (6 sizes × 3 formats + metadata). Over
+Every successful upload writes multiple files to disk (one per configured size and format, plus metadata). Over
 time this accumulates from:
 
 - Users who have since been deleted or deactivated in Authentik
@@ -352,8 +352,8 @@ deactivated) are removed: all size × format image files and the metadata file a
 #### Phase 2 — Retention enforcement
 
 For each active user, avatar sets are sorted newest-first by `uploaded_at` (ISO 8601
-sorts lexicographically). Sets beyond the configured `avatar_retention_count` limit
-(default: 2) are deleted. Set to `0` to keep all uploads indefinitely.
+sorts lexicographically). Sets beyond the configured
+[`app.avatar_retention_count`](configuration.md#app_avatar_retention_count) are deleted.
 
 #### Phase 3 — Orphaned files
 
@@ -392,12 +392,12 @@ what it would have done. The file count for avatar sets in dry-run is an estimat
 
 ### Cleanup configuration
 
-| Setting                        | Default        | Description                                                   |
-| ------------------------------ | -------------- | ------------------------------------------------------------- |
-| `app.cleanup_interval`         | `"0 2 * * *"` | Cron schedule (UTC); empty string disables the job            |
-| `app.cleanup_on_startup`       | `false`        | Run cleanup 60 s after startup in addition to the cron        |
-| `app.avatar_retention_count`   | `2`            | Avatar sets to keep per user; `0` = unlimited                 |
-| `dry_run`                      | `false`        | Log-only mode — no files are deleted                          |
+| Setting                                                                                     | Description                                         |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [`app.cleanup_interval`](configuration.md#app_cleanup_interval)                             | Cron schedule (UTC) for when the job runs           |
+| [`app.cleanup_on_startup`](configuration.md#app_cleanup_on_startup)                         | Whether to also run once shortly after startup      |
+| [`app.avatar_retention_count`](configuration.md#app_avatar_retention_count)                 | How many avatar sets to keep per user               |
+| [`dry_run`](configuration.md#dry_run)                                                       | Log-only mode — no files are deleted                |
 
 ## Server-Sent Events (SSE)
 
