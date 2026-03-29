@@ -18,6 +18,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.max_upload_size_mb`](#app_max_upload_size_mb)                     | Integer | Maximum upload size in MB                           |
 | [`app.avatar_storage_path`](#app_avatar_storage_path)                   | String  | Directory for stored avatar images                  |
 | [`app.public_base_url`](#app_public_base_url)                           | URL     | Public URL where the application is reachable       |
+| [`app.session_cookie_secure`](#app_session_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
 | [`app.public_avatar_url`](#app_public_avatar_url)                       | URL     | Public URL where avatar files are served            |
 | [`app.web_session_lifetime_seconds`](#app_web_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
 | [`cleanup.interval`](#cleanup_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
@@ -146,6 +147,25 @@ The full public URL where users access the application. Used to generate OIDC re
 If the URL includes a path component (e.g. `https://portal.example.com/avatar`), the application automatically serves under that subfolder. See [Subfolder Deployment](subfolder-deployment.md).
 
 Must **not** have a trailing slash.
+
+<a id="app_session_cookie_secure"></a>
+
+### `app.session_cookie_secure`
+
+|             |                                                   |
+| ----------- | ------------------------------------------------- |
+| **Type**    | Boolean or `null`                                 |
+| **Default** | `null` (auto-detected from `app.public_base_url`) |
+
+Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs browsers to transmit the cookie only over HTTPS connections.
+
+| Value   | Behaviour                                                                                           |
+| ------- | --------------------------------------------------------------------------------------------------- |
+| `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
+| `true`  | Always set `Secure`, regardless of `public_base_url`                                                |
+| `false` | Never set `Secure` — only use this for plain-HTTP development environments                          |
+
+**You should not need to set this manually.** The auto-detection is correct for all standard deployments, including reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The `Secure` flag is enforced by the browser, not by the Flask-to-proxy link.
 
 <a id="app_public_avatar_url"></a>
 

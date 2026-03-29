@@ -174,8 +174,11 @@ def create_app() -> Flask:
     #   so it will honour the flag; the internal proxy→Flask link being plain HTTP is
     #   irrelevant.  We therefore set Secure whenever the public URL uses https://, not
     #   only when Flask's own built-in server has TLS configured.
+    #   app.session_cookie_secure overrides this auto-detection when set explicitly.
     # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
-    _tls_active = app_cfg.get('public_base_url', '').startswith('https://')
+    _secure_override = app_cfg.get('session_cookie_secure', None)
+    _tls_active = _secure_override if _secure_override is not None else app_cfg.get('public_base_url', '').startswith('https://')
+    app.config['SESSION_COOKIE_NAME'] = 'akvatar_session'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = _tls_active

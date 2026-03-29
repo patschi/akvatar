@@ -29,6 +29,15 @@ app:
   # When this URL starts with "https://", the session cookie is automatically
   # marked Secure so browsers only transmit it over HTTPS connections.
   public_base_url: "https://avatar.example.com"
+  # Whether to set the Secure flag on the session cookie.
+  # null (default): auto-detected from public_base_url — Secure is set when the
+  #   URL starts with "https://", which is correct for the vast majority of setups.
+  # true / false: explicit override for edge cases where auto-detection is wrong
+  #   (e.g. an HTTP-only internal deployment behind a TLS-terminating proxy that
+  #   does not forward X-Forwarded-Proto correctly).
+  # Do not change this unless you have a specific reason to — auto-detection is
+  # correct for all standard deployments.
+  session_cookie_secure: null
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
   public_avatar_url: "https://avatar.example.com/user-avatars"

@@ -70,7 +70,7 @@ def login():
 @auth_bp.route('/callback')
 def auth_callback():
     """OIDC callback – exchange the authorization code for tokens and store the user profile in the session."""
-    log.debug('Received OIDC callback, exchanging authorization code.')
+    log.debug('Received OIDC callback. Exchanging code for token...')
     try:
         token = oauth.authentik.authorize_access_token()
     except Exception:
