@@ -91,7 +91,13 @@ def serve_avatar(dimensions, filename):
         abort(404)
     filepath = f'{dimensions}/{filename}'
     log.debug('Serving avatar file: %s', filepath)
-    return send_from_directory(AVATAR_ROOT, filepath)
+    # Avatar URLs are immutable: filenames are cryptographically random per upload
+    # (uuid4 + token_urlsafe + nanosecond timestamp).  A new upload always produces
+    # a new URL, so the content at any given URL never changes.  The immutable
+    # directive tells supporting browsers not to revalidate even on explicit refresh.
+    resp = send_from_directory(AVATAR_ROOT, filepath)
+    resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    return resp
 
 
 # Serve avatar metadata JSON files
@@ -99,7 +105,9 @@ def serve_avatar(dimensions, filename):
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory."""
     log.debug('Serving metadata file: _metadata/%s', filename)
-    return send_from_directory(AVATAR_ROOT, f'_metadata/{filename}', mimetype='application/json')
+    resp = send_from_directory(AVATAR_ROOT, f'_metadata/{filename}', mimetype='application/json')
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
 
 
 # Upload & process API (Server-Sent Events for real-time progress)
