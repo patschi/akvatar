@@ -82,7 +82,15 @@ import gunicorn.http.wsgi # noqa: E402
 from src import APP_NAME  # noqa: E402
 gunicorn.http.wsgi.SERVER = APP_NAME
 
-# Launch gunicorn in-process (replaces the current Python execution context)
+# Launch gunicorn in-process.
+# Split WSGIApplication construct + configure + run so we can inject the
+# when_ready hook before the server starts accepting connections.
 sys.argv = args
-from gunicorn.app.wsgiapp import run  # noqa: E402
-run()
+from gunicorn.app.wsgiapp import WSGIApplication  # noqa: E402
+
+def _when_ready(server):
+    log.info('OK! Ready to serve requests.')
+
+gunicorn_app = WSGIApplication('%(prog)s [OPTIONS] [APP_MODULE]')
+gunicorn_app.cfg.set('when_ready', _when_ready)
+gunicorn_app.run()

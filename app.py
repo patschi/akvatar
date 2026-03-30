@@ -274,7 +274,7 @@ def create_app() -> Flask:
         return Response(data, mimetype=mime, headers=headers)
 
     log.debug('Web routes registered.')
-    log.info('OK! Ready to serve requests.')
+    log.info('App initialized.')
 
     # Template context processor – inject shared variables into all templates
     _brand_name = branding_cfg.get('name', 'Avatar Updater')
