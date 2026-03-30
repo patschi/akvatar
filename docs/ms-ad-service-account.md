@@ -39,10 +39,11 @@ The script below automates the complete setup using PowerShell and .NET `System.
 ### Script
 
 ```powershell
-#Requires -Modules ActiveDirectory
+# Import module
+Import-Module ActiveDirectory
 
 # ============================================================================
-# Configuration — adjust these values to match your environment
+# Configuration - adjust these values to match your environment
 # ============================================================================
 
 # Domain components (e.g. DC=corp,DC=example,DC=com for corp.example.com)
@@ -65,6 +66,13 @@ $TargetUsersOU = "OU=Users,$DomainDN"
 # in config.yml).  Add all attributes configured in your ldap.photos array.
 $PhotoAttributes = @("thumbnailPhoto", "jpegPhoto")
 
+# Set to $true to preview all actions without making any changes to Active Directory.
+$DryRun = $false
+
+# Derive the domain FQDN from the DC components of $DomainDN
+# (e.g. "DC=corp,DC=example,DC=com" -> "corp.example.com") -- used for UserPrincipalName.
+$DomainFQDN = ($DomainDN -split "," | Where-Object { $_ -match "^DC=" } | ForEach-Object { $_ -replace "^DC=", "" }) -join "."
+
 # ============================================================================
 # Step 1: Generate a random 32-character password
 # ============================================================================
@@ -84,7 +92,7 @@ $RNG.Dispose()
 $SecurePassword = ConvertTo-SecureString -String $Password -AsPlainText -Force
 
 Write-Host "Generated password: $Password" -ForegroundColor Yellow
-Write-Host "Store this password securely — it will not be shown again." -ForegroundColor Yellow
+Write-Host "Store this password securely - it will not be shown again." -ForegroundColor Yellow
 Write-Host ""
 
 # ============================================================================
@@ -99,13 +107,17 @@ if (-not $OUExists) {
     $OUName = ($ServiceAccountOU -split ",")[0] -replace "^OU=", ""
     $ParentDN = ($ServiceAccountOU -split ",", 2)[1]
 
-    New-ADOrganizationalUnit `
-        -Name $OUName `
-        -Path $ParentDN `
-        -Description "Service accounts for automated systems" `
-        -ProtectedFromAccidentalDeletion $true
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would create OU: $ServiceAccountOU" -ForegroundColor DarkYellow
+    } else {
+        New-ADOrganizationalUnit `
+            -Name $OUName `
+            -Path $ParentDN `
+            -Description "Service accounts for automated systems" `
+            -ProtectedFromAccidentalDeletion $true
 
-    Write-Host "Created OU: $ServiceAccountOU" -ForegroundColor Green
+        Write-Host "Created OU: $ServiceAccountOU" -ForegroundColor Green
+    }
 } else {
     Write-Host "OU already exists: $ServiceAccountOU" -ForegroundColor Cyan
 }
@@ -118,24 +130,37 @@ $AccountExists = $null
 try { $AccountExists = Get-ADUser -Identity $SamAccountName } catch {}
 
 if ($AccountExists) {
-    Write-Host "Service account '$SamAccountName' already exists — skipping creation." -ForegroundColor Cyan
+    Write-Host "Service account '$SamAccountName' already exists - skipping creation." -ForegroundColor Cyan
 } else {
-    New-ADUser `
-        -SamAccountName $SamAccountName `
-        -Name $DisplayName `
-        -DisplayName $DisplayName `
-        -Description $Description `
-        -Path $ServiceAccountOU `
-        -AccountPassword $SecurePassword `
-        -Enabled $true `
-        -PasswordNeverExpires $true `
-        -CannotChangePassword $true `
-        -ChangePasswordAtLogon $false
+    if ($DryRun) {
+        Write-Host "[DRY RUN] Would create service account: $SamAccountName (UPN: $SamAccountName@$DomainFQDN)" -ForegroundColor DarkYellow
+    } else {
+        New-ADUser `
+            -SamAccountName $SamAccountName `
+            -UserPrincipalName "$SamAccountName@$DomainFQDN" `
+            -Name $DisplayName `
+            -DisplayName $DisplayName `
+            -Description $Description `
+            -Path $ServiceAccountOU `
+            -AccountPassword $SecurePassword `
+            -Enabled $true `
+            -PasswordNeverExpires $true `
+            -CannotChangePassword $true `
+            -ChangePasswordAtLogon $false
 
-    Write-Host "Created service account: $SamAccountName" -ForegroundColor Green
+        Write-Host "Created service account: $SamAccountName" -ForegroundColor Green
+    }
 }
 
 # Retrieve the account's SID (needed for ACL delegation)
+# In dry run mode the account may not exist yet; skip SID lookup and ACL steps.
+if ($DryRun -and -not $AccountExists) {
+    Write-Host "[DRY RUN] Skipping SID lookup and ACL delegation (account not yet created)" -ForegroundColor DarkYellow
+    Write-Host ""
+    Write-Host "[DRY RUN] No changes were made to Active Directory." -ForegroundColor DarkYellow
+    exit 0
+}
+
 $ServiceAccount = Get-ADUser -Identity $SamAccountName
 $ServiceAccountSID = [System.Security.Principal.SecurityIdentifier]$ServiceAccount.SID
 
@@ -265,8 +290,12 @@ $ReadSidACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
 $ACL.AddAccessRule($ReadSidACE)
 
 # Commit the ACL changes to Active Directory
-$TargetOU_DE.ObjectSecurity = $ACL
-$TargetOU_DE.CommitChanges()
+if ($DryRun) {
+    Write-Host "[DRY RUN] Would commit Read/Write Property ACEs for photo attributes" -ForegroundColor DarkYellow
+} else {
+    $TargetOU_DE.ObjectSecurity = $ACL
+    $TargetOU_DE.CommitChanges()
+}
 
 Write-Host "Delegated Read/Write Property on photo attributes to '$SamAccountName'" -ForegroundColor Green
 Write-Host "Delegated Read Property on 'objectSid' to '$SamAccountName'" -ForegroundColor Green
@@ -291,8 +320,12 @@ $GenericReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
 )
 $ACL.AddAccessRule($GenericReadACE)
 
-$TargetOU_DE.ObjectSecurity = $ACL
-$TargetOU_DE.CommitChanges()
+if ($DryRun) {
+    Write-Host "[DRY RUN] Would commit GenericRead ACE for user objects" -ForegroundColor DarkYellow
+} else {
+    $TargetOU_DE.ObjectSecurity = $ACL
+    $TargetOU_DE.CommitChanges()
+}
 $TargetOU_DE.Dispose()
 
 Write-Host "Delegated GenericRead on user objects to '$SamAccountName'" -ForegroundColor Green
@@ -309,7 +342,7 @@ Write-Host "========================================" -ForegroundColor White
 Write-Host ""
 Write-Host "Service account:  $SamAccountName" -ForegroundColor White
 Write-Host "Distinguished DN: $($ServiceAccount.DistinguishedName)" -ForegroundColor White
-Write-Host "Password:         (see above — store securely)" -ForegroundColor White
+Write-Host "Password:         (see above - store securely)" -ForegroundColor White
 Write-Host ""
 Write-Host "Permissions granted on: $TargetUsersOU" -ForegroundColor White
 Write-Host "  - GenericRead on user objects (search and read all attributes)" -ForegroundColor White
