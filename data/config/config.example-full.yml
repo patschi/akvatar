@@ -71,9 +71,8 @@ cleanup:
 # --- Rate Limiting ---
 # Throttle avatar and metadata serving endpoints by client IP address to
 # prevent URL guessing abuse and ensure fair usage.
-# Each gunicorn worker process maintains its own counters independently,
-# so with N workers a client can make up to N × max_requests total before
-# every worker blocks them.
+# Counters are shared across all gunicorn worker processes, so the effective
+# limit per client IP is exactly max_requests per window period.
 rate_limiting:
   # Master switch – set to false to disable all rate limiting.
   enabled: false
@@ -101,7 +100,7 @@ rate_limiting:
   # Limits for metadata requests
   metadata:
     enabled: true
-    requests: 60
+    requests: 50
     window: 60
 
 # --- Webserver ---

@@ -322,7 +322,7 @@ Enable this setting if deactivated accounts should be treated the same as delete
 
 Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks are never rate-limited.
 
-Each gunicorn worker process maintains its own counters independently. With N workers, a client can make up to N × `requests` total before every worker blocks them. This is by design — cross-process shared state would add significant complexity for minimal benefit.
+Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly `requests` per `window` period regardless of how many workers are running.
 
 Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` header and a JSON body:
 
