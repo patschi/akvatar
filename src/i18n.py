@@ -72,6 +72,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed_detail':    '{sizes} sizes, {formats} formats, {total} total',
         'step_profile_synced':      'Login Portal Photo updated',
         'step_ldap_updated':        'User Directory Photo updated',
+        'step_rollback':            'Changes rolled back',
         'step_processing_failed':   'Processing the image failed',
         'step_save_failed':         'Could not save your avatar.',
 
@@ -138,6 +139,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'step_processed_detail':    '{sizes} Gr\u00f6\u00dfen, {formats} Formate, {total} gesamt',
         'step_profile_synced':      'Anmelde-Portal Foto aktualisiert',
         'step_ldap_updated':        'Benutzerverzeichnis Foto aktualisiert',
+        'step_rollback':            '\u00c4nderungen r\u00fcckg\u00e4ngig gemacht',
         'step_processing_failed':   'Verarbeitung des Bildes fehlgeschlagen',
         'step_save_failed':         'Avatar konnte nicht gespeichert werden.',
 
@@ -223,7 +225,7 @@ _JS_KEYS = (
     'step_crop', 'step_compress', 'step_upload',
     # Server-side step labels (needed to pre-render waiting steps before SSE arrives)
     'step_validated', 'step_filename', 'step_processed',
-    'step_profile_synced', 'step_ldap_updated',
+    'step_profile_synced', 'step_ldap_updated', 'step_rollback',
     # UI strings
     'upload_processing', 'upload_button',
     'step_save_failed',

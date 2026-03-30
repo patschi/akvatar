@@ -31,7 +31,7 @@ from src.imaging import (
     _FORMAT_MAP, normalize_image, check_magic_bytes, generate_filename,
     process_image, cleanup_avatar_files, prepare_ldap_image,
 )
-from src.authentik import update_avatar_url
+from src.authentik import update_avatar_url, revert_avatar_url
 from src.ldap_client import (
     update_photos as update_ldap_photos,
     is_enabled as ldap_is_enabled,
@@ -171,19 +171,20 @@ def _step_sync_authentik(user_pk: int, canonical_url: str):
     """
     Push the avatar URL to Authentik via API.
 
-    Yields one SSE frame.  Returns ``(ak_attrs, failed)``.
+    Yields one SSE frame.  Returns ``(ak_attrs, old_avatar_url, failed)``.
+    *old_avatar_url* is the previous value so it can be restored on rollback.
     On failure the pipeline continues so LDAP can be skipped gracefully.
     """
     try:
-        ak_attrs = update_avatar_url(user_pk, canonical_url)
+        ak_attrs, old_url = update_avatar_url(user_pk, canonical_url)
         if not isinstance(ak_attrs, dict):
             raise TypeError(f'Authentik API returned {type(ak_attrs).__name__} instead of dict.')
         yield _sse({'step': t('step_profile_synced'), 'status': 'dry-run' if dry_run else 'success'})
-        return ak_attrs, False
+        return ak_attrs, old_url, False
     except Exception:
         log.exception('Failed to update Authentik avatar for pk=%s.', user_pk)
         yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
-        return {}, True
+        return {}, None, True
 
 
 def _build_ldap_updates(image: Image.Image, urls: dict, filename_base: str) -> list[dict]:
@@ -303,15 +304,23 @@ def generate_sse(user: dict, image: Image.Image):
         canonical_url = _resolve_canonical_url(urls)
 
         # Step 4: Push avatar URL to Authentik
-        ak_attrs, ak_failed = yield from _step_sync_authentik(user_pk, canonical_url)
+        ak_attrs, old_avatar_url, ak_failed = yield from _step_sync_authentik(user_pk, canonical_url)
 
         # Step 5: Update LDAP photo attributes (if applicable)
         ldap_failed = yield from _step_sync_ldap(image, urls, filename_base, ak_attrs, user_pk)
 
         # Rollback on any backend failure
         if ak_failed or ldap_failed:
-            log.warning('Backend update failed – rolling back avatar files for %s.', filename_base)
+            log.warning('Backend update failed – rolling back for %s.', filename_base)
+            # Revert Authentik if it was already updated successfully
+            if not ak_failed and not dry_run:
+                try:
+                    revert_avatar_url(user_pk, old_avatar_url)
+                    log.debug('Authentik avatar reverted for pk=%s.', user_pk)
+                except Exception:
+                    log.exception('Failed to revert Authentik avatar for pk=%s.', user_pk)
             cleanup_avatar_files(filename_base)
+            yield _sse({'step': t('step_rollback'), 'status': 'success'})
             yield _sse({'done': True, 'error': 'Could not update your avatar. Please try again later.'})
             return
 

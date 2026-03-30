@@ -83,10 +83,15 @@ def resolve_user_pk(username: str) -> int:
     return pk
 
 
-def update_avatar_url(pk: int, avatar_url: str) -> dict:
+def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
     """
     PATCH the user's avatar attribute in Authentik and return the user's
-    full ``attributes`` dict (useful for inspecting ``ldap_uniq``, etc.).
+    full ``attributes`` dict together with the previous avatar URL.
+
+    Returns ``(attrs, old_url)`` where *old_url* is the attribute value
+    before this call (``None`` if it was not set).  The caller can use
+    *old_url* to revert the change via :func:`revert_avatar_url` if a
+    later pipeline step fails.
 
     Accepts the Authentik PK directly so no username->PK lookup is needed.
 
@@ -110,13 +115,13 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
             f'{type(current_attrs).__name__} (expected dict).'
         )
 
-    old_avatar = current_attrs.get(_avatar_attr, '(not set)')
+    old_url = current_attrs.get(_avatar_attr)
     log.debug('Current attributes: %s', current_attrs)
-    log.debug('Previous %s: %s', _avatar_attr, old_avatar)
+    log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
 
     if dry_run:
         log.info('[DRY-RUN] Would update Authentik %r for pk=%d to %s.', _avatar_attr, pk, avatar_url)
-        return current_attrs
+        return current_attrs, old_url
 
     # PATCH the avatar attribute on the Authentik user object
     current_attrs[_avatar_attr] = avatar_url
@@ -134,8 +139,37 @@ def update_avatar_url(pk: int, avatar_url: str) -> dict:
             patch_resp.status_code, _avatar_attr, actual_value, avatar_url,
         )
 
-    log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_avatar, avatar_url)
-    return patched_attrs
+    log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
+    return patched_attrs, old_url
+
+
+def revert_avatar_url(pk: int, old_url: str | None) -> None:
+    """
+    Restore the user's avatar attribute to *old_url* (or remove it if
+    *old_url* is ``None``).  Used during rollback when a later pipeline
+    step fails after Authentik was already updated.
+    """
+    url = f'{_users_url}{pk}/'
+
+    log.debug('GET %s – fetching current attributes for rollback.', url)
+    resp = _session.get(url, timeout=_TIMEOUT)
+    resp.raise_for_status()
+
+    user_data = _parse_json(resp)
+    current_attrs = user_data.get('attributes')
+    if not isinstance(current_attrs, dict):
+        current_attrs = {}
+
+    if old_url is None:
+        current_attrs.pop(_avatar_attr, None)
+    else:
+        current_attrs[_avatar_attr] = old_url
+
+    display = old_url or '(removed)'
+    log.info('Rolling back Authentik %s for pk=%d to: %s', _avatar_attr, pk, display)
+    patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
+    patch_resp.raise_for_status()
+    log.info('Authentik rollback successful for pk=%d.', pk)
 
 
 def _list_user_pks(active_only: bool = False) -> set[int]:
