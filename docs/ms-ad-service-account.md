@@ -1,14 +1,18 @@
 # Active Directory Service Account Setup
 
-This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for Akvatar's LDAP integration. The account will only have permission to **read user objects** and **write photo attributes** (e.g. `thumbnailPhoto`, `jpegPhoto`) within a specific Organizational Unit (OU).
+This guide explains how to create a dedicated, least-privilege service account in **Microsoft Active Directory** for
+Akvatar's LDAP integration. The account will only have permission to **read user objects** and **write photo attributes
+** (e.g. `thumbnailPhoto`, `jpegPhoto`) within a specific Organizational Unit (OU).
 
 ## Overview
 
-Akvatar connects to LDAP (Active Directory) to write profile photos directly into user objects. To follow the principle of least privilege, the service account should:
+Akvatar connects to LDAP (Active Directory) to write profile photos directly into user objects. To follow the principle
+of least privilege, the service account should:
 
 - Be able to **bind** (authenticate) to the directory
 - **Search** for user objects within a specific OU
-- **Read** the `objectSid` and `distinguishedName` attributes of matched users (`objectSid` is required to use it as a search filter)
+- **Read** the `objectSid` and `distinguishedName` attributes of matched users (`objectSid` is required to use it as a
+  search filter)
 - **Write** only the photo attributes configured in `ldap.photos` (e.g. `thumbnailPhoto`, `jpegPhoto`)
 - Have **no other permissions** (no password reset, no group membership changes, no account creation)
 
@@ -20,7 +24,8 @@ Akvatar connects to LDAP (Active Directory) to write profile photos directly int
 4. **Modify** all configured photo attributes (e.g. `thumbnailPhoto`, `jpegPhoto`) in a single operation
 5. **Unbind** (disconnect)
 
-Step 3 (reading `distinguishedName`) is typically allowed for all authenticated users in AD. The critical permission is step 4: writing `thumbnailPhoto`.
+Step 3 (reading `distinguishedName`) is typically allowed for all authenticated users in AD. The critical permission is
+step 4: writing `thumbnailPhoto`.
 
 ## PowerShell setup script
 
@@ -28,7 +33,8 @@ The script below automates the complete setup using PowerShell and .NET `System.
 
 1. Creates a service account in a dedicated OU
 2. Generates a random 32-character password
-3. Delegates **Read Property** on `objectSid` and **Read/Write Property** on `thumbnailPhoto` to the service account, scoped to user objects within the target OU
+3. Delegates **Read Property** on `objectSid` and **Read/Write Property** on `thumbnailPhoto` to the service account,
+   scoped to user objects within the target OU
 
 ### Prerequisites
 
@@ -362,28 +368,32 @@ Write-Host "  search_filter: `"(objectSid={ldap_uniq})`"" -ForegroundColor Yello
 
 ## What the script does
 
-| Step | Action |
-|---|---|
-| 1 | Generates a cryptographically random 32-character password |
-| 2 | Creates the Service Accounts OU (if it does not exist) |
-| 3 | Creates the service account with password-never-expires and cannot-change-password flags |
-| 4 | Looks up the `schemaIDGUID` for each configured photo attribute, `objectSid`, and the `user` object class from the AD schema |
-| 5 | Delegates **Write Property** and **Read Property** on each photo attribute, and **Read Property** on `objectSid` for user objects under the target OU |
-| 6 | Delegates **GenericRead** on user objects under the target OU so the account can search and read all attributes |
+| Step | Action                                                                                                                                                |
+|------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1    | Generates a cryptographically random 32-character password                                                                                            |
+| 2    | Creates the Service Accounts OU (if it does not exist)                                                                                                |
+| 3    | Creates the service account with password-never-expires and cannot-change-password flags                                                              |
+| 4    | Looks up the `schemaIDGUID` for each configured photo attribute, `objectSid`, and the `user` object class from the AD schema                          |
+| 5    | Delegates **Write Property** and **Read Property** on each photo attribute, and **Read Property** on `objectSid` for user objects under the target OU |
+| 6    | Delegates **GenericRead** on user objects under the target OU so the account can search and read all attributes                                       |
 
 ## Understanding the permissions
 
 ### Why Write Property (not GenericWrite)?
 
-`GenericWrite` includes Write Property, Write Validated, and Self membership changes. The service account only needs to replace specific attribute values, so `WriteProperty` scoped to each individual photo attribute is the minimal permission.
+`GenericWrite` includes Write Property, Write Validated, and Self membership changes. The service account only needs to
+replace specific attribute values, so `WriteProperty` scoped to each individual photo attribute is the minimal
+permission.
 
 ### Why scope to user objects?
 
-The `InheritedObjectType` parameter limits the ACE to objects of the `user` class. Computer objects, groups, and other directory objects within the same OU are not affected.
+The `InheritedObjectType` parameter limits the ACE to objects of the `user` class. Computer objects, groups, and other
+directory objects within the same OU are not affected.
 
 ### Why Descendents inheritance?
 
-The `Descendents` inheritance type means the permission applies to child objects of the target OU, not to the OU object itself. This prevents the service account from modifying the OU's own attributes.
+The `Descendents` inheritance type means the permission applies to child objects of the target OU, not to the OU object
+itself. This prevents the service account from modifying the OU's own attributes.
 
 ## Verifying the permissions
 
@@ -414,7 +424,8 @@ ActiveDirectoryRights ObjectType                           InheritedObjectType  
           GenericRead 00000000-0000-0000-0000-000000000000 bf967aba-0de6-11d0-a285-00aa003049e2    Descendents
 ```
 
-> The first pair of ObjectType GUIDs corresponds to `thumbnailPhoto`, the second to `jpegPhoto`. Actual GUIDs may differ between AD forests.
+> The first pair of ObjectType GUIDs corresponds to `thumbnailPhoto`, the second to `jpegPhoto`. Actual GUIDs may differ
+> between AD forests.
 
 ### Method 2: Active Directory Users and Computers (GUI)
 
@@ -449,7 +460,7 @@ After running the setup script, fill in the LDAP section of `config.yml`:
 ```yaml
 ldap:
   enabled: true
-  server: "ldaps://dc.corp.example.com"
+  servers: "ldaps://dc.corp.example.com"
   port: 636
   use_ssl: true
   skip_cert_verify: false

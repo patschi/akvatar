@@ -1,6 +1,7 @@
 # Authentik OIDC Setup
 
-This guide walks through creating the OAuth2/OpenID Connect provider and application in Authentik that the Avatar Updater needs for user authentication.
+This guide walks through creating the OAuth2/OpenID Connect provider and application in Authentik that the Avatar
+Updater needs for user authentication.
 
 ## Overview
 
@@ -24,24 +25,28 @@ If you already have a signing key for OIDC, skip this step.
 1. Go to **Applications > Providers** and click **Create**
 2. Select **OAuth2/OpenID Provider**
 3. Fill in:
-   - **Name**: e.g. `Avatar Updater`
-   - **Authorization flow**: select your standard authorization flow
-   - **Client ID**: note the auto-generated value (or set your own); goes into `oidc.client_id` in [config.yml](configuration.md#oidcclient_id)
-   - **Client Secret**: note the auto-generated value; goes into `oidc.client_secret` in [config.yml](configuration.md#oidcclient_secret)
-   - **Redirect URIs/Origins**: set to `https://your-app-url/callback` (the `/callback` path is required and must match exactly)
-   - **Signing Key**: select the certificate you created in step 1
+    - **Name**: e.g. `Avatar Updater`
+    - **Authorization flow**: select your standard authorization flow
+    - **Client ID**: note the auto-generated value (or set your own); goes into `oidc.client_id`
+      in [config.yml](configuration.md#oidcclient_id)
+    - **Client Secret**: note the auto-generated value; goes into `oidc.client_secret`
+      in [config.yml](configuration.md#oidcclient_secret)
+    - **Redirect URIs/Origins**: set to `https://your-app-url/callback` (the `/callback` path is required and must match
+      exactly)
+    - **Signing Key**: select the certificate you created in step 1
 4. Under **Advanced protocol settings**:
-   - **Scopes**: ensure `openid`, `profile`, and `email` are selected (the app hardcodes these three scopes)
-   - **Subject mode**: can be left at the default ("Based on the hashed User ID"); the app looks up users by username, not by `sub` claim
+    - **Scopes**: ensure `openid`, `profile`, and `email` are selected (the app hardcodes these three scopes)
+    - **Subject mode**: can be left at the default ("Based on the hashed User ID"); the app looks up users by username,
+      not by `sub` claim
 5. Save the provider
 
 ## 3. Create an Application
 
 1. Go to **Applications > Applications** and click **Create**
 2. Fill in:
-   - **Name**: e.g. `Avatar Updater`
-   - **Slug**: e.g. `avatar-updater` (this slug is part of the issuer URL)
-   - **Provider**: select the OAuth2/OpenID Provider you just created
+    - **Name**: e.g. `Avatar Updater`
+    - **Slug**: e.g. `avatar-updater` (this slug is part of the issuer URL)
+    - **Provider**: select the OAuth2/OpenID Provider you just created
 3. Save the application
 
 ## 4. Fill in the config
@@ -62,12 +67,13 @@ The `issuer_url` follows the pattern `https://<authentik-domain>/application/o/<
 
 The OIDC callback endpoint is `/callback`. The full redirect URI depends on how the app is deployed:
 
-| Deployment | Redirect URI |
-|---|---|
-| Root domain | `https://avatar.example.com/callback` |
-| Subfolder | `https://portal.example.com/avatar/callback` |
+| Deployment  | Redirect URI                                 |
+|-------------|----------------------------------------------|
+| Root domain | `https://avatar.example.com/callback`        |
+| Subfolder   | `https://portal.example.com/avatar/callback` |
 
-This URI must match **exactly** what is configured in the Authentik provider's "Redirect URIs/Origins" field. A mismatch causes a "mismatching redirection URI" error during login.
+This URI must match **exactly** what is configured in the Authentik provider's "Redirect URIs/Origins" field. A mismatch
+causes a "mismatching redirection URI" error during login.
 
 See also: [Subfolder Deployment](subfolder-deployment.md) for subfolder-specific considerations.
 
@@ -75,20 +81,20 @@ See also: [Subfolder Deployment](subfolder-deployment.md) for subfolder-specific
 
 The app reads the following claims from the ID token / userinfo response:
 
-| Claim | Purpose | Required |
-|---|---|---|
-| `preferred_username` (or configured `username_claim`) | Identifies the user for Authentik API lookups | Yes |
-| `name` | Display name shown on the dashboard | No (falls back to username) |
-| `email` | Shown on the dashboard | No |
-| `picture` | Current avatar URL shown on the dashboard | No |
-| `locale` | Used to select the UI language (e.g. `en_US`, `de_DE`) | No (falls back to `Accept-Language` header, then English) |
+| Claim                                                 | Purpose                                                | Required                                                  |
+|-------------------------------------------------------|--------------------------------------------------------|-----------------------------------------------------------|
+| `preferred_username` (or configured `username_claim`) | Identifies the user for Authentik API lookups          | Yes                                                       |
+| `name`                                                | Display name shown on the dashboard                    | No (falls back to username)                               |
+| `email`                                               | Shown on the dashboard                                 | No                                                        |
+| `picture`                                             | Current avatar URL shown on the dashboard              | No                                                        |
+| `locale`                                              | Used to select the UI language (e.g. `en_US`, `de_DE`) | No (falls back to `Accept-Language` header, then English) |
 
 ## Troubleshooting
 
-| Problem | Cause | Fix |
-|---|---|---|
-| "mismatching redirection URI" | Redirect URI in Authentik does not match the app's callback URL | Ensure the URI in the provider matches `<public_base_url>/callback` exactly |
-| Login redirects back with `?error=oidc_failed` | Token exchange failed (network error, invalid secret, expired code) | Check the app logs for the full exception; verify `client_secret` matches |
-| Login redirects back with `?error=pk_failed` | Authentik API could not resolve the user's primary key | Ensure the [API token](authentik-api-token.md) has permission to read users |
+| Problem                                        | Cause                                                               | Fix                                                                         |
+|------------------------------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| "mismatching redirection URI"                  | Redirect URI in Authentik does not match the app's callback URL     | Ensure the URI in the provider matches `<public_base_url>/callback` exactly |
+| Login redirects back with `?error=oidc_failed` | Token exchange failed (network error, invalid secret, expired code) | Check the app logs for the full exception; verify `client_secret` matches   |
+| Login redirects back with `?error=pk_failed`   | Authentik API could not resolve the user's primary key              | Ensure the [API token](authentik-api-token.md) has permission to read users |
 
 See also: [Configuration Reference](configuration.md#openid-connect--authentik-login)

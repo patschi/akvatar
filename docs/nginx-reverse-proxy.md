@@ -10,7 +10,8 @@ This guide covers how to run Akvatar behind an **nginx** reverse proxy.
 
 ## Basic configuration
 
-The application relies on standard proxy headers to determine the original client address, protocol, and host. nginx must forward these headers so that Flask generates correct URLs and logs the real client IP.
+The application relies on standard proxy headers to determine the original client address, protocol, and host. nginx
+must forward these headers so that Flask generates correct URLs and logs the real client IP.
 
 ```nginx
 server {
@@ -45,27 +46,33 @@ server {
 
 ## Key headers explained
 
-| Header | Purpose |
-|---|---|
-| `Host` | Preserves the original `Host` header so Flask generates correct URLs |
-| `X-Real-IP` | The actual client IP address |
-| `X-Forwarded-For` | Appends the client IP to the proxy chain (used by Flask's `ProxyFix`) |
-| `X-Forwarded-Proto` | Tells the app whether the original request was HTTP or HTTPS |
+| Header               | Purpose                                                               |
+|----------------------|-----------------------------------------------------------------------|
+| `Host`               | Preserves the original `Host` header so Flask generates correct URLs  |
+| `X-Real-IP`          | The actual client IP address                                          |
+| `X-Forwarded-For`    | Appends the client IP to the proxy chain (used by Flask's `ProxyFix`) |
+| `X-Forwarded-Proto`  | Tells the app whether the original request was HTTP or HTTPS          |
 | `X-Forwarded-Prefix` | Only needed when hosting under a [subfolder](subfolder-deployment.md) |
 
 ## SSE considerations
 
-The upload endpoint (`POST /api/upload`) returns a streaming response using Server-Sent Events (SSE). Each processing step (validation, resizing, Authentik API update, LDAP update) is sent as an SSE event in real time.
+The upload endpoint (`POST /api/upload`) returns a streaming response using Server-Sent Events (SSE). Each processing
+step (validation, resizing, Authentik API update, LDAP update) is sent as an SSE event in real time.
 
-If nginx buffers the response, the browser will not receive progress updates until the entire upload is complete. The `proxy_buffering off` directive is essential.
+If nginx buffers the response, the browser will not receive progress updates until the entire upload is complete. The
+`proxy_buffering off` directive is essential.
 
-The `proxy_read_timeout` should be set high enough to cover the entire upload and processing time. A value of 300 seconds is a safe default for large images with LDAP updates.
+The `proxy_read_timeout` should be set high enough to cover the entire upload and processing time. A value of 300
+seconds is a safe default for large images with LDAP updates.
 
 ## TLS termination
 
-When nginx terminates TLS, there is no need to configure TLS in the Avatar Updater itself. Leave `webserver.tls_cert` and `webserver.tls_key` empty in `config.yml` and let nginx handle certificates. See [TLS Configuration](tls.md) for more details.
+When nginx terminates TLS, there is no need to configure TLS in the Avatar Updater itself. Leave `webserver.tls_cert`
+and `webserver.tls_key` empty in `config.yml` and let nginx handle certificates. See [TLS Configuration](tls.md) for
+more details.
 
-The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs (redirects, OIDC callbacks) use the correct scheme.
+The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs 
+(redirects, OIDC callbacks) use the correct scheme.
 
 ## HTTP to HTTPS redirect
 
@@ -81,7 +88,8 @@ server {
 
 ## Upload size limit
 
-nginx defaults to a 1 MB request body limit. The Avatar Updater compresses images client-side before uploading, so typical uploads are well under 1 MB. However, if you want to match the application's configured limit:
+nginx defaults to a 1 MB request body limit. The Avatar Updater compresses images client-side before uploading, so
+typical uploads are well under 1 MB. However, if you want to match the application's configured limit:
 
 ```nginx
 # Inside the server or location block
@@ -90,7 +98,8 @@ client_max_body_size 10m;  # Match app.max_upload_size_mb in config.yml
 
 ## Serving avatar files directly (optional)
 
-If the avatar storage directory is accessible to nginx, you can serve avatar images directly from nginx instead of proxying through the application. This reduces load on the Python process.
+If the avatar storage directory is accessible to nginx, you can serve avatar images directly from nginx instead of
+proxying through the application. This reduces load on the Python process.
 
 ```nginx
 # Serve avatar images directly from disk

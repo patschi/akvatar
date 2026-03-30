@@ -1,7 +1,7 @@
 # How It Works
 
 This document explains the complete request lifecycle of Akvatar, from login through avatar
-upload to backend synchronisation, and how the background cleanup job keeps storage tidy.
+upload to backend synchronization, and how the background cleanup job keeps storage tidy.
 
 ## Architecture overview
 
@@ -25,7 +25,7 @@ The application sits behind a reverse proxy and communicates with three backends
 - **Authentik**: OIDC authentication and user attribute updates via the Admin API
 - **Disk**: processed avatar images stored in multiple sizes and formats
 - **LDAP Server** *(optional)*: writes photo attributes directly into the directory
-  (e.g. Active Directory `thumbnailPhoto`)
+  (e.g., Active Directory `thumbnailPhoto`)
 
 ## Authentication flow
 
@@ -75,7 +75,7 @@ sequenceDiagram
 ## Upload and processing flow
 
 Once authenticated, the user can upload an avatar. The process involves client-side
-preprocessing, server-side validation and processing, and backend synchronisation — all
+preprocessing, server-side validation and processing, and backend synchronization — all
 streamed to the browser in real time via Server-Sent Events (SSE).
 
 ```mermaid
@@ -135,7 +135,7 @@ Before the image reaches the server, the browser performs two steps:
 
 2. **Compression**: The canvas is exported via `canvas.toBlob()`. The browser first
    attempts **WebP** (quality 0.85). If WebP encoding is not supported (older browsers),
-   it falls back to **JPEG** (quality 0.85). This minimises upload size while preserving
+   it falls back to **JPEG** (quality 0.85). This minimizes upload size while preserving
    quality.
 
 The compressed blob is sent as `multipart/form-data` to `POST /api/upload`.
@@ -145,18 +145,18 @@ The compressed blob is sent as `multipart/form-data` to `POST /api/upload`.
 Validation happens **synchronously** before the SSE stream begins. If any check fails the
 server returns a JSON error response with HTTP 400 and the browser shows the error inline.
 
-| Check                    | What it catches                                                                  | Implementation                                                       |
-| ------------------------ | -------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| File extension           | Blocks unexpected file types early                                               | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`                         |
-| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)               | Compares first 12 bytes against known JPEG, PNG, WebP signatures     |
-| Pillow decode            | Catches corrupt, truncated, or crafted images                                    | `Image.open()` + `.load()` (forces full pixel decode)                |
-| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP)          | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP'}`              |
-| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)              | Min: 64 px, max: 10 000 px per side                                  |
-| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory                      | Pillow's `MAX_IMAGE_PIXELS` set to 50 megapixels                     |
+| Check                    | What it catches                                                        | Implementation                                                   |
+|--------------------------|------------------------------------------------------------------------|------------------------------------------------------------------|
+| File extension           | Blocks unexpected file types early                                     | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`                     |
+| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)      | Compares first 12 bytes against known JPEG, PNG, WebP signatures |
+| Pillow decode            | Catches corrupt, truncated, or crafted images                          | `Image.open()` + `.load()` (forces full pixel decode)            |
+| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP) | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP'}`          |
+| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)    | Min: 64 px, max: 10 000 px per side                              |
+| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory            | Pillow's `MAX_IMAGE_PIXELS` set to 50 megapixels                 |
 
 ## Server-side processing
 
-After validation, the image is normalised and processed:
+After validation, the image is normalized and processed:
 
 1. **EXIF orientation**: phone photos store rotation in EXIF metadata rather than
    rotating pixels. `ImageOps.exif_transpose()` applies the rotation to the actual pixel
@@ -167,13 +167,14 @@ After validation, the image is normalised and processed:
    other embedded data that could contain PII (GPS coordinates, device model,
    timestamps) or hidden payloads.
 
-3. **Mode normalisation**: the image is converted to RGB or RGBA if it is not already.
+3. **Mode normalization**: the image is converted to RGB or RGBA if it is not already.
 
-4. **Resizing**: the normalised image is resized to every configured square size
+4. **Resizing**: the normalized image is resized to every configured square size
    (see [`images.sizes`](configuration.md#images_sizes)) using Lanczos resampling.
 
 5. **Multi-format save**: each size is saved in every configured format
-   (see [`images.formats`](configuration.md#images_formats)) with configurable quality settings. RGBA images are converted to RGB before
+   (see [`images.formats`](configuration.md#images_formats)) with configurable quality settings. RGBA images are
+   converted to RGB before
    JPEG encoding (JPEG does not support alpha).
 
 ## Filename generation
@@ -191,11 +192,11 @@ Example:
 a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4-Ks8dF2nP...86chars...-1711612800123456789
 ```
 
-| Component         | Length     | Entropy            |
-| ----------------- | ---------- | ------------------ |
-| `uuid4().hex`     | 32 chars   | 128 bits           |
-| `token_urlsafe(64)` | 86 chars | ~512 bits          |
-| `time_ns()`       | 19 chars   | uniqueness only    |
+| Component           | Length   | Entropy         |
+|---------------------|----------|-----------------|
+| `uuid4().hex`       | 32 chars | 128 bits        |
+| `token_urlsafe(64)` | 86 chars | ~512 bits       |
+| `time_ns()`         | 19 chars | uniqueness only |
 
 ## Backend synchronisation
 
@@ -209,7 +210,8 @@ The app updates the user's avatar URL in Authentik via the Admin API:
 3. **Write** the updated dict: `PATCH /api/v3/core/users/{pk}/` with
    `{"attributes": {..., "avatar-url": "<url>"}}`
 
-The URL points to the JPEG at the configured size (see [`authentik_api.avatar_size`](configuration.md#authentik_api_avatar_size)). Authentik
+The URL points to the JPEG at the configured size (see [
+`authentik.avatar_size`](configuration.md#authentik_avatar_size)). Authentik
 uses this URL to display the avatar in its UI (login portals, admin panel, etc.).
 
 See [Authentik API Token](authentik-api-token.md) for setup instructions.
@@ -261,8 +263,19 @@ A JSON metadata file is saved alongside each avatar set in
   "filename": "a1b2c3d4...-1711612800123456789",
   "user_pk": 42,
   "uploaded_at": "2025-03-28T12:00:00+00:00",
-  "sizes": [1024, 648, 512, 256, 128, 64],
-  "formats": ["jpg", "png", "webp"],
+  "sizes": [
+    1024,
+    648,
+    512,
+    256,
+    128,
+    64
+  ],
+  "formats": [
+    "jpg",
+    "png",
+    "webp"
+  ],
   "authentik_avatar_url": "https://avatar.example.com/user-avatars/1024x1024/a1b2c3d4....jpg",
   "total_bytes": 1258000
 }
@@ -307,9 +320,10 @@ The cleanup job runs in a background daemon thread on a configurable cron schedu
 Every successful upload writes multiple files to disk (one per configured size and format, plus metadata). Over
 time this accumulates from:
 
-- Users who have since been deleted from Authentik (and optionally deactivated, if [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) is enabled)
+- Users who have since been deleted from Authentik (and optionally deactivated, if [
+  `cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) is enabled)
 - Users who have uploaded multiple times (only the latest few are needed)
-- Leftover files from configuration changes (e.g. removed sizes or formats)
+- Leftover files from configuration changes (e.g., removed sizes or formats)
 
 ### Safety guard
 
@@ -348,9 +362,11 @@ flowchart TD
 Reads the `user_pk` from every `.meta.json` file and compares it against user data
 fetched from Authentik. Which users trigger cleanup is controlled by two flags:
 
-- [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted) (default `true`): removes avatar sets for users
+- [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted) (default `true`): removes avatar sets for
+  users
   whose PK no longer exists in Authentik at all.
-- [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) (default `false`): also removes avatar sets
+- [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated) (default `false`): also removes
+  avatar sets
   for users that exist in Authentik but are currently deactivated.
 
 For every targeted user, all size × format image files and the metadata file are deleted.
@@ -370,9 +386,9 @@ Handles leftovers from configuration changes:
 - **3B**: Individual image files whose extension is no longer in `images.formats` are
   deleted (e.g. `.png` files when PNG was removed from the config).
 - **3C**: Image files inside a valid size directory that have no corresponding
-  `.meta.json` are deleted (e.g. partial uploads cleaned up after a crash).
+  `.meta.json` are deleted (e.g., partial uploads cleaned up after a crash).
 - **3D**: `.meta.json` files that have no matching image files on disk are deleted
-  (e.g. metadata left behind after manual file removal).
+  (e.g., metadata left behind after manual file removal).
 
 ### Cleanup summary log
 
@@ -398,14 +414,14 @@ what it would have done. The file count for avatar sets in dry-run is an estimat
 
 ### Cleanup configuration
 
-| Setting                                                                                         | Description                                              |
-| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| [`cleanup.interval`](configuration.md#cleanup_interval)                                         | Cron schedule (UTC) for when the job runs                |
-| [`cleanup.on_startup`](configuration.md#cleanup_on_startup)                                     | Whether to also run once shortly after startup           |
-| [`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count)             | How many avatar sets to keep per user                    |
-| [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted)                       | Remove avatars of users deleted from Authentik           |
-| [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated)               | Remove avatars of deactivated Authentik users            |
-| [`dry_run`](configuration.md#dry_run)                                                           | Log-only mode — no files are deleted                     |
+| Setting                                                                             | Description                                    |
+|-------------------------------------------------------------------------------------|------------------------------------------------|
+| [`cleanup.interval`](configuration.md#cleanup_interval)                             | Cron schedule (UTC) for when the job runs      |
+| [`cleanup.on_startup`](configuration.md#cleanup_on_startup)                         | Whether to also run once shortly after startup |
+| [`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count) | How many avatar sets to keep per user          |
+| [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted)           | Remove avatars of users deleted from Authentik |
+| [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated)   | Remove avatars of deactivated Authentik users  |
+| [`dry_run`](configuration.md#dry_run)                                               | Log-only mode — no files are deleted           |
 
 ## Server-Sent Events (SSE)
 
@@ -426,28 +442,28 @@ data: {"done": true, "avatar_url": "https://..."}
 Each `status` is one of:
 
 | Status    | Meaning                                              |
-| --------- | ---------------------------------------------------- |
+|-----------|------------------------------------------------------|
 | `success` | Step completed successfully                          |
 | `failed`  | Step failed; a rollback will follow                  |
 | `skipped` | Step was intentionally skipped (e.g. no `ldap_uniq`) |
 | `dry-run` | Step was simulated but no actual change was made     |
 
-The browser renders these as a checklist with colour-coded icons. The final `done` frame
+The browser renders these as a checklist with color-coded icons. The final `done` frame
 carries either `avatar_url` (success) or `error` (failure).
 
 ## Security measures
 
-| Measure                              | Purpose                                                                             |
-| ------------------------------------ | ----------------------------------------------------------------------------------- |
-| Unguessable filenames                | Prevents URL enumeration of other users' avatars                                    |
-| Magic byte verification              | Blocks files with fake extensions before they reach the image decoder               |
-| Decompression bomb limit (50 MP)     | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images        |
-| Dimension limits (64–10 000 px)      | Guards against excessive CPU/memory use during resizing                             |
-| Format allow-list                    | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                  |
-| Metadata stripping                   | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII          |
-| LDAP filter escaping                 | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection  |
-| Flask session signing                | Session cookies are cryptographically signed with `app.secret_key`                  |
-| Cleanup safety guard                 | Aborts if Authentik returns zero users — prevents mass deletion on API failure      |
-| Non-root Docker container            | Runs as UID 65532 with no shell in a distroless image                               |
-| Read-only root filesystem            | Container filesystem is immutable; only data volumes are writable                   |
-| Dropped capabilities                 | `cap_drop: ALL` removes all Linux capabilities from the container                   |
+| Measure                          | Purpose                                                                            |
+|----------------------------------|------------------------------------------------------------------------------------|
+| Unguessable filenames            | Prevents URL enumeration of other users' avatars                                   |
+| Magic byte verification          | Blocks files with fake extensions before they reach the image decoder              |
+| Decompression bomb limit (50 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images       |
+| Dimension limits (64–10 000 px)  | Guards against excessive CPU/memory use during resizing                            |
+| Format allow-list                | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                  |
+| Metadata stripping               | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII         |
+| LDAP filter escaping             | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
+| Flask session signing            | Session cookies are cryptographically signed with `app.secret_key`                 |
+| Cleanup safety guard             | Aborts if Authentik returns zero users — prevents mass deletion on API failure     |
+| Non-root Docker container        | Runs as UID 65532 with no shell in a distroless image                              |
+| Read-only root filesystem        | Container filesystem is immutable; only data volumes are writable                  |
+| Dropped capabilities             | `cap_drop: ALL` removes all Linux capabilities from the container                  |

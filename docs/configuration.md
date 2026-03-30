@@ -2,8 +2,8 @@
 
 All settings are defined in `data/config/config.yml`. Two example files are provided:
 
-| File                        | Use when                                                    |
-| --------------------------- | ----------------------------------------------------------- |
+| File                         | Use when                                                    |
+|------------------------------|-------------------------------------------------------------|
 | `config.example-minimal.yml` | Getting started — only the required settings, short to read |
 | `config.example-full.yml`    | Full reference — every option with inline comments          |
 
@@ -22,7 +22,7 @@ The application reads the configuration file once at startup. Changes require a 
 ## Settings overview
 
 | Setting                                                                 | Type    | Description                                         |
-| ----------------------------------------------------------------------- | ------- | --------------------------------------------------- |
+|-------------------------------------------------------------------------|---------|-----------------------------------------------------|
 | [`dry_run`](#dry_run)                                                   | Boolean | Skip Authentik/LDAP writes; log all actions instead |
 | [`branding.name`](#branding_name)                                       | String  | Application name shown in the UI                    |
 | [`app.secret_key`](#app_secret_key)                                     | String  | Flask session signing key                           |
@@ -32,15 +32,15 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.session_cookie_secure`](#app_session_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
 | [`app.public_avatar_url`](#app_public_avatar_url)                       | URL     | Public URL where avatar files are served            |
 | [`app.web_session_lifetime_seconds`](#app_web_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
-| [`cleanup.interval`](#eviction_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
+| [`cleanup.interval`](#eviction_interval)                                | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanup_on_startup)                             | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanup_avatar_retention_count)     | Integer | Avatar sets to keep per user (0 = unlimited)        |
 | [`cleanup.when_user_deleted`](#cleanup_when_user_deleted)               | Boolean | Remove avatars of users deleted from Authentik      |
 | [`cleanup.when_user_deactivated`](#cleanup_when_user_deactivated)       | Boolean | Remove avatars of deactivated Authentik users       |
 | [`rate_limiting.enabled`](#rate_limiting_enabled)                       | Boolean | Master switch for rate limiting                     |
 | [`rate_limiting.ip_whitelist`](#rate_limiting_ip_whitelist)             | List    | IPs/CIDRs exempt from rate limiting                 |
-| [`rate_limiting.points_cost_404`](#rate_limiting_points_cost_404)         | Integer | Point cost for a 404 response                       |
-| [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)     | Integer | Stale-entry cleanup interval in seconds             |
+| [`rate_limiting.points_cost_404`](#rate_limiting_points_cost_404)       | Integer | Point cost for a 404 response                       |
+| [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)   | Integer | Stale-entry cleanup interval in seconds             |
 | [`rate_limiting.avatars`](#rate_limiting_avatars)                       | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limiting_metadata)                     | Object  | Rate limit settings for metadata JSON requests      |
 | [`app.log_level`](#app_log_level)                                       | Enum    | Log verbosity                                       |
@@ -56,13 +56,13 @@ The application reads the configuration file once at startup. Changes require a 
 | [`oidc.client_id`](#oidc_client_id)                                     | String  | OAuth2 client ID                                    |
 | [`oidc.client_secret`](#oidc_client_secret)                             | String  | OAuth2 client secret                                |
 | [`oidc.username_claim`](#oidc_username_claim)                           | String  | OIDC claim used as the username                     |
-| [`authentik_api.base_url`](#authentik_api_base_url)                     | URL     | Authentik instance base URL                         |
-| [`authentik_api.api_token`](#authentik_api_api_token)                   | String  | Authentik Admin API token                           |
-| [`authentik_api.avatar_size`](#authentik_api_avatar_size)               | Integer | Image size (px) used for the Authentik avatar URL   |
-| [`authentik_api.avatar_attribute`](#authentik_api_avatar_attribute)     | String  | Authentik user attribute to store the avatar URL    |
+| [`authentik.base_url`](#authentik_base_url)                             | URL     | Authentik instance base URL                         |
+| [`authentik.api_token`](#authentik_api_token)                           | String  | Authentik Admin API token                           |
+| [`authentik.avatar_size`](#authentik_avatar_size)                       | Integer | Image size (px) used for the Authentik avatar URL   |
+| [`authentik.avatar_attribute`](#authentik_avatar_attribute)             | String  | Authentik user attribute to store the avatar URL    |
 | [`ldap.enabled`](#ldap_enabled)                                         | Boolean | Enable LDAP photo attribute updates                 |
-| [`ldap.server`](#ldap_server)                                           | String  | LDAP server address                                 |
-| [`ldap.port`](#ldap_port)                                               | Integer | LDAP server port                                    |
+| [`ldap.servers`](#ldap_servers)                                         | String  | LDAP server URL(s), comma-separated                 |
+| [`ldap.port`](#ldap_port)                                               | Integer | LDAP server port (applied to all servers)           |
 | [`ldap.use_ssl`](#ldap_use_ssl)                                         | Boolean | Use SSL/TLS for the LDAP connection                 |
 | [`ldap.skip_cert_verify`](#ldap_skip_cert_verify)                       | Boolean | Skip TLS certificate verification                   |
 | [`ldap.bind_dn`](#ldap_bind_dn)                                         | String  | Service account DN for LDAP bind                    |
@@ -85,11 +85,13 @@ The application reads the configuration file once at startup. Changes require a 
 ### `dry_run`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-When enabled, avatar images are still processed and saved to disk, but no changes are pushed to Authentik or LDAP. All operations that would have been performed are logged instead. Useful for testing the full upload pipeline without affecting real user accounts.
+When enabled, avatar images are still processed and saved to disk, but no changes are pushed to Authentik or LDAP. All
+operations that would have been performed are logged instead. Useful for testing the full upload pipeline without
+affecting real user accounts.
 
 ---
 
@@ -100,11 +102,12 @@ When enabled, avatar images are still processed and saved to disk, but no change
 ### `branding.name`
 
 |             |                    |
-| ----------- | ------------------ |
+|-------------|--------------------|
 | **Type**    | String             |
 | **Default** | `"Avatar Updater"` |
 
-The application name displayed in the browser title bar and the navigation header. Change this to match your organisation's branding (e.g. `"Contoso Avatar Updater"`).
+The application name displayed in the browser title bar and the navigation header. Change this to match your
+organization's branding (e.g. `"Contoso Avatar Updater"`).
 
 ---
 
@@ -115,11 +118,12 @@ The application name displayed in the browser title bar and the navigation heade
 ### `app.secret_key`
 
 |             |                                                                     |
-| ----------- | ------------------------------------------------------------------- |
+|-------------|---------------------------------------------------------------------|
 | **Type**    | String                                                              |
 | **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder, must be changed) |
 
-The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an attacker can forge sessions.
+The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an
+attacker can forge sessions.
 
 The application **refuses to start** if:
 
@@ -133,35 +137,40 @@ See [Flask Session Key](flask-session-key.md) for generation instructions.
 ### `app.max_upload_size_mb`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `10`    |
 
-Maximum allowed upload size in megabytes. Files exceeding this limit are rejected by Flask before reaching the upload handler. Note that the browser compresses images client-side before uploading, so typical uploads are well under 1 MB regardless of this limit.
+Maximum allowed upload size in megabytes. Flask rejects files exceeding this limit before reaching the upload handler. 
+Note that the browser compresses images client-side before uploading, so typical uploads are well under 1 MB
+regardless of this limit.
 
 <a id="app_avatar_storage_path"></a>
 
 ### `app.avatar_storage_path`
 
 |             |                       |
-| ----------- | --------------------- |
+|-------------|-----------------------|
 | **Type**    | String (file path)    |
 | **Default** | `"data/user-avatars"` |
 
-Directory where processed avatar images and metadata are stored. Can be a relative path (relative to the project root) or an absolute path. The application creates the directory and all required subdirectories at startup if they do not exist.
+Directory where processed avatar images and metadata are stored. Can be a relative path (relative to the project root) 
+or an absolute path. The application creates the directory and all required subdirectories at startup if they do 
+not exist.
 
 <a id="app_public_base_url"></a>
 
 ### `app.public_base_url`
 
 |             |                                                  |
-| ----------- | ------------------------------------------------ |
+|-------------|--------------------------------------------------|
 | **Type**    | String (URL)                                     |
 | **Default** | `"https://avatar.example.com"` (must be changed) |
 
 The full public URL where users access the application. Used to generate OIDC redirect URIs and other external links.
 
-If the URL includes a path component (e.g. `https://portal.example.com/avatar`), the application automatically serves under that subfolder. See [Subfolder Deployment](subfolder-deployment.md).
+If the URL includes a path component (e.g. `https://portal.example.com/avatar`), the application automatically serves
+under that subfolder. See [Subfolder Deployment](subfolder-deployment.md).
 
 Must **not** have a trailing slash.
 
@@ -170,30 +179,35 @@ Must **not** have a trailing slash.
 ### `app.session_cookie_secure`
 
 |             |                                                   |
-| ----------- | ------------------------------------------------- |
+|-------------|---------------------------------------------------|
 | **Type**    | Boolean or `null`                                 |
 | **Default** | `null` (auto-detected from `app.public_base_url`) |
 
-Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs browsers to transmit the cookie only over HTTPS connections.
+Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs browsers to transmit
+the cookie only over HTTPS connections.
 
-| Value   | Behaviour                                                                                           |
-| ------- | --------------------------------------------------------------------------------------------------- |
+| Value   | Behaviour                                                                                                         |
+|---------|-------------------------------------------------------------------------------------------------------------------|
 | `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
-| `true`  | Always set `Secure`, regardless of `public_base_url`                                                |
-| `false` | Never set `Secure` — only use this for plain-HTTP development environments                          |
+| `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
+| `false` | Never set `Secure` — only use this for plain-HTTP development environments                                        |
 
-**You should not need to set this manually.** The auto-detection is correct for all standard deployments, including reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The `Secure` flag is enforced by the browser, not by the Flask-to-proxy link.
+**You should not need to set this manually.** The auto-detection is correct for all standard deployments, including
+reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The
+`Secure` flag is enforced by the browser, not by the Flask-to-proxy link.
 
 <a id="app_public_avatar_url"></a>
 
 ### `app.public_avatar_url`
 
 |             |                                                               |
-| ----------- | ------------------------------------------------------------- |
+|-------------|---------------------------------------------------------------|
 | **Type**    | String (URL)                                                  |
 | **Default** | `"https://avatar.example.com/user-avatars"` (must be changed) |
 
-The public base URL where avatar files are accessible. This URL is used to build the avatar URL that is pushed to Authentik and LDAP. It must point to the location where the files from `avatar_storage_path` are served (either by the application itself or by a reverse proxy serving them directly).
+The public base URL where avatar files are accessible. This URL is used to build the avatar URL that is pushed to
+Authentik and LDAP. It must point to the location where the files from `avatar_storage_path` are served (either by the
+application itself or by a reverse proxy serving them directly).
 
 Must **not** have a trailing slash.
 
@@ -202,18 +216,19 @@ Must **not** have a trailing slash.
 ### `app.web_session_lifetime_seconds`
 
 |             |                     |
-| ----------- | ------------------- |
+|-------------|---------------------|
 | **Type**    | Integer             |
 | **Default** | `1800` (30 minutes) |
 
-How long a login session lasts, in seconds. After this period the session cookie expires and the user must authenticate again via Authentik. The timer starts from the moment of login and is not extended by activity.
+How long a login session lasts, in seconds. After this period the session cookie expires and the user must authenticate
+again via Authentik. The timer starts from the moment of login and is not extended by activity.
 
 <a id="app_log_level"></a>
 
 ### `app.log_level`
 
 |                  |                                                 |
-| ---------------- | ----------------------------------------------- |
+|------------------|-------------------------------------------------|
 | **Type**         | String (enum)                                   |
 | **Default**      | `"INFO"`                                        |
 | **Valid values** | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
@@ -221,7 +236,7 @@ How long a login session lasts, in seconds. After this period the session cookie
 Controls the verbosity of log output:
 
 | Level      | What gets logged                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------ |
+|------------|--------------------------------------------------------------------------------------------------|
 | `DEBUG`    | Every action: OIDC flow, image resize steps, LDAP bind, API calls, HTTP requests, image metadata |
 | `INFO`     | Key events: login, upload, save, API/LDAP updates                                                |
 | `WARNING`  | Rejected uploads, missing TLS configuration, LDAP without SSL, LDAP cert verification disabled   |
@@ -233,11 +248,12 @@ Controls the verbosity of log output:
 ### `app.debug_full`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
 Enables full debug mode. When active:
+
 - Flask debugger is enabled (interactive traceback pages in the browser)
 - Log level is forced to `DEBUG` regardless of `app.log_level`
 - Template auto-reload is enabled (templates are re-read from disk on every request)
@@ -253,7 +269,7 @@ Enables full debug mode. When active:
 ### `cleanup.interval`
 
 |             |                                  |
-| ----------- | -------------------------------- |
+|-------------|----------------------------------|
 | **Type**    | String (cron expression)         |
 | **Default** | `"0 2 * * *"` (daily at 2:00 AM) |
 
@@ -274,33 +290,36 @@ Set to `""` (empty string) to disable the cleanup job entirely.
 ### `cleanup.on_startup`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the regular cron schedule. Useful for catching up after extended downtime.
+When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the regular cron schedule.
+Useful for catching up after extended downtime.
 
 <a id="cleanup_avatar_retention_count"></a>
 
 ### `cleanup.avatar_retention_count`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `2`     |
 
-Number of avatar sets to keep per user. When a user has more than this many uploaded avatars, the cleanup job deletes the oldest ones. Set to `0` to keep all uploads indefinitely (no retention cleanup).
+Number of avatar sets to keep per user. When a user has more than this many uploaded avatars, the cleanup job deletes
+the oldest ones. Set to `0` to keep all uploads indefinitely (no retention cleanup).
 
 <a id="cleanup_when_user_deleted"></a>
 
 ### `cleanup.when_user_deleted`
 
-|             |        |
-| ----------- | ------ |
+|             |         |
+|-------------|---------|
 | **Type**    | Boolean |
-| **Default** | `true` |
+| **Default** | `true`  |
 
-When enabled (default), the cleanup job removes all avatar sets belonging to users that have been deleted from Authentik entirely. A user is considered deleted when their PK no longer appears in any Authentik user listing.
+When enabled (default), the cleanup job removes all avatar sets belonging to users that have been deleted from Authentik
+entirely. A user is considered deleted when their PK no longer appears in any Authentik user listing.
 
 Disable this setting only if you want to retain avatars indefinitely even for users that no longer exist in Authentik.
 
@@ -309,11 +328,12 @@ Disable this setting only if you want to retain avatars indefinitely even for us
 ### `cleanup.when_user_deactivated`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-When enabled, the cleanup job also removes avatar sets for users that exist in Authentik but are currently deactivated (`is_active=false`). Disabled by default so that avatars are preserved for accounts that may be re-enabled later.
+When enabled, the cleanup job also removes avatar sets for users that exist in Authentik but are currently deactivated (
+`is_active=false`). Disabled by default so that avatars are preserved for accounts that may be re-enabled later.
 
 Enable this setting if deactivated accounts should be treated the same as deleted ones for avatar storage purposes.
 
@@ -321,14 +341,21 @@ Enable this setting if deactivated accounts should be treated the same as delete
 
 ## Rate Limiting
 
-Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks are never rate-limited.
+Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure
+fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks
+are never rate-limited.
 
-Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly `points` per `window` period regardless of how many workers are running. Each request costs 1 point. A 404 response costs [`points_cost_404`](#rate_limiting_points_cost_404) points (default 5) to penalise URL-guessing attempts.
+Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly
+`points` per `window` period regardless of how many workers are running. Each request costs 1 point. A 404 response
+costs [`points_cost_404`](#rate_limiting_points_cost_404) points (default 5) to penalize URL-guessing attempts.
 
 Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` header and a JSON body:
 
 ```json
-{"error": "Too Many Requests", "retry_after": 5}
+{
+  "error": "Too Many Requests",
+  "retry_after": 5
+}
 ```
 
 <a id="rate_limiting_enabled"></a>
@@ -336,7 +363,7 @@ Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` head
 ### `rate_limiting.enabled`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
@@ -346,140 +373,156 @@ Master switch for rate limiting. When `false`, no rate limiting is applied and n
 
 ### `rate_limiting.ip_whitelist`
 
-|             |                          |
-| ----------- | ------------------------ |
-| **Type**    | List of strings          |
-| **Default** | `["127.0.0.1", "::1"]`  |
+|             |                        |
+|-------------|------------------------|
+| **Type**    | List of strings        |
+| **Default** | `["127.0.0.1", "::1"]` |
 
-IP addresses or CIDR ranges that are never rate-limited. Supports both individual IPs (e.g. `10.0.0.1`) and CIDR notation (e.g. `192.168.0.0/16`). Both IPv4 and IPv6 are supported. Invalid entries are logged as warnings and ignored.
+IP addresses or CIDR ranges that are never rate-limited. Supports both individual IPs (e.g. `10.0.0.1`) and CIDR
+notation (e.g. `192.168.0.0/16`). Both IPv4 and IPv6 are supported. Invalid entries are logged as warnings and ignored.
 
 <a id="rate_limiting_points_cost_404"></a>
 
 ### `rate_limiting.points_cost_404`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `5`     |
 
-Point cost charged for a 404 (Not Found) response on a rate-limited endpoint. A normal request costs 1 point. Higher values penalise URL-guessing attempts more aggressively by consuming the client's point budget faster.
+Point cost charged for a 404 (Not Found) response on a rate-limited endpoint. A normal request costs 1 point. Higher
+values penalize URL-guessing attempts more aggressively by consuming the client's point budget faster.
 
 <a id="rate_limiting_eviction_interval"></a>
 
 ### `rate_limiting.eviction_interval`
 
 |             |                   |
-| ----------- | ----------------- |
+|-------------|-------------------|
 | **Type**    | Integer (seconds) |
 | **Default** | `10`              |
 
-How often the central eviction thread prunes expired timestamps and removes stale tracking entries from shared memory. Lower values unblock rate-limited clients sooner; higher values reduce IPC overhead. The eviction thread runs once in the master process.
+How often the central eviction thread prunes expired timestamps and removes stale tracking entries from shared memory.
+Lower values unblock rate-limited clients sooner; higher values reduce IPC overhead. The eviction thread runs once in
+the master process.
 
 <a id="rate_limiting_avatars"></a>
 
 ### `rate_limiting.avatars`
 
-|             |        |
-| ----------- | ------ |
-| **Type**    | Object |
+|          |        |
+|----------|--------|
+| **Type** | Object |
 
 Rate limit settings for avatar image requests (`/user-avatars/<dimensions>/<filename>`).
 
-| Field     | Type    | Default | Description                                             |
-| --------- | ------- | ------- | ------------------------------------------------------- |
-| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type              |
-| `points`  | Integer | `100`   | Maximum points allowed per client IP per window          |
-| `window`  | Integer | `60`    | Time window in seconds                                   |
+| Field     | Type    | Default | Description                                     |
+|-----------|---------|---------|-------------------------------------------------|
+| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type     |
+| `points`  | Integer | `100`   | Maximum points allowed per client IP per window |
+| `window`  | Integer | `60`    | Time window in seconds                          |
 
 <a id="rate_limiting_metadata"></a>
 
 ### `rate_limiting.metadata`
 
-|             |        |
-| ----------- | ------ |
-| **Type**    | Object |
+|          |        |
+|----------|--------|
+| **Type** | Object |
 
 Rate limit settings for avatar metadata JSON requests (`/user-avatars/_metadata/<filename>`).
 
-| Field     | Type    | Default | Description                                             |
-| --------- | ------- | ------- | ------------------------------------------------------- |
-| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type              |
-| `points`  | Integer | `50`    | Maximum points allowed per client IP per window          |
-| `window`  | Integer | `60`    | Time window in seconds                                   |
+| Field     | Type    | Default | Description                                     |
+|-----------|---------|---------|-------------------------------------------------|
+| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type     |
+| `points`  | Integer | `50`    | Maximum points allowed per client IP per window |
+| `window`  | Integer | `60`    | Time window in seconds                          |
 
 ---
 
 ## Webserver
 
-These settings apply when running via `run_app.py` / gunicorn (production and Docker). When running via `app.py` (development), only `host`, `port`, and TLS settings are used.
+These settings apply when running via `run_app.py` / gunicorn (production and Docker). When running via `app.py` (
+development), only `host`, `port`, and TLS settings are used.
 
 <a id="webserver_proxy_mode"></a>
 
 ### `webserver.proxy_mode`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
 
-When enabled (default), applies the `ProxyFix` middleware which reads `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers set by a reverse proxy. This ensures `url_for()` generates correct external URLs and `remote_addr` reflects the real client IP.
+When enabled (default), applies the `ProxyFix` middleware which reads `X-Forwarded-For`, `X-Forwarded-Proto`,
+`X-Forwarded-Host`, and `X-Forwarded-Prefix` headers set by a reverse proxy. This ensures `url_for()` generates correct
+external URLs and `remote_addr` reflects the real client IP.
 
-Set to `false` only when running without a reverse proxy (direct exposure to the internet or local access only). When disabled, any forwarded headers sent by clients are ignored.
+Set to `false` only when running without a reverse proxy (direct exposure to the internet or local access only). When
+disabled, any forwarded headers sent by clients are ignored.
 
 <a id="webserver_access_log"></a>
 
 ### `webserver.access_log`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-When enabled, every HTTP request is logged to the console (except requests to `/static/` assets). Useful for debugging but verbose in production.
+When enabled, every HTTP request is logged to the console (except requests to `/static/` assets). Useful for debugging
+but verbose in production.
 
 <a id="webserver_workers"></a>
 
 ### `webserver.workers`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `2`     |
 
-Number of gunicorn worker processes. Each worker is an independent OS process that handles requests. A reasonable starting point is `2 * CPU_cores + 1`, but for this application 2-4 workers are usually sufficient since image processing is the bottleneck, not concurrency.
+Number of gunicorn worker processes. Each worker is an independent OS process that handles requests. A reasonable
+starting point is `2 * CPU_cores + 1`, but for this application 2-4 workers are usually sufficient since image
+processing is the bottleneck, not concurrency.
 
 <a id="webserver_threads"></a>
 
 ### `webserver.threads`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `4`     |
 
-Number of threads per worker. Each thread handles one request concurrently within a worker process. Threads help handle idle connections (e.g. SSE streams) without blocking the worker. The gunicorn worker class is `gthread` (threaded workers).
+Number of threads per worker. Each thread handles one request concurrently within a worker process. Threads help handle
+idle connections (e.g., SSE streams) without blocking the worker. The gunicorn worker class is `gthread` (threaded
+workers).
 
 <a id="webserver_timeout"></a>
 
 ### `webserver.timeout`
 
 |             |                   |
-| ----------- | ----------------- |
+|-------------|-------------------|
 | **Type**    | Integer (seconds) |
 | **Default** | `120`             |
 
-Worker timeout in seconds. A worker is restarted by gunicorn if it does not respond to the arbiter within this duration. Should be long enough for the slowest expected request (e.g. large image upload + processing + LDAP update). If you see `WORKER TIMEOUT` errors, increase this value.
+Worker timeout in seconds. A worker is restarted by gunicorn if it does not respond to the arbiter within this duration.
+Should be long enough for the slowest expected request (e.g., large image upload + processing + LDAP update). If you see
+`WORKER TIMEOUT` errors, increase this value.
 
 <a id="webserver_tls_cert"></a>
 
 ### `webserver.tls_cert` / `tls_key`
 
 |             |                      |
-| ----------- | -------------------- |
+|-------------|----------------------|
 | **Type**    | String (file path)   |
 | **Default** | `""` (empty, no TLS) |
 
-Paths to the TLS certificate and private key files for HTTPS. When both are set, the server uses HTTPS on the same port. When empty, the server runs over plain HTTP and a warning is logged at startup.
+Paths to the TLS certificate and private key files for HTTPS. When both are set, the server uses HTTPS on the same port.
+When empty, the server runs over plain HTTP and a warning is logged at startup.
 
 For production, terminate TLS at a reverse proxy instead. See [TLS Configuration](tls.md).
 
@@ -494,11 +537,12 @@ See [Authentik OIDC Setup](authentik-oidc-setup.md) for step-by-step setup instr
 ### `oidc.issuer_url`
 
 |             |                                                                             |
-| ----------- | --------------------------------------------------------------------------- |
+|-------------|-----------------------------------------------------------------------------|
 | **Type**    | String (URL)                                                                |
 | **Default** | `"https://auth.example.com/application/o/avatar-updater"` (must be changed) |
 
-The Authentik OpenID provider URL. Follows the pattern `https://<authentik-domain>/application/o/<application-slug>`. The application appends `/.well-known/openid-configuration` to discover endpoints automatically.
+The Authentik OpenID provider URL. Follows the pattern `https://<authentik-domain>/application/o/<application-slug>`.
+The application appends `/.well-known/openid-configuration` to discover endpoints automatically.
 
 Must **not** have a trailing slash.
 
@@ -507,7 +551,7 @@ Must **not** have a trailing slash.
 ### `oidc.client_id`
 
 |             |                                      |
-| ----------- | ------------------------------------ |
+|-------------|--------------------------------------|
 | **Type**    | String                               |
 | **Default** | `"avatar-updater"` (must be changed) |
 
@@ -518,7 +562,7 @@ The OAuth2 client ID from the Authentik provider configuration.
 ### `oidc.client_secret`
 
 |             |                                 |
-| ----------- | ------------------------------- |
+|-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
 
@@ -529,11 +573,12 @@ The OAuth2 client secret from the Authentik provider configuration. Treat as a s
 ### `oidc.username_claim`
 
 |             |                        |
-| ----------- | ---------------------- |
+|-------------|------------------------|
 | **Type**    | String                 |
 | **Default** | `"preferred_username"` |
 
-The OIDC claim that carries the unique username. The value of this claim is used to look up the user via the Authentik API. In most Authentik setups, `preferred_username` is correct.
+The OIDC claim that carries the unique username. The value of this claim is used to look up the user via the Authentik
+API. In most Authentik setups, `preferred_username` is correct.
 
 ---
 
@@ -541,128 +586,168 @@ The OIDC claim that carries the unique username. The value of this claim is used
 
 See [Authentik API Token](authentik-api-token.md) for step-by-step setup instructions.
 
-<a id="authentik_api_base_url"></a>
+<a id="authentik_base_url"></a>
 
-### `authentik_api.base_url`
+### `authentik.base_url`
 
 |             |                                                |
-| ----------- | ---------------------------------------------- |
+|-------------|------------------------------------------------|
 | **Type**    | String (URL)                                   |
 | **Default** | `"https://auth.example.com"` (must be changed) |
 
-The base URL of your Authentik instance (without trailing slash). The application appends API paths like `/api/v3/core/users/` to this URL.
+The base URL of your Authentik instance (without trailing slash). The application appends API paths like
+`/api/v3/core/users/` to this URL.
 
-<a id="authentik_api_api_token"></a>
+<a id="authentik_api_token"></a>
 
-### `authentik_api.api_token`
+### `authentik.api_token`
 
 |             |                                 |
-| ----------- | ------------------------------- |
+|-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
 
-An API token with permissions to read and write user attributes. See [Authentik API Token](authentik-api-token.md) for required permissions.
+An API token with permissions to read and write user attributes. See [Authentik API Token](authentik-api-token.md) for
+required permissions.
 
-<a id="authentik_api_avatar_size"></a>
+<a id="authentik_avatar_size"></a>
 
-### `authentik_api.avatar_size`
+### `authentik.avatar_size`
 
 |             |                  |
-| ----------- | ---------------- |
+|-------------|------------------|
 | **Type**    | Integer (pixels) |
 | **Default** | `1024`           |
 
-Which generated image size (in pixels) to use for the avatar URL pushed to Authentik. This value **must** be one of the entries in `images.sizes`. The application validates this at startup and exits with an error if the size is not found.
+Which generated image size (in pixels) to use for the avatar URL pushed to Authentik. This value **must** be one of the
+entries in `images.sizes`. The application validates this at startup and exits with an error if the size is not found.
 
-<a id="authentik_api_avatar_attribute"></a>
+<a id="authentik_avatar_attribute"></a>
 
-### `authentik_api.avatar_attribute`
+### `authentik.avatar_attribute`
 
 |             |                |
-| ----------- | -------------- |
+|-------------|----------------|
 | **Type**    | String         |
 | **Default** | `"avatar-url"` |
 
-The Authentik user attribute name where the avatar URL is stored. The application sets `attributes.<this-value>` on the user object via the API. Change this if your Authentik configuration uses a different attribute name for avatar URLs.
+The Authentik user attribute name where the avatar URL is stored. The application sets `attributes.<this-value>` on the
+user object via the API. Change this if your Authentik configuration uses a different attribute name for avatar URLs.
 
 ---
 
 ## LDAP Server (optional)
 
-Supports any standards-compliant LDAP server. Microsoft Active Directory is the primary and only tested target. See [MS AD Service Account](ms-ad-service-account.md) for setting up a least-privilege service account in Active Directory.
+Supports any standards-compliant LDAP server. Microsoft Active Directory is the primary and only tested target.
+See [MS AD Service Account](ms-ad-service-account.md) for setting up a least-privilege service account in Active
+Directory.
 
 <a id="ldap_enabled"></a>
 
 ### `ldap.enabled`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-Set to `true` to enable LDAP thumbnail updates. When disabled, the entire LDAP module is a no-op and no LDAP connections are made.
+Set to `true` to enable LDAP thumbnail updates. When disabled, the entire LDAP module is a no-op and no LDAP connections
+are made.
 
-<a id="ldap_server"></a>
+<a id="ldap_servers"></a>
 
-### `ldap.server`
+### `ldap.servers`
 
-|             |                            |
-| ----------- | -------------------------- |
-| **Type**    | String                     |
-| **Default** | `"ldaps://dc.example.com"` |
+|             |                                                     |
+|-------------|-----------------------------------------------------|
+| **Type**    | String                                              |
+| **Default** | `"ldaps://dc1.example.com,ldaps://dc2.example.com"` |
 
-The LDAP server address. Use `ldaps://` for LDAP over TLS (recommended) or `ldap://` for plain LDAP.
+One or more LDAP server URLs, separated by commas. Servers are tried in the order listed; if a connection or bind
+attempt fails (network unreachable, TLS handshake failure, timeout, etc.), the next server is tried. This allows listing
+multiple domain controllers for automatic failover.
+
+**Port and SSL per URL:** port and SSL/TLS mode can be specified directly in each URL and may differ between servers.
+The URL scheme determines SSL (`ldaps://` → SSL on, `ldap://` → SSL off). A port number in the URL takes precedence
+over [`ldap.port`](#ldap_port). URLs without an explicit scheme or port fall back to `ldap.use_ssl` and `ldap.port`
+respectively.
+
+Example — single server:
+
+```yaml
+ldap:
+  servers: "ldaps://dc.example.com"
+```
+
+Example — failover with matching protocol:
+
+```yaml
+ldap:
+  servers: "ldaps://dc1.example.com,ldaps://dc2.example.com"
+```
+
+Example — per-URL port and mixed protocol:
+
+```yaml
+ldap:
+  servers: "ldaps://dc1.example.com:636,ldap://dc2.example.com:389"
+```
 
 <a id="ldap_port"></a>
 
 ### `ldap.port`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Integer |
 | **Default** | `636`   |
 
-The LDAP server port. Standard ports: `636` for LDAPS, `389` for LDAP.
+Fallback port used for any server in `ldap.servers` that does not include a port number in its URL. Standard ports:`636`
+for LDAPS, `389` for LDAP.
 
 <a id="ldap_use_ssl"></a>
 
 ### `ldap.use_ssl`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
 
-Whether to use SSL/TLS for the LDAP connection. Should be `true` when using port 636. A warning is logged at startup if LDAP is enabled without SSL.
+Fallback SSL setting used for any server in `ldap.servers` whose URL does not have a recognized scheme (`ldaps://` or
+`ldap://`). When the scheme is present in the URL it takes precedence over this value. A warning is logged at startup if
+any server will connect without SSL.
 
 <a id="ldap_skip_cert_verify"></a>
 
 ### `ldap.skip_cert_verify`
 
 |             |         |
-| ----------- | ------- |
+|-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-Set to `true` to skip TLS certificate verification. Use only for self-signed certificates in development environments. A warning is logged at startup when this is enabled, as it makes the connection vulnerable to MITM attacks.
+Set to `true` to skip TLS certificate verification. Use only for self-signed certificates in development environments. A
+warning is logged at startup when this is enabled, as it makes the connection vulnerable to MITM attacks.
 
 <a id="ldap_bind_dn"></a>
 
 ### `ldap.bind_dn`
 
 |             |                                                         |
-| ----------- | ------------------------------------------------------- |
+|-------------|---------------------------------------------------------|
 | **Type**    | String                                                  |
 | **Default** | `"CN=svc-avatar,OU=Service Accounts,DC=example,DC=com"` |
 
-The distinguished name (DN) of the service account used to bind (authenticate) to the LDAP server. This account needs read access to search for users and write access to the photo attribute.
+The distinguished name (DN) of the service account used to bind (authenticate) to the LDAP server. This account needs
+read access to search for users and write access to the photo attribute.
 
 <a id="ldap_bind_password"></a>
 
 ### `ldap.bind_password`
 
 |             |                                 |
-| ----------- | ------------------------------- |
+|-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
 
@@ -673,48 +758,55 @@ The password for the LDAP bind DN. Treat as a secret.
 ### `ldap.search_base`
 
 |             |                       |
-| ----------- | --------------------- |
+|-------------|-----------------------|
 | **Type**    | String                |
 | **Default** | `"DC=example,DC=com"` |
 
-The base DN under which user objects are searched. The search is performed with subtree scope, so users in any sub-OU are found.
+The base DN under which user objects are searched. The search is performed with subtree scope, so users in any sub-OU
+are found.
 
 <a id="ldap_search_filter"></a>
 
 ### `ldap.search_filter`
 
 |             |                             |
-| ----------- | --------------------------- |
+|-------------|-----------------------------|
 | **Type**    | String                      |
 | **Default** | `"(objectSid={ldap_uniq})"` |
 
-The LDAP search filter used to locate the user object. The placeholder `{ldap_uniq}` is replaced with the user's `ldap_uniq` attribute value from Authentik (properly escaped for LDAP filter syntax).
+The LDAP search filter used to locate the user object. The placeholder `{ldap_uniq}` is replaced with the user's
+`ldap_uniq` attribute value from Authentik (properly escaped for LDAP filter syntax).
 
-The default uses `objectSid`, which is the standard unique identifier in Microsoft Active Directory. For other LDAP directories, change this to match your schema (e.g. `(uid={ldap_uniq})` for OpenLDAP).
+The default uses `objectSid`, which is the standard unique identifier in Microsoft Active Directory. For other LDAP
+directories, change this to match your schema (e.g. `(uid={ldap_uniq})` for OpenLDAP).
 
 <a id="ldap_photos"></a>
 
 ### `ldap.photos`
 
 |          |                 |
-| -------- | --------------- |
+|----------|-----------------|
 | **Type** | List of objects |
 
-A list of LDAP attributes to update after each successful avatar upload. Each entry defines one attribute and how to populate it.
+A list of LDAP attributes to update after each successful avatar upload. Each entry defines one attribute and how to
+populate it.
 
 **Fields per entry:**
 
 | Field           | Type    | Description                                                                                         |
-| --------------- | ------- | --------------------------------------------------------------------------------------------------- |
+|-----------------|---------|-----------------------------------------------------------------------------------------------------|
 | `attribute`     | String  | LDAP attribute name (e.g. `thumbnailPhoto`, `jpegPhoto`)                                            |
 | `type`          | String  | `binary` (raw image bytes) or `url` (public URL string)                                             |
 | `image_type`    | String  | Image format: `jpeg`, `png`, or `webp`                                                              |
 | `image_size`    | Integer | Square pixel dimension (e.g. `96` = 96×96 px)                                                       |
 | `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. Quality is reduced iteratively for JPEG/WebP. |
 
-**Type `binary`:** Writes raw image bytes into the attribute. If a pre-generated file at the exact size and format already exists and fits within `max_file_size`, it is reused. Otherwise the image is generated on-the-fly from the closest equal-or-larger source and quality is reduced iteratively until the output fits.
+**Type `binary`:** Writes raw image bytes into the attribute. If a pre-generated file at the exact size and format
+already exists and fits within `max_file_size`, it is reused. Otherwise the image is generated on-the-fly from the
+closest equal-or-larger source and quality is reduced iteratively until the output fits.
 
-**Type `url`:** Writes the public URL of a pre-generated image file as a string. Requires `image_size` to be present in `images.sizes` and `image_type` to be present in `images.formats`.
+**Type `url`:** Writes the public URL of a pre-generated image file as a string. Requires `image_size` to be present in
+`images.sizes` and `image_type` to be present in `images.formats`.
 
 **Example:**
 
@@ -741,29 +833,32 @@ photos:
 ### `images.sizes`
 
 |             |                                  |
-| ----------- | -------------------------------- |
+|-------------|----------------------------------|
 | **Type**    | List of integers                 |
 | **Default** | `[1024, 648, 512, 256, 128, 64]` |
 
-The square pixel dimensions to generate for each uploaded avatar. Every uploaded image is resized to each of these sizes. The value in `authentik_api.avatar_size` must appear in this list. LDAP photo entries with `type: url` also require their `image_size` to be in this list.
+The square pixel dimensions to generate for each uploaded avatar. Every uploaded image is resized to each of these
+sizes. The value in `authentik.avatar_size` must appear in this list. LDAP photo entries with `type: url` also require
+their `image_size` to be in this list.
 
 <a id="images_formats"></a>
 
 ### `images.formats`
 
 |             |                          |
-| ----------- | ------------------------ |
+|-------------|--------------------------|
 | **Type**    | List of strings          |
 | **Default** | `["jpg", "png", "webp"]` |
 
-The output formats to save for each size. Each size x format combination produces one file. Supported values: `jpg` (JPEG), `png`, `webp`.
+The output formats to save for each size. Each size x format combination produces one file. Supported values: `jpg` (
+JPEG), `png`, `webp`.
 
 <a id="images_jpeg_quality"></a>
 
 ### `images.jpeg_quality`
 
 |             |                  |
-| ----------- | ---------------- |
+|-------------|------------------|
 | **Type**    | Integer (1--100) |
 | **Default** | `90`             |
 
@@ -774,19 +869,21 @@ JPEG compression quality. Higher values produce better quality but larger files.
 ### `images.webp_quality`
 
 |             |                  |
-| ----------- | ---------------- |
+|-------------|------------------|
 | **Type**    | Integer (1--100) |
 | **Default** | `85`             |
 
-WebP compression quality. Similar to JPEG quality but WebP typically achieves better compression at the same visual quality.
+WebP compression quality. Similar to JPEG quality but WebP typically achieves better compression at the same visual
+quality.
 
 <a id="images_png_compress_level"></a>
 
 ### `images.png_compress_level`
 
 |             |                |
-| ----------- | -------------- |
+|-------------|----------------|
 | **Type**    | Integer (0--9) |
 | **Default** | `6`            |
 
-PNG compression level. Higher values produce smaller files but take longer to compress. 6 is the default balance. PNG compression is lossless, so this only affects file size and compression speed, not image quality.
+PNG compression level. Higher values produce smaller files but take longer to compress. 6 is the default balance. PNG
+compression is lossless, so this only affects file size and compression speed, not image quality.

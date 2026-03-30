@@ -1,14 +1,18 @@
 # Subfolder Deployment
 
-This guide explains how to host Akvatar under a URL path prefix (e.g. `https://portal.example.com/avatar/`) instead of at the root of a domain.
+This guide explains how to host Akvatar under a URL path prefix (e.g. `https://portal.example.com/avatar/`) instead of
+at the root of a domain.
 
 ## Overview
 
-When the application runs behind a reverse proxy under a subfolder, it needs to know the path prefix so that all generated URLs (page links, static assets, OIDC callbacks, API endpoints) include the correct path. There are two ways to configure this.
+When the application runs behind a reverse proxy under a subfolder, it needs to know the path prefix so that all
+generated URLs (page links, static assets, OIDC callbacks, API endpoints) include the correct path. There are two ways
+to configure this.
 
 ## Option A: Reverse proxy sends `X-Forwarded-Prefix` (recommended)
 
-Configure your reverse proxy to pass the `X-Forwarded-Prefix` header. The application detects this header automatically via Werkzeug's `ProxyFix` middleware and prepends the prefix to all generated URLs.
+Configure your reverse proxy to pass the `X-Forwarded-Prefix` header. The application detects this header automatically
+via Werkzeug's `ProxyFix` middleware and prepends the prefix to all generated URLs.
 
 ### nginx example
 
@@ -41,18 +45,24 @@ server {
 ```
 
 Key points:
-- `proxy_pass http://127.0.0.1:5000/;`: The **trailing slash** strips `/avatar/` from the path before forwarding. The app receives requests at `/`, `/api/upload`, etc.
+
+- `proxy_pass http://127.0.0.1:5000/;`: The **trailing slash** strips `/avatar/` from the path before forwarding. The
+  app receives requests at `/`, `/api/upload`, etc.
 - `X-Forwarded-Prefix /avatar`: Tells the app to prepend `/avatar` to all generated URLs.
 
 ### No additional config.yml changes needed
 
-When using `X-Forwarded-Prefix`, no additional configuration is needed beyond setting `app.public_base_url` to the full public URL including the subfolder (see [Required config.yml settings](#required-configyml-settings) below).
+When using `X-Forwarded-Prefix`, no additional configuration is needed beyond setting `app.public_base_url` to the full
+public URL including the subfolder (see [Required config.yml settings](#required-configyml-settings) below).
 
 ## Option B: Derive prefix from `app.public_base_url`
 
-If your reverse proxy does not support sending `X-Forwarded-Prefix`, the application automatically derives the path prefix from the path component of `app.public_base_url`. No separate config key is required: if `app.public_base_url` is set to `https://portal.example.com/avatar`, the app serves under `/avatar` automatically.
+If your reverse proxy does not support sending `X-Forwarded-Prefix`, the application automatically derives the path
+prefix from the path component of `app.public_base_url`. No separate config key is required: if `app.public_base_url` is
+set to `https://portal.example.com/avatar`, the app serves under `/avatar` automatically.
 
-When using this option, the reverse proxy must **not** strip the prefix before forwarding, because the app uses it to match incoming request paths:
+When using this option, the reverse proxy must **not** strip the prefix before forwarding, because the app uses it to
+match incoming request paths:
 
 ```nginx
 location /avatar/ {
@@ -73,7 +83,8 @@ location /avatar/ {
 
 ## Required config.yml settings
 
-Regardless of which option you choose, the following settings in `config.yml` must reflect the full public URL including the subfolder:
+Regardless of which option you choose, the following settings in `config.yml` must reflect the full public URL including
+the subfolder:
 
 ```yaml
 app:
@@ -88,20 +99,25 @@ app:
 
 The OIDC callback path is `/callback`. When hosted under a subfolder, the full redirect URI becomes:
 
-```
+```text
 https://portal.example.com/avatar/callback
 ```
 
-Update the **Redirect URIs/Origins** in your Authentik OAuth2/OpenID Provider to match this URL. See [Authentik OIDC Setup](authentik-oidc-setup.md) for details.
+Update the **Redirect URIs/Origins** in your Authentik OAuth2/OpenID Provider to match this URL.
+See [Authentik OIDC Setup](authentik-oidc-setup.md) for details.
 
 ## How it works internally
 
 The application uses two middleware layers (applied during startup in `app.py`):
 
-1. **`ProxyFix`** (Werkzeug): Trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Prefix` headers from the reverse proxy.
-2. **`PrefixMiddleware`**: If `app.public_base_url` has a path component, this WSGI middleware strips the prefix from incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
+1. **`ProxyFix`** (Werkzeug): Trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and
+   `X-Forwarded-Prefix` headers from the reverse proxy.
+2. **`PrefixMiddleware`**: If `app.public_base_url` has a path component, this WSGI middleware strips the prefix from
+   incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
 
-The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_base_url` are configured, the proxy header takes precedence — ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is already set.
+The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_base_url` are configured, the
+proxy header takes precedence — ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is
+already set.
 
 ## Verifying the setup
 

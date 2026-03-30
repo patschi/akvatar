@@ -51,7 +51,7 @@ pip install --upgrade -r requirements.txt
 
 2. Edit `requirements.txt` — bump the minor (or major) version pin, e.g.:
 
-   ```
+   ```text
    Flask==3.2.*
    ```
 

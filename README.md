@@ -13,7 +13,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Client-side square cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs)
   (bundled locally, no external CDN)
 - **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
-- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings (see [Configuration](docs/configuration.md#images_formats))
+- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings (
+  see [Configuration](docs/configuration.md#images_formats))
 - **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
@@ -26,7 +27,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   per-user retention limits, and clears orphaned files from obsolete sizes or formats
 - **Real-time progress**: Server-Sent Events stream each processing step with
   success / failed / skipped / dry-run status
-- **Configurable branding**: customise the application name in the UI
+- **Configurable branding**: customize the application name in the UI
 - **Reverse proxy / subfolder support**: honours `X-Forwarded-For`, `X-Forwarded-Proto`,
   `X-Forwarded-Host`, `X-Forwarded-Prefix`
 - **Optional built-in TLS**: serve HTTPS directly without a reverse proxy
@@ -159,7 +160,7 @@ Relevant guides:
    compressed to WebP/JPEG via `canvas.toBlob()`
 5. Cropped image is uploaded to `POST /api/upload`
 6. Server validates (extension, magic bytes, Pillow decode, dimensions), strips all
-   metadata, then resizes to all configured sizes and saves as JPEG + PNG + WebP
+   metadata, then resizes to all configured sizes, and saves as JPEG + PNG + WebP
 7. Server `PATCH`es the `avatar-url` attribute on the Authentik user via the Admin API
 8. *(If LDAP enabled)* Server writes the photo into configured LDAP attributes (binary
    bytes or URL string)
@@ -172,15 +173,15 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 
 ## Documentation
 
-| Guide                                                          | Description                                                                               |
-| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [Configuration](docs/configuration.md)                         | Complete reference for all `config.yml` settings with defaults and explanations           |
-| [How It Works](docs/how-it-works.md)                           | Full lifecycle walkthrough with sequence diagrams and cleanup flow                        |
-| [Flask Session Key](docs/flask-session-key.md)                 | Generating and setting the Flask session secret key                                       |
-| [Authentik OIDC Setup](docs/authentik-oidc-setup.md)           | Creating the OIDC provider and application in Authentik                                   |
-| [Authentik API Token](docs/authentik-api-token.md)             | Creating an API token for the Authentik Admin API                                         |
-| [TLS](docs/tls.md)                                             | TLS certificate configuration and reverse proxy recommendation                            |
-| [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)             | Full nginx config with TLS termination, SSE support, and optional static avatar serving   |
-| [Subfolder Deployment](docs/subfolder-deployment.md)           | Hosting the app under a URL path prefix (e.g. `/avatar/`)                                |
-| [MS AD Service Account](docs/ms-ad-service-account.md)         | Least-privilege Active Directory service account setup with PowerShell automation         |
-| [Troubleshooting](docs/troubleshooting.md)                     | General debugging tips, known issues, and their fixes                                    |
+| Guide                                                  | Description                                                                             |
+|--------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [Configuration](docs/configuration.md)                 | Complete reference for all `config.yml` settings with defaults and explanations         |
+| [How It Works](docs/how-it-works.md)                   | Full lifecycle walkthrough with sequence diagrams and cleanup flow                      |
+| [Flask Session Key](docs/flask-session-key.md)         | Generating and setting the Flask session secret key                                     |
+| [Authentik OIDC Setup](docs/authentik-oidc-setup.md)   | Creating the OIDC provider and application in Authentik                                 |
+| [Authentik API Token](docs/authentik-api-token.md)     | Creating an API token for the Authentik Admin API                                       |
+| [TLS](docs/tls.md)                                     | TLS certificate configuration and reverse proxy recommendation                          |
+| [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)     | Full nginx config with TLS termination, SSE support, and optional static avatar serving |
+| [Subfolder Deployment](docs/subfolder-deployment.md)   | Hosting the app under a URL path prefix (e.g. `/avatar/`)                               |
+| [MS AD Service Account](docs/ms-ad-service-account.md) | Least-privilege Active Directory service account setup with PowerShell automation       |
+| [Troubleshooting](docs/troubleshooting.md)             | General debugging tips, known issues, and their fixes                                   |
