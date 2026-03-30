@@ -72,7 +72,9 @@ cleanup:
 # Throttle avatar and metadata serving endpoints by client IP address to
 # prevent URL guessing abuse and ensure fair usage.
 # Counters are shared across all gunicorn worker processes, so the effective
-# limit per client IP is exactly max_requests per window period.
+# limit per client IP is exactly max points per window period.
+# Each request costs 1 point; a 404 response costs 5 points to penalise
+# URL-guessing attempts.
 rate_limiting:
   # Master switch – set to false to disable all rate limiting.
   enabled: false
@@ -84,23 +86,26 @@ rate_limiting:
     - "::1"
     # - "10.0.0.0/8"
     # - "192.168.0.0/16"
+  # Point cost for a 404 (Not Found) response.  Higher values penalise
+  # URL-guessing attempts more aggressively.  A normal request costs 1 point.
+  points_cost_404: 5
   # How often (in seconds) stale IP tracking entries are evicted from memory.
   # Lower values reclaim memory sooner; higher values reduce lock contention.
   eviction_interval: 10
   # Per-endpoint-type limits.  Each type can be independently enabled/disabled
-  # and configured with its own request count and time window.
-  # `enabled` is whatever if the ratelimiting is enabled and active.
-  # `requests` is the maximum number of requests allowed per client IP within the time window.
+  # and configured with its own point budget and time window.
+  # `enabled` is whether this endpoint type is rate-limited when rate limiting is active.
+  # `points` is the maximum number of points allowed per client IP within the time window.
   # `window` is the time window in seconds.
   # Limits for avatar requests
   avatars:
     enabled: true
-    requests: 100
+    points: 100
     window: 60
   # Limits for metadata requests
   metadata:
     enabled: true
-    requests: 50
+    points: 50
     window: 60
 
 # --- Webserver ---

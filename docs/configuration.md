@@ -39,6 +39,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`cleanup.when_user_deactivated`](#cleanup_when_user_deactivated)       | Boolean | Remove avatars of deactivated Authentik users       |
 | [`rate_limiting.enabled`](#rate_limiting_enabled)                       | Boolean | Master switch for rate limiting                     |
 | [`rate_limiting.ip_whitelist`](#rate_limiting_ip_whitelist)             | List    | IPs/CIDRs exempt from rate limiting                 |
+| [`rate_limiting.points_cost_404`](#rate_limiting_points_cost_404)         | Integer | Point cost for a 404 response                       |
 | [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)     | Integer | Stale-entry cleanup interval in seconds             |
 | [`rate_limiting.avatars`](#rate_limiting_avatars)                       | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limiting_metadata)                     | Object  | Rate limit settings for metadata JSON requests      |
@@ -322,7 +323,7 @@ Enable this setting if deactivated accounts should be treated the same as delete
 
 Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks are never rate-limited.
 
-Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly `requests` per `window` period regardless of how many workers are running.
+Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly `points` per `window` period regardless of how many workers are running. Each request costs 1 point. A 404 response costs [`points_cost_404`](#rate_limiting_points_cost_404) points (default 5) to penalise URL-guessing attempts.
 
 Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` header and a JSON body:
 
@@ -352,6 +353,17 @@ Master switch for rate limiting. When `false`, no rate limiting is applied and n
 
 IP addresses or CIDR ranges that are never rate-limited. Supports both individual IPs (e.g. `10.0.0.1`) and CIDR notation (e.g. `192.168.0.0/16`). Both IPv4 and IPv6 are supported. Invalid entries are logged as warnings and ignored.
 
+<a id="rate_limiting_points_cost_404"></a>
+
+### `rate_limiting.points_cost_404`
+
+|             |         |
+| ----------- | ------- |
+| **Type**    | Integer |
+| **Default** | `5`     |
+
+Point cost charged for a 404 (Not Found) response on a rate-limited endpoint. A normal request costs 1 point. Higher values penalise URL-guessing attempts more aggressively by consuming the client's point budget faster.
+
 <a id="rate_limiting_eviction_interval"></a>
 
 ### `rate_limiting.eviction_interval`
@@ -373,11 +385,11 @@ How often the central eviction thread prunes expired timestamps and removes stal
 
 Rate limit settings for avatar image requests (`/user-avatars/<dimensions>/<filename>`).
 
-| Field      | Type    | Default | Description                                                  |
-| ---------- | ------- | ------- | ------------------------------------------------------------ |
-| `enabled`  | Boolean | `true`  | Enable rate limiting for this endpoint type                  |
-| `requests` | Integer | `100`   | Maximum number of requests allowed per client IP per window  |
-| `window`   | Integer | `60`    | Time window in seconds                                       |
+| Field     | Type    | Default | Description                                             |
+| --------- | ------- | ------- | ------------------------------------------------------- |
+| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type              |
+| `points`  | Integer | `100`   | Maximum points allowed per client IP per window          |
+| `window`  | Integer | `60`    | Time window in seconds                                   |
 
 <a id="rate_limiting_metadata"></a>
 
@@ -389,11 +401,11 @@ Rate limit settings for avatar image requests (`/user-avatars/<dimensions>/<file
 
 Rate limit settings for avatar metadata JSON requests (`/user-avatars/_metadata/<filename>`).
 
-| Field      | Type    | Default | Description                                                  |
-| ---------- | ------- | ------- | ------------------------------------------------------------ |
-| `enabled`  | Boolean | `true`  | Enable rate limiting for this endpoint type                  |
-| `requests` | Integer | `60`    | Maximum number of requests allowed per client IP per window  |
-| `window`   | Integer | `60`    | Time window in seconds                                       |
+| Field     | Type    | Default | Description                                             |
+| --------- | ------- | ------- | ------------------------------------------------------- |
+| `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type              |
+| `points`  | Integer | `50`    | Maximum points allowed per client IP per window          |
+| `window`  | Integer | `60`    | Time window in seconds                                   |
 
 ---
 
