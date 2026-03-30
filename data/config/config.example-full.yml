@@ -86,7 +86,7 @@ rate_limiting:
     # - "192.168.0.0/16"
   # How often (in seconds) stale IP tracking entries are evicted from memory.
   # Lower values reclaim memory sooner; higher values reduce lock contention.
-  eviction_interval: 60
+  eviction_interval: 10
   # Per-endpoint-type limits.  Each type can be independently enabled/disabled
   # and configured with its own request count and time window.
   # `enabled` is whatever if the ratelimiting is enabled and active.

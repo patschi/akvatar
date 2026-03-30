@@ -27,12 +27,29 @@ import logging
 import multiprocessing
 import threading
 import time
+from typing import NamedTuple
 
 from flask import Flask, Response, request
 
 from src.config import cfg
 
 log = logging.getLogger('ratelimit')
+
+# Endpoint type constants used in config parsing, path routing, and check()
+ENDPOINT_AVATARS = 'avatars'
+ENDPOINT_METADATA = 'metadata'
+
+
+# ---------------------------------------------------------------------------
+# Limiter configuration (bundles the scalar config for a single endpoint type)
+# ---------------------------------------------------------------------------
+
+class _LimiterConfig(NamedTuple):
+    """Immutable configuration for a single rate limiter endpoint type."""
+    name: str
+    max_requests: int
+    window: int
+    eviction_interval: int
 
 
 # ---------------------------------------------------------------------------
@@ -42,12 +59,8 @@ log = logging.getLogger('ratelimit')
 class _RateLimiter:
     """Track per-IP request timestamps with a fixed-size sliding window in shared state."""
 
-    def __init__(self, name: str, max_requests: int, window: int,
-                 eviction_interval: int, shared_dict, shared_lock) -> None:
-        self._name = name
-        self._max_requests = max_requests
-        self._window = window
-        self._eviction_interval = eviction_interval
+    def __init__(self, config: _LimiterConfig, shared_dict, shared_lock) -> None:
+        self._cfg = config
         # Shared across all worker processes via multiprocessing.Manager
         self._requests = shared_dict   # {ip: [monotonic_timestamp, ...]}
         self._lock = shared_lock       # Manager Lock (cross-process)
@@ -72,14 +85,14 @@ class _RateLimiter:
         with self._lock:
             timestamps = self._requests.get(ip, [])
 
-            if len(timestamps) >= self._max_requests:
+            if len(timestamps) >= self._cfg.max_requests:
                 # Denied — estimate when eviction will free enough slots.
                 # The oldest timestamp must first expire (age past the window),
                 # then the eviction thread must run to actually prune it.
-                expires_at = timestamps[0] + self._window
-                retry_after = max(1, int(expires_at - now) + 1 + self._eviction_interval)
+                expires_at = timestamps[0] + self._cfg.window
+                retry_after = max(1, int(expires_at - now) + 1 + self._cfg.eviction_interval)
                 log.debug('[%s]: denied %s (%d/%d in list, retry_after=%ds).',
-                          self._name, ip, len(timestamps), self._max_requests, retry_after)
+                          self._cfg.name, ip, len(timestamps), self._cfg.max_requests, retry_after)
                 return False, retry_after
 
             # Allowed — record this request
@@ -88,12 +101,12 @@ class _RateLimiter:
             current = len(timestamps)
 
         # Log at each 10% boundary of the limit (10%, 20%, … 90%)
-        prev_tier    = ((current - 1) * 10) // self._max_requests
-        current_tier = (current * 10) // self._max_requests
-        if current_tier > prev_tier and current < self._max_requests:
-            pct = (current * 100) // self._max_requests
+        prev_tier    = ((current - 1) * 10) // self._cfg.max_requests
+        current_tier = (current * 10) // self._cfg.max_requests
+        if current_tier > prev_tier and current < self._cfg.max_requests:
+            pct = (current * 100) // self._cfg.max_requests
             log.debug('[%s]: %s at %d%% of limit (%d/%d in window).',
-                      self._name, ip, pct, current, self._max_requests)
+                      self._cfg.name, ip, pct, current, self._cfg.max_requests)
         return True, 0
 
     # -- eviction (called only by the master process eviction thread) -------
@@ -112,7 +125,7 @@ class _RateLimiter:
         Returns (pruned_total, evicted_ips): total timestamps pruned across
         all IPs, and number of IP entries fully removed.
         """
-        cutoff = time.monotonic() - self._window
+        cutoff = time.monotonic() - self._cfg.window
         pruned_total = 0
         evicted_ips = []
 
@@ -134,11 +147,11 @@ class _RateLimiter:
                     if ts:
                         self._requests[ip] = ts   # write back pruned list
                         log.debug('[%s]: pruned %d expired timestamp(s) for %s, %d remain.',
-                                  self._name, pruned, ip, len(ts))
+                                  self._cfg.name, pruned, ip, len(ts))
                     else:
                         del self._requests[ip]
                         log.debug('[%s]: evicted %s (all %d timestamps expired).',
-                                  self._name, ip, pruned)
+                                  self._cfg.name, ip, pruned)
                         evicted_ips.append(ip)
                 elif not ts:
                     # Empty entry with nothing to prune — clean up
@@ -149,10 +162,10 @@ class _RateLimiter:
 
         if pruned_total or evicted_ips:
             log.debug('[%s]: eviction pass — pruned %d timestamp(s), evicted %d IP(s), %d active.',
-                      self._name, pruned_total, len(evicted_ips), remaining)
+                      self._cfg.name, pruned_total, len(evicted_ips), remaining)
         else:
             log.debug('[%s]: eviction pass — nothing to evict (%d active).',
-                      self._name, remaining)
+                      self._cfg.name, remaining)
 
         return pruned_total, len(evicted_ips)
 
@@ -169,7 +182,7 @@ class _RateLimitManager:
         if not self.enabled:
             self._whitelist: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
             self._limiters: dict[str, _RateLimiter] = {}
-            self._eviction_interval = 60
+            self._eviction_interval = 10
             return
 
         # Shared-state server process for cross-worker data.
@@ -185,25 +198,27 @@ class _RateLimitManager:
             except ValueError:
                 log.warning('Ignoring invalid whitelist entry: %r', entry)
 
-        self._eviction_interval = int(rate_cfg.get('eviction_interval', 60))
+        self._eviction_interval = int(rate_cfg.get('eviction_interval', 10))
 
         # Build a limiter for each configured endpoint type, each with its own
         # shared dict and lock managed by the Manager server process.
         self._limiters = {}
-        for key in ('avatars', 'metadata'):
+        for key in (ENDPOINT_AVATARS, ENDPOINT_METADATA):
             section = rate_cfg.get(key, {})
             if not section.get('enabled', True):
                 log.info('Rate limiting for %r is disabled.', key)
                 continue
-            requests = int(section.get('requests', 100))
-            window = int(section.get('window', 60))
+            limiter_cfg = _LimiterConfig(
+                name=key,
+                max_requests=int(section.get('requests', 100)),
+                window=int(section.get('window', 60)),
+                eviction_interval=self._eviction_interval,
+            )
             shared_dict = self._mp_manager.dict()
             shared_lock = self._mp_manager.Lock()
-            self._limiters[key] = _RateLimiter(
-                key, requests, window, self._eviction_interval,
-                shared_dict, shared_lock,
-            )
-            log.info('Rate limiter [%s]: %d requests / %d s window.', key, requests, window)
+            self._limiters[key] = _RateLimiter(limiter_cfg, shared_dict, shared_lock)
+            log.info('Rate limiter [%s]: %d requests / %d s window.',
+                     key, limiter_cfg.max_requests, limiter_cfg.window)
 
         log.info('Rate limiting eviction interval: %ds.', self._eviction_interval)
 
@@ -214,29 +229,27 @@ class _RateLimitManager:
 
     # -- public API --------------------------------------------------------
 
-    def check(self, endpoint_type: str, ip: str) -> Response | None:
-        """Return None if the request is allowed, or a 429 Response if denied."""
+    def check(self, endpoint_type: str, ip: str) -> tuple[bool, int]:
+        """
+        Check the rate limit for *ip* on *endpoint_type*.
+
+        Returns (allowed, retry_after):
+          - allowed:     True if the request is within the limit
+          - retry_after: seconds until the client should retry (0 when allowed)
+        """
         limiter = self._limiters.get(endpoint_type)
         if limiter is None:
             log.debug('Rate limiting: endpoint type %r has no limiter – skipping.', endpoint_type)
-            return None
+            return True, 0
 
         if self._is_whitelisted(ip):
-            return None
+            return True, 0
 
         allowed, retry_after = limiter.check(ip)
-        if allowed:
-            return None
-
-        log.warning('Rate limit exceeded [%s]: %s from %s (retry_after=%ds).',
-                    endpoint_type, request.path, ip, retry_after)
-        body = json.dumps({'error': 'Too Many Requests', 'retry_after': retry_after})
-        return Response(
-            body,
-            status=429,
-            mimetype='application/json',
-            headers={'Retry-After': str(retry_after)},
-        )
+        if not allowed:
+            log.warning('Rate limit exceeded [%s]: ip=%s (retry_after=%ds).',
+                        endpoint_type, ip, retry_after)
+        return allowed, retry_after
 
     # -- whitelist ---------------------------------------------------------
 
@@ -299,11 +312,22 @@ def init_rate_limiting(app: Flask) -> None:
 
         # Metadata paths contain /_metadata/ — check before the general avatar match
         if '/_metadata/' in path:
-            endpoint_type = 'metadata'
+            endpoint_type = ENDPOINT_METADATA
         else:
-            endpoint_type = 'avatars'
+            endpoint_type = ENDPOINT_AVATARS
 
-        return _manager.check(endpoint_type, request.remote_addr)
+        allowed, retry_after = _manager.check(endpoint_type, request.remote_addr)
+        if allowed:
+            return None
+
+        # Build the 429 response in the Flask integration layer
+        body = json.dumps({'error': 'Too Many Requests', 'retry_after': retry_after})
+        return Response(
+            body,
+            status=429,
+            mimetype='application/json',
+            headers={'Retry-After': str(retry_after)},
+        )
 
     # Start the eviction thread in the master process.
     # With gunicorn --preload, create_app() runs in the master before workers

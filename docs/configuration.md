@@ -359,9 +359,9 @@ IP addresses or CIDR ranges that are never rate-limited. Supports both individua
 |             |                   |
 | ----------- | ----------------- |
 | **Type**    | Integer (seconds) |
-| **Default** | `60`              |
+| **Default** | `10`              |
 
-How often the background cleanup thread removes stale tracking entries from memory. Lower values reclaim memory sooner; higher values reduce lock contention. The cleanup thread runs as a daemon in each worker process.
+How often the central eviction thread prunes expired timestamps and removes stale tracking entries from shared memory. Lower values unblock rate-limited clients sooner; higher values reduce IPC overhead. The eviction thread runs once in the master process.
 
 <a id="rate_limiting_avatars"></a>
 
