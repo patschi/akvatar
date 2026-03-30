@@ -25,6 +25,8 @@ import ipaddress
 import json
 import logging
 import multiprocessing
+import multiprocessing.process as _mp_process
+import os
 import threading
 import time
 from typing import NamedTuple
@@ -189,6 +191,25 @@ class _RateLimitManager:
         # multiprocessing.Manager starts a server process that holds the actual
         # data; workers and the master access it via proxy objects over IPC.
         self._mp_manager = multiprocessing.Manager()
+
+        # When gunicorn forks workers, they inherit the Manager server process
+        # reference.  Python's atexit handler then tries to join() it on worker
+        # exit, which fails with AssertionError ("can only join a child process")
+        # because the server is a child of the master, not of the worker.
+        # Register a post-fork hook to detach the Manager from each worker:
+        #   1. Remove the server from the inherited child registry so atexit
+        #      does not attempt to join it.
+        #   2. Cancel the Manager's shutdown finalizer so the worker does not
+        #      terminate the shared server process on exit (which would break
+        #      the master's rate limiting state).
+        _mgr = self._mp_manager
+        def _release_manager_in_child():
+            _mp_process._children.discard(_mgr._process)
+            try:
+                _mgr.finalizer.cancel()
+            except AttributeError:
+                pass
+        os.register_at_fork(after_in_child=_release_manager_in_child)
 
         # Parse IP whitelist (individual IPs become /32 or /128)
         self._whitelist = []
