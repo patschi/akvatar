@@ -43,7 +43,7 @@ oidc:
 # Authentik Admin API credentials used to write the avatar URL back to the
 # user's profile after a successful upload.
 # See docs/authentik-api-token.md for the required token permissions.
-authentik_api:
+authentik:
   base_url: "https://auth.example.com"
   api_token: "CHANGE-ME"
 
@@ -53,7 +53,7 @@ authentik_api:
 ldap: {}
 
 # Output image sizes and formats generated for each upload.
-# authentik_api.avatar_size (default: 1024) must be present in sizes.
+# authentik.avatar_size (default: 1024) must be present in sizes.
 # Add or remove sizes and formats to match your storage and bandwidth needs.
 images:
   sizes:

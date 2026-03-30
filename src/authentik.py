@@ -1,5 +1,5 @@
 """
-authentik_api.py – Authentik Admin API client.
+authentik.py – Authentik Admin API client.
 
 Provides helpers to resolve users, update avatar attributes, and enumerate
 all active users for cleanup.  All lookups use the Authentik integer PK as
@@ -13,7 +13,7 @@ import requests as http_requests
 from src import USER_AGENT
 from src.config import ak_cfg, dry_run
 
-log = logging.getLogger('ak_api')
+log = logging.getLogger('authentik')
 
 # Module-level configuration
 

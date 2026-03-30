@@ -144,7 +144,7 @@ oidc:
   username_claim: "preferred_username"
 
 # --- Authentik Admin API ---
-authentik_api:
+authentik:
   # Authentik base URL (no trailing slash)
   base_url: "https://auth.example.com"
   # API token with permissions to read/write user attributes

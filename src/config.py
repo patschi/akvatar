@@ -43,7 +43,7 @@ branding_cfg = cfg.get('branding', {})
 app_cfg      = cfg['app']
 web_cfg      = cfg['webserver']
 oidc_cfg     = cfg['oidc']
-ak_cfg       = cfg['authentik_api']
+ak_cfg       = cfg['authentik']
 ldap_cfg     = cfg.get('ldap', {})  # May be absent if disabled
 img_cfg      = cfg['images']
 cleanup_cfg  = cfg.get('cleanup', {})
@@ -96,7 +96,7 @@ _valid_sizes = img_cfg.get('sizes', [])
 
 _ak_avatar_size = ak_cfg.get('avatar_size', 1024)
 _fatal_unless(_ak_avatar_size in _valid_sizes,
-              f'authentik_api.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.')
+              f'authentik.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.')
 log.debug('Authentik API will use %dx%d JPG for avatar URL.', _ak_avatar_size, _ak_avatar_size)
 
 if ldap_cfg.get('enabled', False):

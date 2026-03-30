@@ -49,7 +49,7 @@ from croniter import croniter
 
 from src.config import cleanup_cfg, img_cfg, dry_run
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, _FORMAT_MAP, get_all_avatar_metadata, cleanup_avatar_files
-from src.authentik_api import list_all_user_pks, list_active_user_pks
+from src.authentik import list_all_user_pks, list_active_user_pks
 
 log = logging.getLogger('cleanup')
 

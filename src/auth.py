@@ -15,7 +15,7 @@ from authlib.integrations.flask_client import OAuth
 
 from src.config import oidc_cfg, app_cfg
 from src.i18n import resolve_oidc_locale
-from src.authentik_api import resolve_user_pk
+from src.authentik import resolve_user_pk
 
 log = logging.getLogger('auth')
 

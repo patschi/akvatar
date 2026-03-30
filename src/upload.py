@@ -31,7 +31,7 @@ from src.imaging import (
     _FORMAT_MAP, normalize_image, check_magic_bytes, generate_filename,
     process_image, cleanup_avatar_files, prepare_ldap_image,
 )
-from src.authentik_api import update_avatar_url
+from src.authentik import update_avatar_url
 from src.ldap_client import (
     update_photos as update_ldap_photos,
     is_enabled as ldap_is_enabled,
