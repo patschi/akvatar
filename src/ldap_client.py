@@ -8,6 +8,10 @@ identifier synced from Authentik.
 Supports multiple photo attributes per user, each with independent format,
 size, and type (binary or URL) settings via the ``ldap.photos`` config array.
 
+Supports multiple LDAP servers via ``ldap.servers`` (comma-separated URLs).
+Servers are tried in the order listed; the next server is used when a
+connection or bind attempt fails or times out.
+
 Designed for any standards-compliant LDAP server.  Microsoft Active Directory
 is the primary and only tested target, but the search filter and photo
 attributes are fully configurable for other directories.
@@ -17,19 +21,20 @@ The entire module is a no-op when ``ldap.enabled`` is ``false`` in config.yml.
 
 import ssl
 import logging
+from urllib.parse import urlparse
 
 import ldap3
 import ldap3.utils.conv
 
 from src.config import ldap_cfg, dry_run
 
-log = logging.getLogger('ldap_client')
+log = logging.getLogger('ldap')
 
 # Module-level configuration (config is immutable after startup)
 _enabled = ldap_cfg.get('enabled', False)
-_server_host = ldap_cfg.get('server', '')
-_server_port = ldap_cfg.get('port', 636)
-_use_ssl = ldap_cfg.get('use_ssl', False)
+_server_urls: list[str] = [s.strip() for s in ldap_cfg.get('servers', '').split(',') if s.strip()]
+_default_port = ldap_cfg.get('port', 636)
+_default_ssl = ldap_cfg.get('use_ssl', False)
 _skip_verify = ldap_cfg.get('skip_cert_verify', False)
 _bind_dn = ldap_cfg.get('bind_dn', '')
 _bind_password = ldap_cfg.get('bind_password', '')
@@ -37,19 +42,34 @@ _search_base = ldap_cfg.get('search_base', '')
 _search_filter_tpl = ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})')
 _photos = ldap_cfg.get('photos', [])
 
-# Pre-build the ldap3.Server object once so it is reused across connections.
-# The Server object holds DNS resolution, schema info, and TLS config — all of
-# which are static for the lifetime of the process.
-_server: ldap3.Server | None = None
+# Pre-build one ldap3.Server object per configured URL so they are reused
+# across connections.  Each Server object holds DNS resolution, schema info,
+# and TLS config — all of which are static for the lifetime of the process.
+#
+# Per-URL port and SSL are derived from the URL itself when present:
+#   ldaps://host      → SSL=True,  port=_default_port
+#   ldap://host:389   → SSL=False, port=389
+# Unrecognised or absent scheme falls back to _default_ssl / _default_port.
+_servers: list[ldap3.Server] = []
 if _enabled:
-    _tls_config = None
-    if _use_ssl and _skip_verify:
-        _tls_config = ldap3.Tls(validate=ssl.CERT_NONE)
-    _server = ldap3.Server(
-        _server_host, port=_server_port,
-        use_ssl=_use_ssl, tls=_tls_config, get_info=ldap3.ALL,
-    )
-    log.debug('Pre-built LDAP Server object for %s:%s.', _server_host, _server_port)
+    for _url in _server_urls:
+        _p = urlparse(_url)
+        _scheme = _p.scheme.lower()
+        _host = _p.hostname or _url
+        _port = _p.port if _p.port is not None else _default_port
+        if _scheme == 'ldaps':
+            _ssl = True
+        elif _scheme == 'ldap':
+            _ssl = False
+        else:
+            _ssl = _default_ssl
+        _tls = ldap3.Tls(validate=ssl.CERT_NONE) if (_ssl and _skip_verify) else None
+        _servers.append(ldap3.Server(_host, port=_port, use_ssl=_ssl, tls=_tls, get_info=ldap3.ALL))
+    log.debug('Pre-built %d LDAP Server object(s): %s.', len(_servers), ', '.join(_server_urls))
+    if _skip_verify:
+        log.warning('LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks.')
+    if any(s.ssl for s in _servers) and _skip_verify:
+        log.warning('One or more LDAP servers are configured with SSL – ensure that credentials and data are protected in transit.')
 
 
 # Public helpers
@@ -73,24 +93,28 @@ def _describe_value(val) -> str:
 
 def _connect() -> ldap3.Connection:
     """
-    Open and bind an LDAP connection.
+    Open and bind an LDAP connection, trying each configured server in order.
 
-    Raises ConnectionError with a descriptive message on failure (network
-    unreachable, bad credentials, TLS handshake failure, etc.).
+    Falls back to the next server when a connection or bind attempt raises an
+    LDAPException (network unreachable, TLS handshake failure, timeout, etc.).
+    Raises ConnectionError if all servers fail.
     """
-    server_addr = f'{_server_host}:{_server_port}'
-    log.debug('Connecting to LDAP server %s (SSL=%s, skip_cert_verify=%s).',
-              server_addr, _use_ssl, _skip_verify)
-    try:
-        conn = ldap3.Connection(
-            _server, user=_bind_dn, password=_bind_password, auto_bind=True,
-        )
-    except ldap3.core.exceptions.LDAPException as exc:
-        raise ConnectionError(
-            f'Failed to connect/bind to LDAP server {server_addr} as {_bind_dn!r}: {exc}'
-        ) from exc
-    log.debug('LDAP bind successful as %r.', _bind_dn)
-    return conn
+    last_exc: Exception | None = None
+    for url, server in zip(_server_urls, _servers):
+        log.debug('Connecting to LDAP server %s (SSL=%s, skip_cert_verify=%s).',
+                  url, server.ssl, _skip_verify)
+        try:
+            conn = ldap3.Connection(
+                server, user=_bind_dn, password=_bind_password, auto_bind=True,
+            )
+            log.debug('LDAP bind successful on %s as %r.', url, _bind_dn)
+            return conn
+        except ldap3.core.exceptions.LDAPException as exc:
+            log.warning('LDAP server %s failed (%s), trying next server.', url, exc)
+            last_exc = exc
+    raise ConnectionError(
+        f'All LDAP servers failed ({", ".join(_server_urls)}). Last error: {last_exc}'
+    ) from last_exc
 
 
 def _find_user_dn(conn: ldap3.Connection, ldap_uniq: str) -> str:

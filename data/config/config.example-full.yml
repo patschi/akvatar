@@ -162,9 +162,15 @@ authentik:
 ldap:
   # Set to false to skip LDAP thumbnail updates entirely
   enabled: false
-  # LDAP server address
-  server: "ldaps://dc.example.com"
-  # Port (636 for LDAPS, 389 for LDAP)
+  # LDAP server address(es), comma-separated.  Servers are tried in the
+  # order listed; the next server is used when a connection or bind fails.
+  # Port and SSL/TLS can be specified per URL (ldaps:// enables SSL;
+  # a :port suffix overrides the port setting below).  Examples:
+  #   Single:        "ldaps://dc.example.com"
+  #   Failover:      "ldaps://dc1.example.com,ldaps://dc2.example.com"
+  #   Mixed ports:   "ldaps://dc1.example.com:636,ldap://dc2.example.com:389"
+  servers: "ldaps://dc1.example.com,ldaps://dc2.example.com"
+  # Fallback port when not specified in the URL (636 for LDAPS, 389 for LDAP)
   port: 636
   use_ssl: true
   # Skip TLS certificate verification (set to true for self-signed certificates)

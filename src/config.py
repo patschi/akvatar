@@ -8,6 +8,7 @@ Reads config.yml once at import time so every other module can simply
 import os
 import sys
 import logging
+from urllib.parse import urlparse
 
 import yaml
 
@@ -86,10 +87,15 @@ _tls_key = web_cfg.get('tls_key', '')
 if not _tls_cert or not _tls_key:
     log.warning('Server TLS is NOT configured – the built-in server will run over plain HTTP.')
 
-if ldap_cfg.get('enabled', False) and not ldap_cfg.get('use_ssl', False):
-    log.warning('LDAP connection is configured WITHOUT SSL – credentials and data will be sent in plain text.')
-if ldap_cfg.get('enabled', False) and ldap_cfg.get('skip_cert_verify', False):
-    log.warning('LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks.')
+if ldap_cfg.get('enabled', False):
+    _use_ssl_fallback = ldap_cfg.get('use_ssl', False)
+    for _srv in ldap_cfg.get('servers', '').split(','):
+        _scheme = urlparse(_srv.strip()).scheme.lower()
+        if _scheme == 'ldap' or (not _scheme and not _use_ssl_fallback):
+            log.warning('One or more LDAP servers are configured WITHOUT SSL – credentials and data will be sent in plain text.')
+            break
+    if ldap_cfg.get('skip_cert_verify', False):
+        log.warning('LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks.')
 
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get('sizes', [])
@@ -138,10 +144,10 @@ if ldap_cfg.get('enabled', False):
                    _photo['image_size'], _photo.get('max_file_size', 0))
 
     log.debug(
-        'LDAP user lookup: base=%r, filter=%r, server=%s:%s.',
+        'LDAP user lookup: base=%r, filter=%r, servers=%s (port %s).',
         ldap_cfg.get('search_base', ''),
         ldap_cfg.get('search_filter', '(objectSid={ldap_uniq})'),
-        ldap_cfg.get('server', ''),
+        ldap_cfg.get('servers', ''),
         ldap_cfg.get('port', 636),
     )
     log.info('LDAP configured with %d photo attribute(s).', len(_ldap_photos))
