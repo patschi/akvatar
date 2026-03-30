@@ -250,8 +250,7 @@ def _step_sync_ldap(image: Image.Image, urls: dict, filename_base: str,
     try:
         ldap_updates = _build_ldap_updates(image, urls, filename_base)
         update_ldap_photos(ldap_uniq, ldap_updates)
-        detail = ', '.join(u['attribute'] for u in ldap_updates)
-        yield _sse({'step': t('step_ldap_updated'), 'status': 'dry-run' if dry_run else 'success', 'detail': detail})
+        yield _sse({'step': t('step_ldap_updated'), 'status': 'dry-run' if dry_run else 'success'})
         return False
     except Exception:
         log.exception('Failed to update LDAP for ldap_uniq=%s.', ldap_uniq)
