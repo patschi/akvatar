@@ -14,8 +14,6 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-import flask.cli
-
 from flask import Flask, Response, abort, request  # noqa: E402
 from jinja2 import BaseLoader  # noqa: E402
 from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
