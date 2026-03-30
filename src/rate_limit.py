@@ -105,6 +105,10 @@ class _RateLimiter:
         Called exclusively by the eviction thread in the master process.
         Workers never call this method.
 
+        Each IP is processed under its own short lock hold so that worker
+        request threads are only blocked briefly rather than for the entire
+        eviction pass.
+
         Returns (pruned_total, evicted_ips): total timestamps pruned across
         all IPs, and number of IP entries fully removed.
         """
@@ -112,9 +116,15 @@ class _RateLimiter:
         pruned_total = 0
         evicted_ips = []
 
-        with self._lock:
-            for ip in list(self._requests.keys()):
-                ts = self._requests[ip]
+        # Snapshot tracked IPs (atomic Manager call, no lock needed).
+        # IPs added after this snapshot are caught in the next eviction pass.
+        all_ips = list(self._requests.keys())
+
+        for ip in all_ips:
+            with self._lock:
+                ts = self._requests.get(ip, None)
+                if ts is None:
+                    continue
                 before = len(ts)
                 while ts and ts[0] <= cutoff:
                     ts.pop(0)
@@ -134,7 +144,8 @@ class _RateLimiter:
                     # Empty entry with nothing to prune — clean up
                     del self._requests[ip]
                     evicted_ips.append(ip)
-            remaining = len(self._requests)
+
+        remaining = len(self._requests)
 
         if pruned_total or evicted_ips:
             log.debug('[%s]: eviction pass — pruned %d timestamp(s), evicted %d IP(s), %d active.',
