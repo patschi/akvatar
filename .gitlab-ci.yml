@@ -53,7 +53,7 @@ lint-ruff:
 push-container-gitlab:
   stage: build-container
   image:
-    name: martizih/kaniko:v1.27.1-debug@sha256:4ce0a4af1479f27f66ca170c287215d3b51e61153fa8b87f6bce5f2f791f5e7e
+    name: martizih/kaniko:v1.27.2-debug@sha256:e6758dd08d8fa31707ace2cb72d3ba437667fe5c709101e48223f655b58b27bd
     entrypoint: [""]
   variables:
     FF_KANIKO_OCI_STAGES: 'true'
