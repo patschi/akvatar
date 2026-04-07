@@ -140,15 +140,19 @@
 
     // Progress step list helpers
 
-    /**
-     * Build the inner HTML for a single progress step row.
-     * Content is safe: labels come from server I18N, details from SSE payloads.
-     */
+    /** Escape a string for safe insertion into innerHTML. */
+    function escapeHTML(s) {
+        var div = document.createElement("div");
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    /** Build the inner HTML for a single progress step row. */
     function buildStepHTML(label, status, detail) {
         var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
         return '<span class="step-icon">' + icon + '</span>'
-            + '<span class="step-label">' + label + '</span>'
-            + (detail ? '<span class="step-detail">' + detail + '</span>' : "");
+            + '<span class="step-label">' + escapeHTML(label) + '</span>'
+            + (detail ? '<span class="step-detail">' + escapeHTML(detail) + '</span>' : "");
     }
 
     /** Append a new progress step row and return its <li> element. */
@@ -396,7 +400,7 @@
                 var errorCode = finalResult && finalResult.error;
                 var errorMessage = (errorCode === 'contact_admin')
                     ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
-                    : (errorCode || I18N.result_error);
+                    : (errorCode ? escapeHTML(errorCode) : I18N.result_error);
                 resultMessage.innerHTML =
                     '<p class="result-error">' + errorMessage + '</p>' +
                     '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
