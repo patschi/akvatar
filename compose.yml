@@ -18,4 +18,4 @@ services:
 
 volumes:
   akvatar-data:
-  akvatar-config:
+  akvatar-conf:

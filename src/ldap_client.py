@@ -66,10 +66,6 @@ if _enabled:
         _tls = ldap3.Tls(validate=ssl.CERT_NONE) if (_ssl and _skip_verify) else None
         _servers.append(ldap3.Server(_host, port=_port, use_ssl=_ssl, tls=_tls, get_info=ldap3.ALL))
     log.debug('Pre-built %d LDAP Server object(s): %s.', len(_servers), ', '.join(_server_urls))
-    if _skip_verify:
-        log.warning('LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks.')
-    if any(s.ssl for s in _servers) and _skip_verify:
-        log.warning('One or more LDAP servers are configured with SSL – ensure that credentials and data are protected in transit.')
 
 
 # Public helpers
