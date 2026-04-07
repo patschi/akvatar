@@ -117,33 +117,6 @@ def _get_rss_mb() -> float | None:
                     return int(line.split()[1]) / 1024
     except (FileNotFoundError, OSError):
         pass
-    # Windows: query working set size via Win32 API
-    try:
-        import ctypes
-        import ctypes.wintypes
-
-        class _PMC(ctypes.Structure):
-            _fields_ = [
-                ('cb',                         ctypes.wintypes.DWORD),
-                ('PageFaultCount',             ctypes.wintypes.DWORD),
-                ('PeakWorkingSetSize',         ctypes.c_size_t),
-                ('WorkingSetSize',             ctypes.c_size_t),
-                ('QuotaPeakPagedPoolUsage',    ctypes.c_size_t),
-                ('QuotaPagedPoolUsage',        ctypes.c_size_t),
-                ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
-                ('QuotaNonPagedPoolUsage',     ctypes.c_size_t),
-                ('PagefileUsage',              ctypes.c_size_t),
-                ('PeakPagefileUsage',          ctypes.c_size_t),
-            ]
-
-        pmc = _PMC()
-        pmc.cb = ctypes.sizeof(pmc)
-        ctypes.windll.psapi.GetProcessMemoryInfo(
-            ctypes.windll.kernel32.GetCurrentProcess(),
-            ctypes.byref(pmc),
-            pmc.cb,
-        )
-        return pmc.WorkingSetSize / (1024 * 1024)
     except Exception:
         return None
 
