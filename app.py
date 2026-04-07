@@ -312,12 +312,11 @@ def create_app() -> Flask:
 
     # Template cache warm-up – pre-compile all templates so workers forked
     # via --preload inherit them and the first request has zero disk I/O.
-    if not debug_full:
-        log.debug('Warming up template cache by pre-compiling all templates...')
-        for template_name in app.jinja_loader.list_templates():
-            log.debug('Pre-compiling template: %s', template_name)
-            app.jinja_env.get_template(template_name)
-        log.debug('Template cache warmed: %d template(s) pre-compiled.', len(app.jinja_loader.list_templates()))
+    log.debug('Warming up template cache by pre-compiling all templates...')
+    for template_name in app.jinja_loader.list_templates():
+        log.debug('Pre-compiling template: %s', template_name)
+        app.jinja_env.get_template(template_name)
+    log.debug('Template cache warmed: %d template(s) pre-compiled.', len(app.jinja_loader.list_templates()))
 
     return app
 
