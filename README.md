@@ -131,7 +131,7 @@ Then replace the volume flags:
 
 ### Docker Compose
 
-A ready-to-use [`docker-compose.yml`](docker-compose.yml) is included.
+A ready-to-use [`compose.yml`](compose.yml) is included.
 
 ```bash
 docker compose up -d

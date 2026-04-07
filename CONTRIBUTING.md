@@ -23,7 +23,7 @@ Use the development compose file, which builds the container from source and ena
 default:
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build akvatar
+docker compose -f compose.dev.yml up --build akvatar
 ```
 
 Debug mode enables Flask's debugger, template auto-reload, and verbose `DEBUG`-level logging.
@@ -34,13 +34,13 @@ Docker layer caching can cause stale dependencies or code to persist. To ensure 
 
 ```bash
 # Stop and remove the dev container and its volumes
-docker compose -f docker-compose.dev.yml down -v
+docker compose -f compose.dev.yml down -v
 
 # Rebuild without using cached layers
-docker compose -f docker-compose.dev.yml build --no-cache akvatar
+docker compose -f compose.dev.yml build --no-cache akvatar
 
 # Start fresh
-docker compose -f docker-compose.dev.yml up akvatar
+docker compose -f compose.dev.yml up akvatar
 ```
 
 If you changed `requirements.txt`, always rebuild with `--no-cache` (or at minimum `--build`) to pick up new
