@@ -47,14 +47,14 @@ def _init_sentry() -> None:
 
     import sentry_sdk
 
-    # What: auto-detect environment from debug_full when not explicitly configured
+    # auto-detect environment from debug_full when not explicitly configured
     environment = sentry_cfg.get('environment', '') or ('development' if debug_full else 'production')
 
-    # What: disable performance tracing entirely when capture_performance is off
+    # disable performance tracing entirely when capture_performance is off
     capture_performance = sentry_cfg.get('capture_performance', False)
     traces_sample_rate = sentry_cfg.get('traces_sample_rate', 0.2) if capture_performance else 0.0
 
-    # What: allow disabling error capture while keeping performance tracing
+    # allow disabling error capture while keeping performance tracing
     capture_errors = sentry_cfg.get('capture_errors', True)
     sample_rate = sentry_cfg.get('sample_rate', 1.0) if capture_errors else 0.0
 
@@ -65,7 +65,7 @@ def _init_sentry() -> None:
         sample_rate=sample_rate,
         traces_sample_rate=traces_sample_rate,
         send_default_pii=sentry_cfg.get('send_default_pii', False),
-        # What: attach the Flask integration automatically (provided by sentry-sdk[flask])
+        # attach the Flask integration automatically (provided by sentry-sdk[flask])
         enable_tracing=capture_performance,
     )
 
