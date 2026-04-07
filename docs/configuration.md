@@ -43,6 +43,14 @@ The application reads the configuration file once at startup. Changes require a 
 | [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)   | Integer | Stale-entry cleanup interval in seconds             |
 | [`rate_limiting.avatars`](#rate_limiting_avatars)                       | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limiting_metadata)                     | Object  | Rate limit settings for metadata JSON requests      |
+| [`sentry.enabled`](#sentry_enabled)                                     | Boolean | Master switch for Sentry error tracking             |
+| [`sentry.dsn`](#sentry_dsn)                                             | String  | Sentry project DSN (ingest URL)                     |
+| [`sentry.capture_errors`](#sentry_capture_errors)                       | Boolean | Send unhandled exceptions to Sentry                 |
+| [`sentry.capture_performance`](#sentry_capture_performance)             | Boolean | Enable transaction / performance tracing            |
+| [`sentry.sample_rate`](#sentry_sample_rate)                             | Float   | Error event sample rate (0.0–1.0)                   |
+| [`sentry.traces_sample_rate`](#sentry_traces_sample_rate)               | Float   | Performance trace sample rate (0.0–1.0)             |
+| [`sentry.environment`](#sentry_environment)                             | String  | Sentry environment tag (auto-detected if empty)     |
+| [`sentry.send_default_pii`](#sentry_send_default_pii)                   | Boolean | Include IP addresses and user details in events     |
 | [`app.log_level`](#app_log_level)                                       | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#app_debug_full)                                     | Boolean | Full debug mode — never enable in production        |
 | [`webserver.proxy_mode`](#webserver_proxy_mode)                         | Boolean | Enable reverse-proxy header support (ProxyFix)      |
@@ -437,6 +445,133 @@ Rate limit settings for avatar metadata JSON requests (`/user-avatars/_metadata/
 | `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type     |
 | `points`  | Integer | `50`    | Maximum points allowed per client IP per window |
 | `window`  | Integer | `60`    | Time window in seconds                          |
+
+---
+
+## Sentry Error Tracking (optional)
+
+Sends unhandled exceptions and (optionally) performance data to [Sentry](https://sentry.io). The integration uses the
+official `sentry-sdk[flask]` package which auto-instruments Flask requests, template rendering, and database calls.
+
+When disabled (the default), `sentry-sdk` is never imported and adds zero runtime overhead.
+
+<a id="sentry_enabled"></a>
+
+### `sentry.enabled`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+Master switch for the Sentry integration. Set to `true` and provide a valid [`dsn`](#sentry_dsn) to start sending events.
+A warning is logged at startup if this is `true` but the DSN is empty.
+
+<a id="sentry_dsn"></a>
+
+### `sentry.dsn`
+
+|             |                |
+|-------------|----------------|
+| **Type**    | String (URL)   |
+| **Default** | `""` (empty)   |
+
+The Sentry DSN (Data Source Name) for your project. Find it in **Sentry → Project Settings → Client Keys (DSN)**. The
+DSN follows the format `https://<key>@<org>.ingest.sentry.io/<project>`. Treat it as a secret — while it only allows
+sending events (not reading them), exposing it allows anyone to submit events to your project.
+
+<a id="sentry_capture_errors"></a>
+
+### `sentry.capture_errors`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled, unhandled exceptions are captured and sent to Sentry as error events. Disabling this sets `sample_rate` to
+`0.0` internally, which prevents any error events from being sent while still allowing performance tracing if configured
+separately.
+
+<a id="sentry_capture_performance"></a>
+
+### `sentry.capture_performance`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When enabled, Flask request transactions are traced and sent to Sentry for performance monitoring. Each traced request
+shows timing for the full request lifecycle including template rendering and external API calls. Disabled by default
+because performance tracing produces significantly more data than error tracking.
+
+<a id="sentry_sample_rate"></a>
+
+### `sentry.sample_rate`
+
+|             |                   |
+|-------------|-------------------|
+| **Type**    | Float (0.0–1.0)   |
+| **Default** | `1.0`             |
+
+Fraction of error events to send. `1.0` sends every error, `0.5` sends roughly half, `0.0` sends none. Only applies
+when [`capture_errors`](#sentry_capture_errors) is `true` — otherwise forced to `0.0` regardless of this setting.
+
+For most deployments, `1.0` is correct — you want to see every unhandled exception. Lower this only if you have a
+high-traffic deployment generating excessive duplicate errors.
+
+<a id="sentry_traces_sample_rate"></a>
+
+### `sentry.traces_sample_rate`
+
+|             |                   |
+|-------------|-------------------|
+| **Type**    | Float (0.0–1.0)   |
+| **Default** | `0.2`             |
+
+Fraction of requests to trace for performance monitoring. `1.0` traces every request, `0.2` traces roughly 20%. Only
+applies when [`capture_performance`](#sentry_capture_performance) is `true` — otherwise forced to `0.0`.
+
+Start with `0.2` and adjust based on your Sentry plan's event quota. Tracing every request (`1.0`) provides the most
+complete picture but can quickly consume event budgets on busy instances.
+
+<a id="sentry_environment"></a>
+
+### `sentry.environment`
+
+|             |                                      |
+|-------------|--------------------------------------|
+| **Type**    | String                               |
+| **Default** | `""` (auto-detected from debug mode) |
+
+The environment tag attached to every Sentry event. Used to filter events in the Sentry dashboard (e.g. show only
+production errors).
+
+When empty (the default), the environment is auto-detected:
+
+| Condition                   | Resolved environment |
+|-----------------------------|----------------------|
+| `app.debug_full` is `true`  | `development`        |
+| `app.debug_full` is `false` | `production`         |
+
+Set explicitly to `"staging"`, `"testing"`, or any custom value if the auto-detection does not match your setup.
+
+<a id="sentry_send_default_pii"></a>
+
+### `sentry.send_default_pii`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+Controls whether personally identifiable information (PII) is included in Sentry events. When `false` (the default),
+Sentry automatically scrubs IP addresses, user agent strings, cookies, and request bodies from events before they are
+stored.
+
+Set to `true` only if your Sentry instance is self-hosted or your data processing agreement with Sentry allows PII
+storage. This can be helpful for debugging user-specific issues but has privacy implications.
 
 ---
 

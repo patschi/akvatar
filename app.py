@@ -18,9 +18,9 @@ from flask import Flask, Response, abort, request  # noqa: E402
 from jinja2 import BaseLoader  # noqa: E402
 from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
 
-from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log  # noqa: E402
+from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log, sentry_cfg  # noqa: E402
 from src.i18n import t, get_locale, get_js_translations  # noqa: E402
-from src import APP_VERSION  # noqa: E402
+from src import APP_NAME, APP_VERSION  # noqa: E402
 from src.auth import auth_bp, init_oauth  # noqa: E402
 from src.routes import routes_bp  # noqa: E402
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence  # noqa: E402
@@ -30,6 +30,49 @@ log = logging.getLogger('app')
 
 # Logger dedicated to HTTP request logging (keeps it separate from application logic)
 http_log = logging.getLogger('http')
+
+
+# Sentry SDK initialisation – runs once at import time (before Flask is created)
+# so the SDK can hook into framework internals.  When disabled or missing a DSN,
+# this block is a no-op and sentry-sdk is never imported.
+def _init_sentry() -> None:
+    """Initialise the Sentry SDK from config.  No-op when disabled or DSN is empty."""
+    if not sentry_cfg.get('enabled', False):
+        return
+
+    dsn = sentry_cfg.get('dsn', '')
+    if not dsn:
+        log.warning('Sentry is enabled but no DSN is configured – skipping initialisation.')
+        return
+
+    import sentry_sdk
+
+    # What: auto-detect environment from debug_full when not explicitly configured
+    environment = sentry_cfg.get('environment', '') or ('development' if debug_full else 'production')
+
+    # What: disable performance tracing entirely when capture_performance is off
+    capture_performance = sentry_cfg.get('capture_performance', False)
+    traces_sample_rate = sentry_cfg.get('traces_sample_rate', 0.2) if capture_performance else 0.0
+
+    # What: allow disabling error capture while keeping performance tracing
+    capture_errors = sentry_cfg.get('capture_errors', True)
+    sample_rate = sentry_cfg.get('sample_rate', 1.0) if capture_errors else 0.0
+
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=environment,
+        release=f'{APP_NAME}@{APP_VERSION}',
+        sample_rate=sample_rate,
+        traces_sample_rate=traces_sample_rate,
+        send_default_pii=sentry_cfg.get('send_default_pii', False),
+        # What: attach the Flask integration automatically (provided by sentry-sdk[flask])
+        enable_tracing=capture_performance,
+    )
+
+    log.info('Sentry initialised (env=%s, errors=%s, performance=%s).', environment, capture_errors, capture_performance)
+
+
+_init_sentry()
 
 # Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
