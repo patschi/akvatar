@@ -253,11 +253,8 @@ def create_app() -> Flask:
     app.config['SESSION_COOKIE_SECURE'] = _tls_active
     app.config['PERMANENT_SESSION_LIFETIME'] = app_cfg.get('web_session_lifetime_seconds', 1800)
 
-    if debug_full:
-        app.debug = True
-        app.config['TEMPLATES_AUTO_RELOAD'] = True
-    else:
-        app.config['TEMPLATES_AUTO_RELOAD'] = False
+    app.debug = debug_full
+    app.config['TEMPLATES_AUTO_RELOAD'] = debug_full
 
     log.debug('Flask app created (max upload = %d MB).', app_cfg['max_upload_size_mb'])
 

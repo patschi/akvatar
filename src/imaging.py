@@ -151,6 +151,8 @@ def _save_image(image: Image.Image, target, pillow_fmt: str, quality: int | None
     elif pillow_fmt == 'WEBP':
         image.save(target, format='WEBP',
                    quality=quality if quality is not None else img_cfg['webp_quality'], method=6)
+    else:
+        raise ValueError(f'Unsupported Pillow format: {pillow_fmt!r}')
 
 
 def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dict[str, str]], int]:
@@ -240,12 +242,13 @@ def prepare_ldap_image(
     if pillow_fmt == 'JPEG' and resized.mode != 'RGB':
         resized = resized.convert('RGB')
 
+    # PNG is lossless (quality=None); JPEG/WebP use configured quality
     if pillow_fmt == 'JPEG':
         quality = img_cfg['jpeg_quality']
     elif pillow_fmt == 'WEBP':
         quality = img_cfg['webp_quality']
     else:
-        quality = None  # PNG is lossless
+        quality = None
 
     def _encode(q=None):
         buf = io.BytesIO()
