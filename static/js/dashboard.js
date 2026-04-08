@@ -110,6 +110,14 @@ function showResultView() {
     progressPanel.style.paddingTop = "10px";
 }
 
+/** Display a result message with a retry button and switch to the result view. */
+function showResult(cssClass, messageHTML) {
+    showResultView();
+    resultMessage.innerHTML =
+        '<p class="' + cssClass + '">' + messageHTML + '</p>' +
+        buildRetryButtonHTML();
+}
+
 // File selection: validate extension and initialise cropper
 fileInput.addEventListener("change", function (event) {
     var selectedFile = event.target.files[0];
@@ -307,10 +315,7 @@ uploadButton.addEventListener("click", async function () {
         // Display final result
         if (finalResult && finalResult.avatar_url && !finalResult.error) {
             // Success: show the updated avatar
-            showResultView();
-            resultMessage.innerHTML =
-                '<p class="result-success">' + escapeHTML(I18N.result_success) + '</p>' +
-                buildRetryButtonHTML();
+            showResult("result-success", escapeHTML(I18N.result_success));
 
             // Update the avatar image in the profile header
             var profileAvatar = document.querySelector(".profile-avatar");
@@ -319,16 +324,11 @@ uploadButton.addEventListener("click", async function () {
             }
         } else {
             // Failure: show the error with a retry button
-            showResultView();
-
-            // Map server error codes to translated messages, fall back to generic error
             var errorCode = finalResult && finalResult.error;
             var errorMessage = (errorCode === 'contact_admin')
                 ? escapeHTML(I18N.step_save_failed) + ' ' + escapeHTML(I18N.result_contact_admin)
                 : (errorCode ? escapeHTML(errorCode) : escapeHTML(I18N.result_error));
-            resultMessage.innerHTML =
-                '<p class="result-error">' + errorMessage + '</p>' +
-                buildRetryButtonHTML();
+            showResult("result-error", errorMessage);
         }
     } catch (networkError) {
         // Network failure or stream read error
@@ -339,9 +339,6 @@ uploadButton.addEventListener("click", async function () {
         appendStep(I18N.step_upload, "failed", networkError.message);
 
         // Show the error with a retry button
-        showResultView();
-        resultMessage.innerHTML =
-            '<p class="result-error">' + escapeHTML(I18N.result_network_error) + '</p>' +
-            buildRetryButtonHTML();
+        showResult("result-error", escapeHTML(I18N.result_network_error));
     }
 });

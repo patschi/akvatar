@@ -10,7 +10,7 @@ import logging
 import mimetypes
 from pathlib import Path
 
-log = logging.getLogger('app')
+log = logging.getLogger('app.static')
 
 # Resolve the static directory relative to this file's location (src/ → project root → static/)
 _STATIC_DIR = Path(__file__).resolve().parent.parent / 'static'

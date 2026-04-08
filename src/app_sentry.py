@@ -11,7 +11,7 @@ import logging
 from src import APP_NAME, APP_VERSION
 from src.config import debug_full, sentry_cfg
 
-log = logging.getLogger('app')
+log = logging.getLogger('app.sentry')
 
 
 def init_sentry() -> None:

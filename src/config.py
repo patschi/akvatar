@@ -68,7 +68,7 @@ _level = logging.DEBUG if debug_full else _LOG_LEVELS.get(_configured_level, log
 
 logging.basicConfig(
     level=_level,
-    format='[%(asctime)s] [%(levelname)-7s] [%(name)-9.9s] %(message)s',
+    format='[%(asctime)s] [%(levelname)-7s] [%(name)-11.11s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S %z',
 )
 

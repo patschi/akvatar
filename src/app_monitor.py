@@ -10,7 +10,7 @@ import logging
 import threading
 import time
 
-log = logging.getLogger('app')
+log = logging.getLogger('app.monitor')
 
 
 def _get_rss_mb() -> float | None:

@@ -120,7 +120,9 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)    # /login, /callback, /logout
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
 
-    # Rate limiting on avatar/metadata serving endpoints (before_request hook)
+    # Rate limiting on avatar/metadata serving endpoints (before_request hook).
+    # Deferred import: rate_limit imports src.config at module level which triggers
+    # config validation; importing here keeps the startup sequence predictable.
     from src.rate_limit import init_rate_limiting
     init_rate_limiting(app)
 
@@ -177,11 +179,12 @@ def create_app() -> Flask:
 
     # Template cache warm-up – pre-compile all templates so workers forked
     # via --preload inherit them and the first request has zero disk I/O.
+    all_templates = app.jinja_loader.list_templates()
     log.debug('Warming up template cache by pre-compiling all templates...')
-    for template_name in app.jinja_loader.list_templates():
+    for template_name in all_templates:
         log.debug('Pre-compiling template: %s', template_name)
         app.jinja_env.get_template(template_name)
-    log.debug('Template cache warmed: %d template(s) pre-compiled.', len(app.jinja_loader.list_templates()))
+    log.debug('Template cache warmed: %d template(s) pre-compiled.', len(all_templates))
 
     return app
 

@@ -1,15 +1,5 @@
 """
-app_middleware.py – WSGI and Jinja2 middleware.
-
-PrefixMiddleware:
-    Sets SCRIPT_NAME to a static path prefix so the app can be hosted under
-    a subfolder without a reverse proxy setting X-Forwarded-Prefix.
-
-MinifyingTemplateLoader:
-    Wraps Flask's Jinja2 template loader to strip HTML comments and collapse
-    excess blank lines from template source before compilation.  Runs once per
-    template (Jinja2 caches compiled bytecode), so there is no per-request
-    overhead.  Template files on disk are left untouched.
+app_middleware.py – WSGI and Jinja2 middleware (PrefixMiddleware, MinifyingTemplateLoader).
 """
 
 import re
