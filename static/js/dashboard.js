@@ -1,0 +1,347 @@
+/**
+ * dashboard.js – Avatar upload with client-side cropping and server-side
+ * processing streamed back as Server-Sent Events (SSE).
+ *
+ * Depends on server-provided constants injected inline by the template
+ * before this script is loaded:
+ *   UPLOAD_ENDPOINT, MAX_AVATAR_SIZE, I18N, LDAP_ENABLED, ALLOWED_EXTENSIONS
+ */
+
+// DOM element references
+const uploadSection      = document.getElementById("uploadSection");
+const filePicker         = document.getElementById("filePicker");
+const fileInput          = document.getElementById("fileInput");
+const fileNameDisplay    = document.getElementById("fileName");
+const cropperWrapper     = document.getElementById("cropperWrapper");
+const cropperImage       = document.getElementById("cropperImage");
+const uploadButton       = document.getElementById("uploadBtn");
+const uploadDisclaimer   = document.getElementById("uploadDisclaimer");
+const profileDivider     = document.getElementById("profileDivider");
+const progressPanel      = document.getElementById("progressPanel");
+const progressList       = document.getElementById("progressList");
+const resultMessage      = document.getElementById("resultMessage");
+
+// Cropper.js instance — created when user selects an image
+let cropperInstance = null;
+
+// Progress step icons (SVGs using currentColor for theme adaptation)
+const ICON_CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+    + '<path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '</svg>';
+
+const ICON_CROSS_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+    + '<path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + '</svg>';
+
+const ICON_DASH_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
+    + '<path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + '</svg>';
+
+const ICON_DASHED_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>'
+    + '</svg>';
+
+const ICON_SPINNER = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
+    + '<circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/>'
+    + '</svg>';
+
+// Map step status to its SVG icon
+const STEP_STATUS_ICONS = {
+    success:   ICON_CHECK_CIRCLE,
+    "dry-run": ICON_CHECK_CIRCLE,
+    failed:    ICON_CROSS_CIRCLE,
+    skipped:   ICON_DASH_CIRCLE,
+    pending:   ICON_DASHED_CIRCLE,
+    active:    ICON_SPINNER,
+};
+
+// Progress step list helpers
+
+/** Escape a string for safe insertion into innerHTML. */
+function escapeHTML(s) {
+    var div = document.createElement("div");
+    div.textContent = s;
+    return div.innerHTML;
+}
+
+/** Build the inner HTML for a single progress step row. */
+function buildStepHTML(label, status, detail) {
+    var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
+    return '<span class="step-icon">' + icon + '</span>'
+        + '<span class="step-label">' + escapeHTML(label) + '</span>'
+        + (detail ? '<span class="step-detail">' + escapeHTML(detail) + '</span>' : "");
+}
+
+/** Append a new progress step row and return its <li> element. */
+function appendStep(label, status, detail) {
+    var stepElement = document.createElement("li");
+    stepElement.className = "step " + status;
+    stepElement.innerHTML = buildStepHTML(label, status, detail);
+    progressList.appendChild(stepElement);
+    return stepElement;
+}
+
+/** Update an existing progress step row with new status and detail. */
+function updateStep(stepElement, label, status, detail) {
+    stepElement.className = "step " + status;
+    stepElement.innerHTML = buildStepHTML(label, status, detail);
+}
+
+/** Build the HTML for the retry/change-avatar button shown after a result. */
+function buildRetryButtonHTML() {
+    return '<button class="btn btn-block btn-retry" onclick="location.reload()">'
+        + I18N.result_retry + '</button>';
+}
+
+/** Reset upload button to its default enabled state. */
+function resetUploadButton() {
+    uploadButton.disabled = false;
+    uploadButton.textContent = I18N.upload_button;
+}
+
+/** Switch from the upload form to the result view (hides upload controls, shows progress panel). */
+function showResultView() {
+    uploadSection.classList.add("hidden");
+    profileDivider.classList.add("hidden");
+    progressPanel.style.marginTop = "0";
+    progressPanel.style.paddingTop = "10px";
+}
+
+// File selection: validate extension and initialise cropper
+fileInput.addEventListener("change", function (event) {
+    var selectedFile = event.target.files[0];
+    if (!selectedFile) return;
+
+    // Extract and validate file extension (case-insensitive)
+    var fileExtension = selectedFile.name.includes(".")
+        ? selectedFile.name.split(".").pop().toLowerCase()
+        : "";
+
+    if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
+        var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
+        alert(I18N.upload_invalid_ext
+            .replace("{ext}", fileExtension)
+            .replace("{allowed}", allowedList));
+        fileInput.value = "";
+        return;
+    }
+
+    fileNameDisplay.textContent = selectedFile.name;
+
+    // Clean up previous cropper instance and revoke its object URL to free memory
+    if (cropperImage.src.startsWith("blob:")) {
+        URL.revokeObjectURL(cropperImage.src);
+    }
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+
+    // Show the cropper area and upload controls
+    cropperImage.src = URL.createObjectURL(selectedFile);
+    cropperWrapper.classList.remove("hidden");
+    uploadDisclaimer.classList.remove("hidden");
+    uploadButton.classList.remove("hidden");
+    uploadButton.disabled = false;
+
+    // Initialise Cropper.js with a locked square aspect ratio
+    cropperInstance = new Cropper(cropperImage, {
+        aspectRatio: 1,
+        viewMode: 1,
+        dragMode: "move",
+        autoCropArea: 0.9,
+        responsive: true,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+    });
+});
+
+// Upload flow with SSE streaming progress
+uploadButton.addEventListener("click", async function () {
+    if (!cropperInstance) return;
+
+    // Lock the UI and switch to progress view
+    uploadButton.disabled = true;
+    uploadButton.textContent = I18N.upload_processing;
+    filePicker.classList.add("hidden");
+    cropperWrapper.classList.add("hidden");
+    progressPanel.classList.remove("hidden");
+    progressList.innerHTML = "";
+    resultMessage.innerHTML = "";
+
+    // Step 1: Crop the image to a square at the server's max avatar dimension
+    var cropStepElement = appendStep(I18N.step_crop, "active");
+    var croppedCanvas = cropperInstance.getCroppedCanvas({
+        width: MAX_AVATAR_SIZE,
+        height: MAX_AVATAR_SIZE,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high",
+    });
+    updateStep(cropStepElement, I18N.step_crop, "success");
+
+    // Step 2: Compress to WebP (preferred) with JPEG as fallback
+    var compressStepElement = appendStep(I18N.step_compress, "active");
+    var imageBlob = await new Promise(function (resolve) {
+        croppedCanvas.toBlob(resolve, "image/webp", 0.85);
+    });
+    var imageFormat = "webp";
+
+    // Fall back to JPEG if the browser doesn't support WebP encoding
+    if (!imageBlob || imageBlob.type !== "image/webp") {
+        imageBlob = await new Promise(function (resolve) {
+            croppedCanvas.toBlob(resolve, "image/jpeg", 0.85);
+        });
+        imageFormat = "jpg";
+    }
+
+    var fileSizeKB = (imageBlob.size / 1024).toFixed(0);
+    updateStep(compressStepElement, I18N.step_compress, "success",
+        imageFormat.toUpperCase() + ", " + fileSizeKB + " KB");
+
+    // Step 3: Upload the compressed image to the server
+    var uploadStepElement = appendStep(I18N.step_upload, "active");
+    var formData = new FormData();
+    formData.append("file", imageBlob, "avatar." + imageFormat);
+
+    try {
+        var response = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
+
+        // Server returns JSON for validation errors (4xx responses)
+        var contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+            var errorData = await response.json();
+            updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
+            resultMessage.innerHTML = '<p class="result-error">' + I18N.result_error + '</p>';
+            resetUploadButton();
+            return;
+        }
+
+        // Upload accepted — server streams processing progress as SSE
+        updateStep(uploadStepElement, I18N.step_upload, "success");
+
+        // Pre-render all expected server steps as "pending" so the user sees what's coming
+        var serverStepLabels = [
+            I18N.step_validated,
+            I18N.step_filename,
+            I18N.step_processed,
+            I18N.step_profile_synced,
+        ];
+        if (LDAP_ENABLED) {
+            serverStepLabels.push(I18N.step_ldap_updated);
+        }
+
+        var serverStepElements = serverStepLabels.map(function (label) {
+            return appendStep(label, "pending");
+        });
+
+        // Mark the first server step as actively processing
+        var currentStepIndex = 0;
+        updateStep(serverStepElements[0], serverStepLabels[0], "active");
+
+        // Parse the SSE response stream: read chunks, split into frames,
+        // update progress steps as each server event arrives
+        var streamReader = response.body.getReader();
+        var textDecoder = new TextDecoder();
+        var sseBuffer = "";
+        var finalResult = null;
+
+        while (true) {
+            var readResult = await streamReader.read();
+            if (readResult.done) break;
+
+            sseBuffer += textDecoder.decode(readResult.value, { stream: true });
+
+            // SSE frames are separated by double newlines
+            var sseFrames = sseBuffer.split("\n\n");
+            sseBuffer = sseFrames.pop(); // Keep the incomplete last frame
+
+            // Safety: discard if buffer grows beyond 64 KB (malformed stream)
+            if (sseBuffer.length > 65536) sseBuffer = "";
+
+            for (var frameIndex = 0; frameIndex < sseFrames.length; frameIndex++) {
+                var frameLines = sseFrames[frameIndex].split("\n");
+
+                for (var lineIndex = 0; lineIndex < frameLines.length; lineIndex++) {
+                    var line = frameLines[lineIndex];
+                    if (!line.startsWith("data: ")) continue;
+
+                    var sseEvent = JSON.parse(line.slice(6));
+
+                    // The final event signals completion with an avatar URL or error
+                    if (sseEvent.done) {
+                        finalResult = sseEvent;
+                        continue;
+                    }
+
+                    // Update the matching pre-rendered step, or append unexpected extra steps
+                    if (currentStepIndex < serverStepElements.length) {
+                        updateStep(serverStepElements[currentStepIndex],
+                            sseEvent.step, sseEvent.status, sseEvent.detail || "");
+                    } else {
+                        appendStep(sseEvent.step, sseEvent.status, sseEvent.detail || "");
+                    }
+                    currentStepIndex++;
+
+                    // Advance the spinner to the next pending step
+                    if (currentStepIndex < serverStepElements.length) {
+                        updateStep(serverStepElements[currentStepIndex],
+                            serverStepLabels[currentStepIndex], "active");
+                    }
+                }
+            }
+        }
+
+        // Mark any remaining pre-rendered steps as skipped (pipeline ended early)
+        for (var i = currentStepIndex; i < serverStepElements.length; i++) {
+            updateStep(serverStepElements[i], serverStepLabels[i], "skipped");
+        }
+
+        // Display final result
+        if (finalResult && finalResult.avatar_url && !finalResult.error) {
+            // Success: show the updated avatar
+            showResultView();
+            resultMessage.innerHTML =
+                '<p class="result-success">' + I18N.result_success + '</p>' +
+                buildRetryButtonHTML();
+
+            // Update the avatar image in the profile header
+            var profileAvatar = document.querySelector(".profile-avatar");
+            if (profileAvatar && profileAvatar.tagName === "IMG") {
+                profileAvatar.src = finalResult.avatar_url;
+            }
+        } else {
+            // Failure: show the error with a retry button
+            showResultView();
+
+            // Map server error codes to translated messages, fall back to generic error
+            var errorCode = finalResult && finalResult.error;
+            var errorMessage = (errorCode === 'contact_admin')
+                ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
+                : (errorCode ? escapeHTML(errorCode) : I18N.result_error);
+            resultMessage.innerHTML =
+                '<p class="result-error">' + errorMessage + '</p>' +
+                buildRetryButtonHTML();
+        }
+    } catch (networkError) {
+        // Network failure or stream read error
+        var lastStep = progressList.lastChild;
+        if (lastStep && lastStep.classList.contains("pending")) {
+            lastStep.remove();
+        }
+        appendStep(I18N.step_upload, "failed", networkError.message);
+
+        // Show the error with a retry button
+        showResultView();
+        resultMessage.innerHTML =
+            '<p class="result-error">' + I18N.result_network_error + '</p>' +
+            buildRetryButtonHTML();
+    }
+});
