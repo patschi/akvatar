@@ -1,5 +1,7 @@
 # Akvatar – Authentik Avatar Updater
 
+<p align="center"><img src="static/images/favicon-192.png" alt="Akvatar logo" width="128" height="128"></p>
+
 A self-hosted web application that lets users update their profile picture via a modern
 browser UI. The image is cropped client-side, processed into multiple sizes and formats
 server-side, then pushed to **Authentik** (via Admin API) and optionally to an
