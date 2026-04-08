@@ -8,14 +8,14 @@ and subfolder middleware, and starts the development server when run directly.
 import logging
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, request
+from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import APP_VERSION
 from src.app_middleware import MinifyingTemplateLoader, PrefixMiddleware
 from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
-from src.app_static import static_cache
+from src.app_static import serve_static_file
 from src.auth import auth_bp, init_oauth
 from src.cleanup import start_cleanup_thread
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
@@ -129,14 +129,7 @@ def create_app() -> Flask:
     # Serve static files from in-memory cache
     @app.route('/static/<path:filename>', endpoint='static')
     def _serve_static(filename):
-        entry = static_cache.get(filename)
-        if entry is None:
-            abort(404)
-        data, mime, etag = entry
-        headers = {'ETag': f'"{etag}"', 'Cache-Control': 'public, max-age=86400'}
-        if request.if_none_match and etag in request.if_none_match:
-            return Response(status=304, headers=headers)
-        return Response(data, mimetype=mime, headers=headers)
+        return serve_static_file(filename)
 
     log.debug('Web routes registered.')
     log.info('App initialized.')

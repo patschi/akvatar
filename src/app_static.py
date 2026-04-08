@@ -10,6 +10,8 @@ import logging
 import mimetypes
 from pathlib import Path
 
+from flask import Response, abort, request
+
 log = logging.getLogger('app.static')
 
 # Resolve the static directory relative to this file's location (src/ → project root → static/)
@@ -30,6 +32,18 @@ def _build_static_cache() -> dict[str, tuple[bytes, str, str]]:
         cache[rel] = (data, mime, etag)
     log.debug('Static file cache built with %d file(s).', len(cache))
     return cache
+
+
+def serve_static_file(filename: str) -> Response:
+    """Serve a file from the in-memory static cache with ETag/304 support."""
+    entry = static_cache.get(filename)
+    if entry is None:
+        abort(404)
+    data, mime, etag = entry
+    headers = {'ETag': f'"{etag}"', 'Cache-Control': 'public, max-age=86400'}
+    if request.if_none_match and etag in request.if_none_match:
+        return Response(status=304, headers=headers)
+    return Response(data, mimetype=mime, headers=headers)
 
 
 static_cache = _build_static_cache()

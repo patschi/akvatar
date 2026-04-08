@@ -17,7 +17,7 @@ from flask import (
     jsonify, send_from_directory, render_template, stream_with_context,
 )
 
-from src.app_static import static_cache
+from src.app_static import serve_static_file
 from src.auth import login_required
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
@@ -31,15 +31,11 @@ routes_bp = Blueprint('routes', __name__)
 _VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
 
 
-# robots.txt – block all search engine crawling
+# robots.txt – serve from static cache (crawlers expect /robots.txt at the root)
 @routes_bp.route('/robots.txt')
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
-    entry = static_cache.get('robots.txt')
-    if entry is None:
-        abort(404)
-    data, mime, _ = entry
-    return Response(data, mimetype=mime)
+    return serve_static_file('robots.txt')
 
 
 # Health check
