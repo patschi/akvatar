@@ -61,10 +61,10 @@ const STEP_STATUS_ICONS = {
 // Progress step list helpers
 
 /** Escape a string for safe insertion into innerHTML. */
+var _escapeDiv = document.createElement("div");
 function escapeHTML(s) {
-    var div = document.createElement("div");
-    div.textContent = s;
-    return div.innerHTML;
+    _escapeDiv.textContent = s;
+    return _escapeDiv.innerHTML;
 }
 
 /** Build the inner HTML for a single progress step row. */
