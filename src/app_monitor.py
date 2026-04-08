@@ -29,10 +29,10 @@ def _memory_log_loop() -> None:
     last_mem = None
     while True:
         mem = _get_rss_mb()
-        if mem is not None and (last_mem is None or abs(mem - last_mem) > 0.5):
+        if mem is not None and (last_mem is None or abs(mem - last_mem) > 0.25):
             log.debug('Monitor: Process memory: %.1f MB', mem)
             last_mem = mem
-        time.sleep(5)
+        time.sleep(3)
 
 
 def start_memory_monitor() -> None:

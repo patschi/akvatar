@@ -39,8 +39,10 @@ logging.getLogger('werkzeug').setLevel(logging.WARNING)
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
 
-    # Start the memory monitor thread immediately so it runs during startup and continues in workers after fork.
-    start_memory_monitor()
+    # Start the memory monitor thread immediately when DEBUG enabled so 
+    # it runs during startup and continues in workers after fork.
+    if log.isEnabledFor(logging.DEBUG):
+        start_memory_monitor()
 
     # Initialize flask app
     app = Flask(__name__, template_folder='src/templates', static_folder=None)
