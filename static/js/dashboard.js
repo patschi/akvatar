@@ -93,7 +93,7 @@ function updateStep(stepElement, label, status, detail) {
 /** Build the HTML for the retry/change-avatar button shown after a result. */
 function buildRetryButtonHTML() {
     return '<button class="btn btn-block btn-retry" onclick="location.reload()">'
-        + I18N.result_retry + '</button>';
+        + escapeHTML(I18N.result_retry) + '</button>';
 }
 
 /** Reset upload button to its default enabled state. */
@@ -219,7 +219,7 @@ uploadButton.addEventListener("click", async function () {
         if (contentType.includes("application/json")) {
             var errorData = await response.json();
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
-            resultMessage.innerHTML = '<p class="result-error">' + I18N.result_error + '</p>';
+            resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
             resetUploadButton();
             return;
         }
@@ -309,7 +309,7 @@ uploadButton.addEventListener("click", async function () {
             // Success: show the updated avatar
             showResultView();
             resultMessage.innerHTML =
-                '<p class="result-success">' + I18N.result_success + '</p>' +
+                '<p class="result-success">' + escapeHTML(I18N.result_success) + '</p>' +
                 buildRetryButtonHTML();
 
             // Update the avatar image in the profile header
@@ -324,8 +324,8 @@ uploadButton.addEventListener("click", async function () {
             // Map server error codes to translated messages, fall back to generic error
             var errorCode = finalResult && finalResult.error;
             var errorMessage = (errorCode === 'contact_admin')
-                ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
-                : (errorCode ? escapeHTML(errorCode) : I18N.result_error);
+                ? escapeHTML(I18N.step_save_failed) + ' ' + escapeHTML(I18N.result_contact_admin)
+                : (errorCode ? escapeHTML(errorCode) : escapeHTML(I18N.result_error));
             resultMessage.innerHTML =
                 '<p class="result-error">' + errorMessage + '</p>' +
                 buildRetryButtonHTML();
@@ -341,7 +341,7 @@ uploadButton.addEventListener("click", async function () {
         // Show the error with a retry button
         showResultView();
         resultMessage.innerHTML =
-            '<p class="result-error">' + I18N.result_network_error + '</p>' +
+            '<p class="result-error">' + escapeHTML(I18N.result_network_error) + '</p>' +
             buildRetryButtonHTML();
     }
 });
