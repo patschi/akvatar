@@ -267,12 +267,12 @@ uploadButton.addEventListener("click", async function () {
 
             sseBuffer += textDecoder.decode(readResult.value, { stream: true });
 
+            // Safety: discard if buffer grows beyond 64 KB (malformed stream)
+            if (sseBuffer.length > 65536) sseBuffer = "";
+
             // SSE frames are separated by double newlines
             var sseFrames = sseBuffer.split("\n\n");
             sseBuffer = sseFrames.pop(); // Keep the incomplete last frame
-
-            // Safety: discard if buffer grows beyond 64 KB (malformed stream)
-            if (sseBuffer.length > 65536) sseBuffer = "";
 
             for (var frameIndex = 0; frameIndex < sseFrames.length; frameIndex++) {
                 var frameLines = sseFrames[frameIndex].split("\n");
