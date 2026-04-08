@@ -37,7 +37,7 @@ def robots_txt():
     from app import _static_cache
     entry = _static_cache.get('robots.txt')
     if entry is None:
-        return Response('', status=404)
+        abort(404)
     data, mime, _ = entry
     return Response(data, mimetype=mime)
 

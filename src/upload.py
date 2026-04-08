@@ -28,7 +28,7 @@ from src.config import img_cfg, ak_cfg, dry_run
 from src.i18n import t
 from src.imaging import (
     METADATA_ROOT, ALLOWED_EXTENSIONS, ALLOWED_FORMATS, MIN_DIMENSION, MAX_DIMENSION,
-    _FORMAT_MAP, normalize_image, check_magic_bytes, generate_filename,
+    FORMAT_MAP, normalize_image, check_magic_bytes, generate_filename,
     process_image, cleanup_avatar_files, prepare_ldap_image,
 )
 from src.authentik import update_avatar_url, revert_avatar_url
@@ -212,7 +212,7 @@ def _build_ldap_updates(image: Image.Image, urls: dict, filename_base: str) -> l
 
         elif ptype == 'url':
             size_key = f'{size}x{size}'
-            ext = _FORMAT_MAP[img_type][1]
+            ext = FORMAT_MAP[img_type][1]
             url = urls.get(size_key, {}).get(ext)
             if not url:
                 raise ValueError(

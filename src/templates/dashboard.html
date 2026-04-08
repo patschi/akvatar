@@ -170,6 +170,12 @@
         stepElement.innerHTML = buildStepHTML(label, status, detail);
     }
 
+    /** Build the HTML for the retry/change-avatar button shown after a result. */
+    function buildRetryButtonHTML() {
+        return '<button class="btn btn-block btn-retry" onclick="location.reload()">'
+            + I18N.result_retry + '</button>';
+    }
+
     /** Reset upload button to its default enabled state. */
     function resetUploadButton() {
         uploadButton.disabled = false;
@@ -384,8 +390,7 @@
                 showResultView();
                 resultMessage.innerHTML =
                     '<p class="result-success">' + I18N.result_success + '</p>' +
-                    '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
-                        + I18N.result_retry + '</button>';
+                    buildRetryButtonHTML();
 
                 // Update the avatar image in the profile header
                 var profileAvatar = document.querySelector(".profile-avatar");
@@ -403,8 +408,7 @@
                     : (errorCode ? escapeHTML(errorCode) : I18N.result_error);
                 resultMessage.innerHTML =
                     '<p class="result-error">' + errorMessage + '</p>' +
-                    '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
-                        + I18N.result_retry + '</button>';
+                    buildRetryButtonHTML();
             }
         } catch (networkError) {
             // Network failure or stream read error
@@ -418,8 +422,7 @@
             showResultView();
             resultMessage.innerHTML =
                 '<p class="result-error">' + I18N.result_network_error + '</p>' +
-                '<button class="btn btn-block" style="margin-top:1rem" onclick="location.reload()">'
-                    + I18N.result_retry + '</button>';
+                buildRetryButtonHTML();
         }
     });
   </script>

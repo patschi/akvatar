@@ -48,7 +48,7 @@ from datetime import datetime, timezone
 from croniter import croniter
 
 from src.config import cleanup_cfg, img_cfg, dry_run
-from src.imaging import AVATAR_ROOT, METADATA_ROOT, _FORMAT_MAP, get_all_avatar_metadata, cleanup_avatar_files
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, FORMAT_MAP, get_all_avatar_metadata, cleanup_avatar_files
 from src.authentik import list_all_user_pks, list_active_user_pks
 
 log = logging.getLogger('cleanup')
@@ -62,9 +62,9 @@ _cleanup_when_deleted     = bool(cleanup_cfg.get('when_user_deleted', True))
 _cleanup_when_deactivated = bool(cleanup_cfg.get('when_user_deactivated', False))
 
 # Currently configured sizes and on-disk file extensions (used to detect orphans).
-# Formats are resolved through _FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
+# Formats are resolved through FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
 _configured_sizes   = {f'{s}x{s}' for s in img_cfg['sizes']}
-_configured_formats = {_FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
+_configured_formats = {FORMAT_MAP[f.lower()][1] for f in img_cfg['formats']}
 
 # Regex to match size directory names like "128x128", "1024x1024"
 _SIZE_DIR_RE = re.compile(r'^\d+x\d+$')
@@ -263,6 +263,8 @@ def run_cleanup() -> int:
         #   - both flags: only active PKs needed (clean everything not active)
         #   - deleted only: all PKs needed (clean those absent from Authentik)
         #   - deactivated only: both sets needed (clean in-Authentik-but-inactive)
+        all_pks: set[int] = set()
+        active_pks: set[int] = set()
         try:
             if _cleanup_when_deleted and _cleanup_when_deactivated:
                 active_pks = list_active_user_pks()

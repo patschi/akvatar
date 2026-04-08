@@ -21,8 +21,8 @@ master process when gunicorn uses --preload.  It operates on the same shared
 Manager state that workers access, so eviction is truly application-wide.
 
 With gunicorn gthread workers, each request-handling thread establishes its
-own connection to the Manager server process (via thread-local storage), so
-forked workers do not share connections with the master.
+own connection to the Manager server process (handled transparently by the
+Manager proxy), so forked workers do not share connections with the master.
 """
 
 import ipaddress

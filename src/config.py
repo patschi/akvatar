@@ -111,9 +111,9 @@ if ldap_cfg.get('enabled', False):
     if not _ldap_photos:
         log.warning('LDAP is enabled but no photo attributes are configured (ldap.photos is empty).')
 
-    from src.imaging import _FORMAT_MAP
+    from src.imaging import FORMAT_MAP
 
-    _valid_image_types = set(_FORMAT_MAP.keys())
+    _valid_image_types = set(FORMAT_MAP.keys())
     _valid_formats_lower = {f.lower() for f in img_cfg.get('formats', [])}
     _REQUIRED_PHOTO_KEYS = ('attribute', 'type', 'image_type', 'image_size')
 
@@ -136,7 +136,7 @@ if ldap_cfg.get('enabled', False):
         if _photo['type'] == 'url':
             _fatal_unless(_photo['image_size'] in _valid_sizes,
                           f'{_pfx}.image_size={_photo["image_size"]} is not in images.sizes={_valid_sizes} (required for type=url).')
-            _ext = _FORMAT_MAP[_photo['image_type']][1]
+            _ext = FORMAT_MAP[_photo['image_type']][1]
             _fatal_unless(_ext in _valid_formats_lower,
                           f'{_pfx}.image_type={_photo["image_type"]!r} (ext={_ext}) is not in images.formats (required for type=url).')
 

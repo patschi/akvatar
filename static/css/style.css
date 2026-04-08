@@ -565,6 +565,11 @@ body {
   margin-top: 1.25rem;
 }
 
+/* Retry / change-avatar button shown after upload result */
+.btn-retry {
+  margin-top: 1rem;
+}
+
 /* Progress panel */
 .progress-panel {
   margin-top: 1.5rem;

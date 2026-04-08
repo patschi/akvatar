@@ -129,7 +129,7 @@ def ensure_size_directories_existence() -> None:
 
 
 # Shared format mapping and save helper
-_FORMAT_MAP = {
+FORMAT_MAP = {
     'jpeg': ('JPEG', 'jpg'),
     'jpg':  ('JPEG', 'jpg'),
     'png':  ('PNG', 'png'),
@@ -182,7 +182,7 @@ def process_image(image: Image.Image, filename_base: str) -> tuple[dict[str, dic
 
         for fmt in formats:
             ext = fmt.lower()
-            pillow_fmt = _FORMAT_MAP[ext][0]
+            pillow_fmt = FORMAT_MAP[ext][0]
             out_path = size_dir / f'{filename_base}.{ext}'
             log.debug('Saving %s as %s.', key, ext.upper())
 
@@ -218,7 +218,7 @@ def prepare_ldap_image(
     Returns encoded image bytes ready for LDAP.
     Raises ValueError if the image cannot be compressed to fit.
     """
-    pillow_fmt, file_ext = _FORMAT_MAP[image_type.lower()]
+    pillow_fmt, file_ext = FORMAT_MAP[image_type.lower()]
     max_bytes = max_file_size_kb * 1024 if max_file_size_kb > 0 else 0
 
     log.debug('Preparing LDAP image: %dx%d %s (max %d KB).',
