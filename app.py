@@ -5,23 +5,20 @@ Creates the Flask app, registers blueprints, initialises OAuth, applies reverse-
 and subfolder middleware, and starts the development server when run directly.
 """
 
-import hashlib
 import logging
-import mimetypes
-import re
-import threading
-import time
-from pathlib import Path
 from urllib.parse import urlparse
 
 from flask import Flask, Response, abort, request
-from jinja2 import BaseLoader
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from src import APP_NAME, APP_VERSION
+from src import APP_VERSION
+from src.app_middleware import MinifyingTemplateLoader, PrefixMiddleware
+from src.app_monitor import start_memory_monitor
+from src.app_sentry import init_sentry
+from src.app_static import static_cache
 from src.auth import auth_bp, init_oauth
 from src.cleanup import start_cleanup_thread
-from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log, sentry_cfg
+from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.routes import routes_bp
@@ -31,164 +28,19 @@ log = logging.getLogger('app')
 # Logger dedicated to HTTP request logging (keeps it separate from application logic)
 http_log = logging.getLogger('http')
 
-
 # Sentry SDK initialisation – runs once at import time (before Flask is created)
-# so the SDK can hook into framework internals.  When disabled or missing a DSN,
-# this block is a no-op and sentry-sdk is never imported.
-def _init_sentry() -> None:
-    """Initialise the Sentry SDK from config.  No-op when disabled or DSN is empty."""
-    if not sentry_cfg.get('enabled', False):
-        return
-
-    dsn = sentry_cfg.get('dsn', '')
-    if not dsn:
-        log.warning('Sentry is enabled but no DSN is configured – skipping initialisation.')
-        return
-
-    import sentry_sdk
-
-    # auto-detect environment from debug_full when not explicitly configured
-    environment = sentry_cfg.get('environment', '') or ('development' if debug_full else 'production')
-
-    # disable performance tracing entirely when capture_performance is off
-    capture_performance = sentry_cfg.get('capture_performance', False)
-    traces_sample_rate = sentry_cfg.get('traces_sample_rate', 0.2) if capture_performance else 0.0
-
-    # allow disabling error capture while keeping performance tracing
-    capture_errors = sentry_cfg.get('capture_errors', True)
-    sample_rate = sentry_cfg.get('sample_rate', 1.0) if capture_errors else 0.0
-
-    sentry_sdk.init(
-        dsn=dsn,
-        environment=environment,
-        release=f'{APP_NAME}@{APP_VERSION}',
-        sample_rate=sample_rate,
-        traces_sample_rate=traces_sample_rate,
-        send_default_pii=sentry_cfg.get('send_default_pii', False),
-        # attach the Flask integration automatically (provided by sentry-sdk[flask])
-        enable_tracing=capture_performance,
-    )
-
-    log.info('Sentry initialised (env=%s, errors=%s, performance=%s).', environment, capture_errors, capture_performance)
-
-
-_init_sentry()
+# so the SDK can hook into framework internals.
+init_sentry()
 
 # Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
-
-# In-memory static file cache
-# All files in static/ are read once at import time and served from memory.
-# With gunicorn --preload, workers inherit the cache via fork (shared pages).
-_STATIC_DIR = Path(__file__).resolve().parent / 'static'
-
-
-def _build_static_cache() -> dict[str, tuple[bytes, str, str]]:
-    """Read every file under static/ into {rel_path: (data, mimetype, etag)}."""
-    cache = {}
-    for path in sorted(_STATIC_DIR.rglob('*')):
-        if not path.is_file():
-            continue
-        log.debug('Caching static file: %s', path)
-        rel = path.relative_to(_STATIC_DIR).as_posix()
-        data = path.read_bytes()
-        mime = mimetypes.guess_type(path.name)[0] or 'application/octet-stream'
-        etag = hashlib.sha256(data).hexdigest()[:16]
-        cache[rel] = (data, mime, etag)
-    log.debug('Static file cache built with %d file(s).', len(cache))
-    return cache
-
-
-_static_cache = _build_static_cache()
-log.info('Static file cache: %d file(s), %.1f KB total.',
-         len(_static_cache),
-         sum(len(d) for d, _, _ in _static_cache.values()) / 1024)
-
-
-# Periodic memory monitor
-
-def _get_rss_mb() -> float | None:
-    """Return current process RSS in MB, or None if unavailable."""
-    # Linux: parse VmRSS from /proc/self/status (value in KB)
-    try:
-        with open('/proc/self/status') as f:
-            for line in f:
-                if line.startswith('VmRSS:'):
-                    return int(line.split()[1]) / 1024
-    except (FileNotFoundError, OSError):
-        pass
-    except Exception:
-        return None
-
-
-def _memory_log_loop() -> None:
-    """Log process RSS every x seconds, but only when the value has changed."""
-    last_mem = None
-    while True:
-        mem = _get_rss_mb()
-        if mem is not None and mem != last_mem:
-            log.debug('Monitor: Process memory: %.1f MB', mem)
-            last_mem = mem
-        time.sleep(5)
-
-
-def _start_memory_monitor() -> None:
-    """Start the memory monitor thread (once)."""
-    threading.Thread(target=_memory_log_loop, name='memlog', daemon=True).start()
-    log.debug('Memory monitor thread started.')
-
-
-class PrefixMiddleware:
-    """
-    WSGI middleware that sets SCRIPT_NAME to a static path prefix so the app
-    can be hosted under a subfolder without a reverse proxy setting X-Forwarded-Prefix.
-
-    ProxyFix is applied as the outer middleware (runs before this one), so when a
-    reverse proxy *does* set X-Forwarded-Prefix, ProxyFix has already populated
-    SCRIPT_NAME and this middleware is a no-op.
-    """
-    def __init__(self, wsgi_app, prefix):
-        self.wsgi_app = wsgi_app
-        self.prefix = prefix
-
-    def __call__(self, environ, start_response):
-        # Skip if ProxyFix already set SCRIPT_NAME from X-Forwarded-Prefix.
-        # Applying the prefix twice would generate double-prefixed URLs (e.g.
-        # /avatar-update/avatar-update/callback), causing redirect_uri mismatches.
-        if not environ.get('SCRIPT_NAME'):
-            environ['SCRIPT_NAME'] = self.prefix
-            path_info = environ.get('PATH_INFO', '')
-            if path_info.startswith(self.prefix):
-                environ['PATH_INFO'] = path_info[len(self.prefix):]
-        return self.wsgi_app(environ, start_response)
-
-
-class _MinifyingTemplateLoader(BaseLoader):
-    """
-    Wraps Flask's Jinja2 template loader to strip HTML comments and collapse
-    excess blank lines from template source before compilation.
-
-    Runs once per template (Jinja2 caches compiled bytecode), so there is no
-    per-request overhead.  Template files on disk are left untouched.
-    """
-    _HTML_COMMENT = re.compile(r'<!--.*?-->', re.DOTALL)
-    _BLANK_LINES  = re.compile(r'\n{3,}')
-
-    def __init__(self, loader: BaseLoader) -> None:
-        self._loader = loader
-
-    def get_source(self, environment, template):
-        source, filename, uptodate = self._loader.get_source(environment, template)
-        source = self._HTML_COMMENT.sub('', source)
-        source = self._BLANK_LINES.sub('\n\n', source)
-        return source, filename, uptodate
 
 
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
 
     # Start the memory monitor thread immediately so it runs during startup and continues in workers after fork.
-    _start_memory_monitor()
+    start_memory_monitor()
 
     # Initialize flask app
     app = Flask(__name__, template_folder='src/templates', static_folder=None)
@@ -202,7 +54,7 @@ def create_app() -> Flask:
     app.jinja_env.lstrip_blocks = True
     # Wrap the loader so HTML comments and excess blank lines are stripped from
     # template source at compile time (once per template, not per request).
-    app.jinja_env.loader = _MinifyingTemplateLoader(app.jinja_env.loader)
+    app.jinja_env.loader = MinifyingTemplateLoader(app.jinja_env.loader)
 
     # Session cookie hardening.
     # HttpOnly: cookie not accessible from JavaScript (mitigates XSS session theft).
@@ -275,7 +127,7 @@ def create_app() -> Flask:
     # Serve static files from in-memory cache
     @app.route('/static/<path:filename>', endpoint='static')
     def _serve_static(filename):
-        entry = _static_cache.get(filename)
+        entry = static_cache.get(filename)
         if entry is None:
             abort(404)
         data, mime, etag = entry

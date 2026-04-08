@@ -8,7 +8,7 @@ browser's ``Accept-Language`` header for unauthenticated pages.
 
 import logging
 
-from flask import session, request
+from flask import g, session, request
 
 log = logging.getLogger('i18n')
 
@@ -187,26 +187,41 @@ def resolve_oidc_locale(oidc_locale: str) -> str:
 
 
 def get_locale() -> str:
-    """Return the active locale for the current request."""
+    """Return the active locale for the current request, cached in flask.g for the duration of the request."""
+    # Serve from request-scoped cache to avoid repeated cookie/session/header reads.
+    # g is only available inside a request context; RuntimeError is caught for startup calls.
+    try:
+        cached = getattr(g, '_locale', None)
+        if cached is not None:
+            return cached
+    except RuntimeError:
+        pass
+
     # 1. Cookie override (user preference set via settings UI)
     cookie_locale = request.cookies.get('locale', '') if request else ''
     if cookie_locale in SUPPORTED_LOCALES:
-        return cookie_locale
+        result = cookie_locale
+    else:
+        # 2. Session (set during OIDC callback)
+        loc = session.get('locale')
+        if loc and loc in SUPPORTED_LOCALES:
+            result = loc
+        else:
+            # 3. Accept-Language header (for unauthenticated pages)
+            result = DEFAULT_LOCALE
+            accept = request.headers.get('Accept-Language', '') if request else ''
+            for part in accept.split(','):
+                tag = part.split(';')[0].strip()
+                matched = _normalize(tag)
+                if matched:
+                    result = matched
+                    break
 
-    # 2. Session (set during OIDC callback)
-    loc = session.get('locale')
-    if loc and loc in SUPPORTED_LOCALES:
-        return loc
-
-    # 3. Accept-Language header (for unauthenticated pages)
-    accept = request.headers.get('Accept-Language', '') if request else ''
-    for part in accept.split(','):
-        tag = part.split(';')[0].strip()
-        matched = _normalize(tag)
-        if matched:
-            return matched
-
-    return DEFAULT_LOCALE
+    try:
+        g._locale = result
+    except RuntimeError:
+        pass
+    return result
 
 
 def t(key: str, **kwargs) -> str:

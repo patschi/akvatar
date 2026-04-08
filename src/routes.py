@@ -17,6 +17,7 @@ from flask import (
     jsonify, send_from_directory, render_template, stream_with_context,
 )
 
+from src.app_static import static_cache
 from src.auth import login_required
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
@@ -34,8 +35,7 @@ _VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
 @routes_bp.route('/robots.txt')
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
-    from app import _static_cache
-    entry = _static_cache.get('robots.txt')
+    entry = static_cache.get('robots.txt')
     if entry is None:
         abort(404)
     data, mime, _ = entry
