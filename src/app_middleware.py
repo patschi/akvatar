@@ -51,6 +51,11 @@ class MinifyingTemplateLoader(BaseLoader):
     per-request overhead.  Template files on disk are left untouched.
     """
     _HTML_COMMENT = re.compile(r'<!--.*?-->', re.DOTALL)
+    # Matches lines that contain only spaces or tabs (not newlines).
+    # re.MULTILINE makes ^ / $ anchor to line boundaries, not string boundaries.
+    # \s is intentionally avoided here because it matches \n, which would cause
+    # the pattern to span across multiple blank lines.
+    _WHITESPACE_LINE = re.compile(r'^[ \t]+$', re.MULTILINE)
     _BLANK_LINES  = re.compile(r'\n{3,}')
 
     def __init__(self, loader: BaseLoader) -> None:
@@ -58,6 +63,10 @@ class MinifyingTemplateLoader(BaseLoader):
 
     def get_source(self, environment, template):
         source, filename, uptodate = self._loader.get_source(environment, template)
+        # Strip HTML comments and collapse excess blank lines to reduce response size.
         source = self._HTML_COMMENT.sub('', source)
+        # Erase whitespace-only lines so they are treated as blank by step 4
+        source = self._WHITESPACE_LINE.sub('', source)
+        # Replace 3 or more consecutive newlines with just 2 (preserving intentional blank lines).
         source = self._BLANK_LINES.sub('\n\n', source)
         return source, filename, uptodate

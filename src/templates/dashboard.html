@@ -80,7 +80,7 @@
      * processing streamed back as Server-Sent Events (SSE).
      */
 
-    // Server-provided constants (injected by Jinja2)
+    // Server-provided constants (injected by backend)
     const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
     const MAX_AVATAR_SIZE    = {{ max_size }};
     const I18N               = {{ i18n | tojson }};

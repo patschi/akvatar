@@ -18,9 +18,8 @@ def _get_rss_mb() -> float | None:
     # Linux: parse VmRSS from /proc/self/status (value in KB)
     try:
         with open('/proc/self/status') as f:
-            for line in f:
-                if line.startswith('VmRSS:'):
-                    return int(line.split()[1]) / 1024
+            line = next(l for l in f if l.startswith('VmRSS:'))
+        return int(line.split()[1]) / 1024
     except Exception:
         return None
 
