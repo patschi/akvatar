@@ -171,6 +171,10 @@ function handleFileSelection(selectedFile) {
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
+        ready: function () {
+            // Scroll the cropper into view once the image is fully rendered
+            cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+        },
     });
 }
 
