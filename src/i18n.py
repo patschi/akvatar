@@ -81,6 +81,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'result_success':           'Avatar updated successfully!',
         'result_retry':             'Change avatar again',
         'result_error':             'Could not update your avatar. Please try again later.',
+        'result_csrf_failed':       'Your session has expired. Please reload the page and try again.',
         'result_contact_admin':     'Please contact your administrator.',
         'result_network_error':     'Could not reach the server. Please check your connection and try again.',
     },
@@ -149,6 +150,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'result_success':           'Avatar erfolgreich aktualisiert!',
         'result_retry':             'Avatar erneut \u00e4ndern',
         'result_error':             'Avatar konnte nicht aktualisiert werden. Bitte versuchen Sie es sp\u00e4ter erneut.',
+        'result_csrf_failed':       'Ihre Sitzung ist abgelaufen. Bitte laden Sie die Seite neu und versuchen Sie es erneut.',
         'result_contact_admin':     'Bitte kontaktieren Sie Ihren Administrator.',
         'result_network_error':     'Server nicht erreichbar. Bitte \u00fcberpr\u00fcfen Sie Ihre Verbindung und versuchen Sie es erneut.',
     },
@@ -245,7 +247,8 @@ _JS_KEYS = (
     # UI strings
     'upload_processing', 'upload_button',
     'step_save_failed',
-    'result_success', 'result_retry', 'result_error', 'result_contact_admin', 'result_network_error',
+    'result_success', 'result_retry', 'result_error', 'result_csrf_failed',
+    'result_contact_admin', 'result_network_error',
 )
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)

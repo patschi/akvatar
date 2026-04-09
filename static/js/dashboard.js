@@ -272,13 +272,27 @@ uploadButton.addEventListener("click", async function () {
     formData.append("file", imageBlob, "avatar." + imageFormat);
 
     try {
-        var response = await fetch(UPLOAD_ENDPOINT, { method: "POST", body: formData });
+        var response = await fetch(UPLOAD_ENDPOINT, {
+            method: "POST",
+            headers: { "X-CSRF-Token": CSRF_TOKEN },
+            body: formData,
+        });
 
         // Server returns JSON for validation errors (4xx responses)
         var contentType = response.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
             var errorData = await response.json();
+            // CSRF failure indicates an expired or missing session token –
+            // show a specific translated message prompting a page reload.
+            if (errorData.error === "csrf_failed") {
+                updateStep(uploadStepElement, I18N.step_upload, "failed");
+                showResult("result-error", escapeHTML(I18N.result_csrf_failed));
+                return;
+            }
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
+            // Note: showResult uses escapeHTML internally for all dynamic content.
+            // The resultMessage.innerHTML below only contains static I18N strings
+            // that are escaped via escapeHTML() – no untrusted data is interpolated.
             resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
             resetUploadButton();
             return;

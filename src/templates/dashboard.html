@@ -87,6 +87,7 @@
   <script>
     const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
     const MAX_AVATAR_SIZE    = {{ max_size }};
+    const CSRF_TOKEN         = "{{ csrf_token() }}";
     const I18N               = {{ i18n | tojson }};
     const LDAP_ENABLED       = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});

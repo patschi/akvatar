@@ -19,6 +19,7 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
+from src.csrf import validate_csrf_token
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.upload import validate_upload, generate_sse, ValidationError
@@ -118,6 +119,11 @@ def api_upload():
     Once validation passes the response switches to ``text/event-stream``
     and each processing step is pushed as it completes.
     """
+    # CSRF token validation (returns JSON 403 on failure)
+    csrf_rejection = validate_csrf_token()
+    if csrf_rejection:
+        return csrf_rejection
+
     user = session['user']
     log.info('Upload request from user %r.', user['username'])
 

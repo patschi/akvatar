@@ -17,6 +17,7 @@ from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
 from src.app_static import serve_static_file
 from src.auth import auth_bp, init_oauth
+from src.csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations
@@ -61,7 +62,8 @@ def create_app() -> Flask:
     # Session cookie hardening.
     # HttpOnly: cookie not accessible from JavaScript (mitigates XSS session theft).
     # SameSite=Lax: browser refuses to send the cookie on cross-site POST requests,
-    #   which effectively prevents CSRF on /api/upload without a token library.
+    #   providing a first line of defence against CSRF. POST endpoints additionally
+    #   require a per-session CSRF token sent via X-CSRF-Token header (see csrf.py).
     #   Lax (not Strict) is required so the OIDC redirect from Authentik back to
     #   /callback still carries the session cookie for state verification.
     # Secure: instructs the browser to only transmit the cookie over HTTPS connections.
@@ -119,7 +121,7 @@ def create_app() -> Flask:
     init_oauth(app)
 
     # Register route blueprints
-    app.register_blueprint(auth_bp)    # /login, /callback, /logout
+    app.register_blueprint(auth_bp)    # /login, /callback, /logout, /logged-out
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
 
     # Rate limiting on avatar/metadata serving endpoints (before_request hook).
@@ -148,6 +150,7 @@ def create_app() -> Flask:
             't': t,
             'lang': locale.split('_')[0],
             'i18n': get_js_translations(locale),
+            'csrf_token': generate_csrf_token,
         }
 
     # Security response headers – applied to every response
