@@ -53,6 +53,7 @@
     var errorMessages = {
         "csrf_failed":            I18N.result_csrf_failed,
         "fetch_failed":           I18N.import_fetch_failed,
+        "image_too_large":        I18N.import_image_too_large,
         "url_not_allowed":        I18N.import_url_not_allowed,
     };
 
@@ -161,8 +162,13 @@
     }
 
     /** Translate a server error code to a user-facing message, with a fallback. */
-    function translateError(errorCode, fallback) {
-        return errorMessages[errorCode] || fallback;
+    function translateError(errData, fallback) {
+        var msg = errorMessages[errData.error] || fallback;
+        // Interpolate dynamic placeholders (e.g. {max_size_mb}) from the error response
+        if (errData.max_size_mb !== undefined) {
+            msg = msg.replace("{max_size_mb}", errData.max_size_mb);
+        }
+        return msg;
     }
 
     // ── Gravatar load ────────────────────────────────────────────────
@@ -192,7 +198,7 @@
                 }
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function () { return {}; });
-                    showError(translateError(errData.error, I18N.import_gravatar_error));
+                    showError(translateError(errData, I18N.import_gravatar_error));
                     return;
                 }
 
@@ -249,7 +255,7 @@
 
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function () { return {}; });
-                    showError(translateError(errData.error, I18N.import_url_error));
+                    showError(translateError(errData, I18N.import_url_error));
                     return;
                 }
 

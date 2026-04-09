@@ -70,6 +70,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'import_url_error':             'Could not fetch the image. Please check the URL and try again.',
         'import_url_invalid':           'Please enter a valid URL starting with http:// or https://.',
         'import_fetch_failed':          'Could not fetch the image. Please try again.',
+        'import_image_too_large':       'The image is too large (max {max_size_mb} MB).',
         'import_url_not_allowed':       'This URL is not allowed.',
         'import_load':                  'Load',
         'import_ok':                    'Use image',
@@ -157,6 +158,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'import_url_error':             'Das Bild konnte nicht abgerufen werden. Bitte \u00fcberpr\u00fcfen Sie die URL und versuchen Sie es erneut.',
         'import_url_invalid':           'Bitte geben Sie eine g\u00fcltige URL ein, die mit http:// oder https:// beginnt.',
         'import_fetch_failed':          'Das Bild konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.',
+        'import_image_too_large':       'Das Bild ist zu gro\u00df (max. {max_size_mb} MB).',
         'import_url_not_allowed':       'Diese URL ist nicht erlaubt.',
         'import_load':                  'Laden',
         'import_ok':                    'Bild verwenden',
@@ -290,7 +292,8 @@ _JS_KEYS = (
     'import_gravatar_not_found', 'import_gravatar_error',
     'import_url_loading',
     'import_url_error', 'import_url_invalid',
-    'import_fetch_failed', 'import_url_not_allowed',
+    'import_fetch_failed', 'import_image_too_large',
+    'import_url_not_allowed',
 )
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)

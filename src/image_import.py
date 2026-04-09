@@ -22,16 +22,17 @@ from flask import Blueprint, Response, jsonify, request
 
 from src import USER_AGENT
 from src.auth import login_required
-from src.config import import_cfg
+from src.config import app_cfg, import_cfg
 from src.csrf import validate_csrf_token
 
 log = logging.getLogger('img_import')
 
 import_bp = Blueprint('import', __name__)
 
-# Remote image fetch limits
-_MAX_FETCH_SIZE = 10 * 1024 * 1024  # 10 MB
-_FETCH_TIMEOUT = 15                 # seconds
+# Remote image fetch limits (derived from the same config as direct uploads)
+_MAX_FETCH_SIZE = app_cfg.get('max_upload_size_mb', 10) * 1024 * 1024  # MB -> bytes
+_MAX_FETCH_SIZE_MB = app_cfg.get('max_upload_size_mb', 10)
+_FETCH_TIMEOUT = 15  # seconds
 
 # Content-Type to file extension mapping (for Gravatar filenames)
 _MIME_TO_EXT: dict[str, str] = {
@@ -144,7 +145,7 @@ def api_fetch_gravatar():
         content_type = resp.headers.get('Content-Type', 'image/jpeg')
         data = _read_with_limit(resp)
         if data is None:
-            return jsonify({'error': 'Image too large.'}), 400
+            return jsonify({'error': 'image_too_large', 'max_size_mb': _MAX_FETCH_SIZE_MB}), 400
 
         # Build a filename from the hash + content-type extension so the
         # client can display a meaningful name (e.g. "d41d8cd9…f00d.jpg")
@@ -213,7 +214,7 @@ def api_fetch_url():
 
         data = _read_with_limit(resp)
         if data is None:
-            return jsonify({'error': 'Image too large (max 10 MB).'}), 400
+            return jsonify({'error': 'image_too_large', 'max_size_mb': _MAX_FETCH_SIZE_MB}), 400
 
         return Response(data, mimetype=content_type,
                         headers={'Cache-Control': 'no-store'})
