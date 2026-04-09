@@ -65,7 +65,18 @@ The `issuer_url` follows the pattern `https://<authentik-domain>/application/o/<
 
 ## Redirect URI
 
-The OIDC callback endpoint is `/callback`. The full redirect URI depends on how the app is deployed:
+The OIDC callback endpoint is `/callback`. The full redirect URI depends on how the app
+is deployed:
+
+```text
+  Root domain:    https://avatar.example.com/callback
+                  └────────────────────────┘└────────┘
+                        public_base_url       fixed path
+
+  Subfolder:      https://portal.example.com/avatar/callback
+                  └───────────────────────────────┘└────────┘
+                             public_base_url        fixed path
+```
 
 | Deployment  | Redirect URI                                 |
 |-------------|----------------------------------------------|

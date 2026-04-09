@@ -65,6 +65,22 @@ If nginx buffers the response, the browser will not receive progress updates unt
 The `proxy_read_timeout` should be set high enough to cover the entire upload and processing time. A value of 300
 seconds is a safe default for large images with LDAP updates.
 
+## Health check probe
+
+The application exposes `GET /healthz` which returns `200 OK` with body `OK`. Use this
+as a liveness probe for load balancers or container health checks — it requires no
+authentication and performs no external calls.
+
+```nginx
+# Optional: expose the health check without proxying through the application
+# (only useful if you want nginx to gate on it independently)
+location = /healthz {
+    proxy_pass         http://127.0.0.1:5000;
+    proxy_set_header   Host $host;
+    access_log         off;
+}
+```
+
 ## TLS termination
 
 When nginx terminates TLS, there is no need to configure TLS in the Avatar Updater itself. Leave `webserver.tls_cert`

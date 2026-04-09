@@ -15,8 +15,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Client-side square cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs)
   (bundled locally, no external CDN)
 - **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
-- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings (
-  see [Configuration](docs/configuration.md#images_formats))
+- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings
+  (see [Configuration](docs/configuration.md#images_formats))
 - **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
@@ -35,6 +35,13 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Optional built-in TLS**: serve HTTPS directly without a reverse proxy
 - **Dry-run mode**: processes and saves images but skips all Authentik and LDAP writes;
   logs what would have happened instead
+- **Rate limiting**: per-IP point budget on avatar and metadata endpoints, with CIDR
+  whitelist support and a configurable 404 penalty
+- **Security response headers**: `X-Content-Type-Options`, `X-Frame-Options` (HTML
+  only), and `Referrer-Policy` set on every response
+- **In-memory static file cache**: all static assets are read once at startup and served
+  from RAM with ETag/304 support; no per-request disk I/O
+- **Health check endpoint**: `GET /healthz` returns `200 OK` for load-balancer probes
 - **Secure container image**: distroless base, non-root (UID 65532), read-only root
   filesystem, `cap_drop: ALL`
 
@@ -48,7 +55,11 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 1. Copy the example config:
 
    ```bash
-   cp data/config/config.example.yml data/config/config.yml
+   # Minimal — required settings only (recommended starting point)
+   cp data/config/config.example-minimal.yml data/config/config.yml
+
+   # Full — every option with inline comments
+   # cp data/config/config.example-full.yml data/config/config.yml
    ```
 
 2. Fill in the required settings — see
@@ -72,7 +83,7 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 2. Configure:
 
    ```bash
-   cp data/config/config.example.yml data/config/config.yml
+   cp data/config/config.example-minimal.yml data/config/config.yml
    # Edit data/config/config.yml
    ```
 
@@ -154,6 +165,21 @@ Relevant guides:
   prefix (e.g. `/avatar/`)
 
 ## How it works
+
+```text
+┌─────────┐        HTTPS        ┌───────────────┐     HTTP/HTTPS    ┌──────────────────────┐
+│ Browser │ ◄─────────────────► │ Reverse Proxy │ ◄───────────────► │       Akvatar        │
+└─────────┘                     │ (nginx/Caddy) │                   │   (Flask/gunicorn)   │
+                                └───────────────┘                   └──────────┬───────────┘
+                                                                               │
+                        ┌──────────────────────────────────────────────────────┼────────┐
+                        │                                                      │        │
+                        ▼                                                      ▼        ▼
+               ┌─────────────────┐                                    ┌──────────┐  ┌──────────┐
+               │    Authentik    │                                    │   Disk   │  │   LDAP   │
+               │  (OIDC + API)   │                                    │ (avatars)│  │(optional)│
+               └─────────────────┘                                    └──────────┘  └──────────┘
+```
 
 1. User visits the app and clicks **Sign in**
 2. OIDC redirect → Authentik login → callback stores user info and PK in session

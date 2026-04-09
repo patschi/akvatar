@@ -27,6 +27,10 @@ The application sits behind a reverse proxy and communicates with three backends
 - **LDAP Server** *(optional)*: writes photo attributes directly into the directory
   (e.g., Active Directory `thumbnailPhoto`)
 
+Static assets (CSS, JS, fonts, images) are served from an **in-memory cache** built
+at startup. No disk I/O occurs per request for static files. See
+[In-memory static file cache](#in-memory-static-file-cache) for details.
+
 ## Authentication flow
 
 The login process uses the standard **OpenID Connect Authorization Code Flow**.
@@ -71,6 +75,8 @@ sequenceDiagram
   has `locale: de_DE`, the UI switches to German automatically.
 - If the OIDC token exchange fails the user is redirected to `/?error=oidc_failed`. If PK
   resolution fails the error is `/?error=pk_failed`.
+- Adding `?autologin` to the root URL (`/?autologin`) skips the landing page and
+  immediately initiates the OIDC redirect — useful for deep-linking from a portal.
 
 ## Upload and processing flow
 
@@ -451,19 +457,43 @@ Each `status` is one of:
 The browser renders these as a checklist with color-coded icons. The final `done` frame
 carries either `avatar_url` (success) or `error` (failure).
 
+## Health check endpoint
+
+`GET /healthz` returns `200 OK` with body `OK`. It performs no authentication, no
+database access, and no external calls — it only confirms that the gunicorn worker
+process is alive and accepting connections.
+
+Use it with Docker, Kubernetes, or any load balancer that needs a lightweight liveness
+probe. The endpoint is never rate-limited.
+
+## In-memory static file cache
+
+All files under `static/` (CSS, JS, fonts, images) are read from disk once at import
+time and stored in a module-level dictionary. Subsequent requests are served entirely
+from RAM. With `gunicorn --preload`, workers inherit the populated cache via `fork` so
+no worker needs to perform disk reads.
+
+Each cached entry stores the raw bytes, the MIME type, and a 16-character SHA-256
+prefix used as the ETag. Requests with a matching `If-None-Match` header receive a
+`304 Not Modified` without copying any data. A 1-day `Cache-Control: public,
+max-age=86400` header instructs browsers to cache assets locally.
+
 ## Security measures
 
-| Measure                          | Purpose                                                                            |
-|----------------------------------|------------------------------------------------------------------------------------|
-| Unguessable filenames            | Prevents URL enumeration of other users' avatars                                   |
-| Magic byte verification          | Blocks files with fake extensions before they reach the image decoder              |
-| Decompression bomb limit (50 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images       |
-| Dimension limits (64–10 000 px)  | Guards against excessive CPU/memory use during resizing                            |
-| Format allow-list                | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                  |
-| Metadata stripping               | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII         |
-| LDAP filter escaping             | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
-| Flask session signing            | Session cookies are cryptographically signed with `app.secret_key`                 |
-| Cleanup safety guard             | Aborts if Authentik returns zero users — prevents mass deletion on API failure     |
-| Non-root Docker container        | Runs as UID 65532 with no shell in a distroless image                              |
-| Read-only root filesystem        | Container filesystem is immutable; only data volumes are writable                  |
-| Dropped capabilities             | `cap_drop: ALL` removes all Linux capabilities from the container                  |
+| Measure                           | Purpose                                                                            |
+|-----------------------------------|------------------------------------------------------------------------------------|
+| Unguessable filenames             | Prevents URL enumeration of other users' avatars                                   |
+| Magic byte verification           | Blocks files with fake extensions before they reach the image decoder              |
+| Decompression bomb limit (50 MP)  | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images       |
+| Dimension limits (64–10 000 px)   | Guards against excessive CPU/memory use during resizing                            |
+| Format allow-list                 | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                  |
+| Metadata stripping                | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII         |
+| LDAP filter escaping              | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
+| Flask session signing             | Session cookies are cryptographically signed with `app.secret_key`                 |
+| Session cookie hardening          | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set   |
+| Security response headers         | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and             |
+|                                   | `Referrer-Policy: strict-origin-when-cross-origin` on every response               |
+| Cleanup safety guard              | Aborts if Authentik returns zero users — prevents mass deletion on API failure     |
+| Non-root Docker container         | Runs as UID 65532 with no shell in a distroless image                              |
+| Read-only root filesystem         | Container filesystem is immutable; only data volumes are writable                  |
+| Dropped capabilities              | `cap_drop: ALL` removes all Linux capabilities from the container                  |

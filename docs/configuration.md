@@ -32,7 +32,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.session_cookie_secure`](#app_session_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
 | [`app.public_avatar_url`](#app_public_avatar_url)                       | URL     | Public URL where avatar files are served            |
 | [`app.web_session_lifetime_seconds`](#app_web_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
-| [`cleanup.interval`](#eviction_interval)                                | Cron    | Cron schedule for the cleanup job                   |
+| [`cleanup.interval`](#cleanup_interval)                                 | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanup_on_startup)                             | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanup_avatar_retention_count)     | Integer | Avatar sets to keep per user (0 = unlimited)        |
 | [`cleanup.when_user_deleted`](#cleanup_when_user_deleted)               | Boolean | Remove avatars of users deleted from Authentik      |
@@ -272,7 +272,7 @@ Enables full debug mode. When active:
 
 ## Cleanup
 
-<a id="eviction_interval"></a>
+<a id="cleanup_interval"></a>
 
 ### `cleanup.interval`
 

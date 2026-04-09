@@ -15,7 +15,8 @@ approach before writing code. This avoids wasted effort if the direction needs a
 ### Prerequisites
 
 - Docker (or any OCI-compatible runtime)
-- A `data/config/config.yml` based on `data/config/config.example.yml` (see [Configuration](docs/configuration.md))
+- A `data/config/config.yml` based on `data/config/config.example-minimal.yml` or
+  `config.example-full.yml` (see [Configuration](docs/configuration.md))
 
 ### Running locally
 

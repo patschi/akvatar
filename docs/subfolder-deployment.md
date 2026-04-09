@@ -5,9 +5,25 @@ at the root of a domain.
 
 ## Overview
 
-When the application runs behind a reverse proxy under a subfolder, it needs to know the path prefix so that all
-generated URLs (page links, static assets, OIDC callbacks, API endpoints) include the correct path. There are two ways
-to configure this.
+When the application runs behind a reverse proxy under a subfolder, it needs to know
+the path prefix so that all generated URLs (page links, static assets, OIDC callbacks,
+API endpoints) include the correct path. There are two ways to configure this.
+
+```text
+Browser request:   https://portal.example.com/avatar/dashboard
+                   └───────────────────────────────┘└─────────┘
+                         handled by reverse proxy     forwarded to app
+
+Option A — X-Forwarded-Prefix (nginx strips /avatar/ before forwarding):
+  nginx → app sees:   GET /dashboard
+  nginx sends header: X-Forwarded-Prefix: /avatar
+  ProxyFix sets SCRIPT_NAME=/avatar → Flask generates correct /avatar/... URLs
+
+Option B — derive from public_base_url (nginx keeps /avatar/ in the path):
+  nginx → app sees:   GET /avatar/dashboard
+  PrefixMiddleware strips /avatar → Flask receives /dashboard
+  SCRIPT_NAME=/avatar set internally → Flask generates correct /avatar/... URLs
+```
 
 ## Option A: Reverse proxy sends `X-Forwarded-Prefix` (recommended)
 

@@ -27,8 +27,8 @@ docker logs -f akvatar
 ### Verify the configuration file
 
 The application reads `data/config/config.yml` once at startup. After any change you must restart the container or
-process. Compare your file against [`config.example.yml`](../data/config/config.example.yml) to spot typos or missing
-keys.
+process. Compare your file against [`config.example-full.yml`](../data/config/config.example-full.yml) to spot typos or
+missing keys.
 
 ### Test in a private browser window
 
