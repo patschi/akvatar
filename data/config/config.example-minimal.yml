@@ -47,6 +47,11 @@ authentik:
   base_url: "https://auth.example.com"
   api_token: "CHANGE-ME"
 
+# Image import from external sources (Gravatar, URL).
+# Both enabled by default. URL import blocks private IPs by default.
+# Set image_import.gravatar.enabled or image_import.url.enabled to false to disable.
+image_import: {}
+
 # LDAP is disabled by default. Enable and configure it here if you want
 # thumbnailPhoto / jpegPhoto attributes updated in Active Directory or similar.
 # See config.example-full.yml for all options.

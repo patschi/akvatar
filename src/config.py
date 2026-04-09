@@ -48,6 +48,7 @@ ak_cfg       = cfg['authentik']
 ldap_cfg     = cfg.get('ldap', {})  # May be absent if disabled
 img_cfg      = cfg['images']
 cleanup_cfg  = cfg.get('cleanup', {})
+import_cfg   = cfg.get('image_import', {})
 sentry_cfg   = cfg.get('sentry', {})
 access_log   = bool(web_cfg.get('access_log', False))
 

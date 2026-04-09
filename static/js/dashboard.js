@@ -21,6 +21,9 @@ const progressPanel      = document.getElementById("progressPanel");
 const progressList       = document.getElementById("progressList");
 const resultMessage      = document.getElementById("resultMessage");
 
+// Import section element (hidden during upload processing)
+const importSection      = document.getElementById("importSection");
+
 // Cropper.js instance — created when user selects an image
 let cropperInstance = null;
 
@@ -121,25 +124,12 @@ function showResult(cssClass, messageHTML) {
 // Drop zone element reference
 var dropZone = document.getElementById("dropZone");
 
-/** Validate a selected file and initialise the cropper. Used by both file input and drag-and-drop. */
-function handleFileSelection(selectedFile) {
-    if (!selectedFile) return;
-
-    // Extract and validate file extension (case-insensitive)
-    var fileExtension = selectedFile.name.includes(".")
-        ? selectedFile.name.split(".").pop().toLowerCase()
-        : "";
-
-    if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
-        var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
-        alert(I18N.upload_invalid_ext
-            .replace("{ext}", fileExtension)
-            .replace("{allowed}", allowedList));
-        fileInput.value = "";
-        return;
-    }
-
-    fileNameDisplay.textContent = selectedFile.name;
+/**
+ * Initialise the cropper with an image source and display name.
+ * Shared by file selection, Gravatar import, and URL import.
+ */
+function initCropper(imageSrc, displayName) {
+    fileNameDisplay.textContent = displayName;
 
     // Clean up previous cropper instance and revoke its object URL to free memory
     if (cropperImage.src.startsWith("blob:")) {
@@ -151,7 +141,7 @@ function handleFileSelection(selectedFile) {
     }
 
     // Show the cropper area and upload controls
-    cropperImage.src = URL.createObjectURL(selectedFile);
+    cropperImage.src = imageSrc;
     cropperWrapper.classList.remove("hidden");
     uploadDisclaimer.classList.remove("hidden");
     uploadButton.classList.remove("hidden");
@@ -176,6 +166,27 @@ function handleFileSelection(selectedFile) {
             cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
         },
     });
+}
+
+/** Validate a selected file and initialise the cropper. Used by both file input and drag-and-drop. */
+function handleFileSelection(selectedFile) {
+    if (!selectedFile) return;
+
+    // Extract and validate file extension (case-insensitive)
+    var fileExtension = selectedFile.name.includes(".")
+        ? selectedFile.name.split(".").pop().toLowerCase()
+        : "";
+
+    if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
+        var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
+        alert(I18N.upload_invalid_ext
+            .replace("{ext}", fileExtension)
+            .replace("{allowed}", allowedList));
+        fileInput.value = "";
+        return;
+    }
+
+    initCropper(URL.createObjectURL(selectedFile), selectedFile.name);
 }
 
 // File selection via file picker button
@@ -236,6 +247,7 @@ uploadButton.addEventListener("click", async function () {
     uploadButton.disabled = true;
     uploadButton.textContent = I18N.upload_processing;
     filePicker.classList.add("hidden");
+    if (importSection) importSection.classList.add("hidden");
     cropperWrapper.classList.add("hidden");
     progressPanel.classList.remove("hidden");
     progressList.innerHTML = "";

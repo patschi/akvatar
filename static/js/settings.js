@@ -76,7 +76,7 @@
     // Bail out if the overlay or buttons aren't present on this page
     if (!settingsOverlay || !settingsOpenButtons.length) return;
 
-    var settingsPanel = settingsOverlay.querySelector(".settings-panel");
+    var settingsPanel = settingsOverlay.querySelector(".dialog-panel");
 
     function openSettingsOverlay() {
         settingsOverlay.classList.remove("hidden");
@@ -99,7 +99,7 @@
     });
 
     // Close when clicking the explicit X button
-    var settingsCloseButton = settingsOverlay.querySelector(".settings-close");
+    var settingsCloseButton = settingsOverlay.querySelector(".dialog-close");
     if (settingsCloseButton) {
         settingsCloseButton.addEventListener("click", closeSettingsOverlay);
     }

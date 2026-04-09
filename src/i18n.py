@@ -57,6 +57,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'upload_processing':        'Processing\u2026',
         'progress_heading':         'Progress',
 
+        # -- Import dialog --
+        'import_or':                    'or import from',
+        'import_title':                 'Import image',
+        'import_gravatar':              'Gravatar',
+        'import_gravatar_placeholder':  'Email address',
+        'import_gravatar_loading':      'Loading\u2026',
+        'import_gravatar_not_found':    'No Gravatar found for this email address.',
+        'import_gravatar_error':        'Could not fetch Gravatar. Please try again.',
+        'import_url_placeholder':       'https://example.com/photo.jpg',
+        'import_url_loading':           'Fetching\u2026',
+        'import_url_error':             'Could not fetch the image. Please check the URL and try again.',
+        'import_url_invalid':           'Please enter a valid URL starting with http:// or https://.',
+        'import_fetch_failed':          'Could not fetch the image. Please try again.',
+        'import_url_not_allowed':       'This URL is not allowed.',
+        'import_load':                  'Load',
+        'import_ok':                    'Use image',
+        'import_cancel':                'Cancel',
+
         # -- Client-side validation --
         'upload_invalid_ext':       'File type .{ext} is not allowed. Accepted: {allowed}',
 
@@ -125,6 +143,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         'upload_button':            'Hochladen & Avatar aktualisieren',
         'upload_processing':        'Verarbeitung\u2026',
         'progress_heading':         'Fortschritt',
+
+        # -- Import dialog --
+        'import_or':                    'oder importieren von',
+        'import_title':                 'Bild importieren',
+        'import_gravatar':              'Gravatar',
+        'import_gravatar_placeholder':  'E-Mail-Adresse',
+        'import_gravatar_loading':      'Wird geladen\u2026',
+        'import_gravatar_not_found':    'Kein Gravatar f\u00fcr diese E-Mail-Adresse gefunden.',
+        'import_gravatar_error':        'Gravatar konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.',
+        'import_url_placeholder':       'https://beispiel.de/foto.jpg',
+        'import_url_loading':           'Wird abgerufen\u2026',
+        'import_url_error':             'Das Bild konnte nicht abgerufen werden. Bitte \u00fcberpr\u00fcfen Sie die URL und versuchen Sie es erneut.',
+        'import_url_invalid':           'Bitte geben Sie eine g\u00fcltige URL ein, die mit http:// oder https:// beginnt.',
+        'import_fetch_failed':          'Das Bild konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.',
+        'import_url_not_allowed':       'Diese URL ist nicht erlaubt.',
+        'import_load':                  'Laden',
+        'import_ok':                    'Bild verwenden',
+        'import_cancel':                'Abbrechen',
 
         # -- Client-side validation --
         'upload_invalid_ext':       'Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}',
@@ -249,6 +285,12 @@ _JS_KEYS = (
     'step_save_failed',
     'result_success', 'result_retry', 'result_error', 'result_csrf_failed',
     'result_contact_admin', 'result_network_error',
+    # Import dialog (loading states and error messages used in JS)
+    'import_load', 'import_gravatar_loading',
+    'import_gravatar_not_found', 'import_gravatar_error',
+    'import_url_loading',
+    'import_url_error', 'import_url_invalid',
+    'import_fetch_failed', 'import_url_not_allowed',
 )
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)

@@ -218,6 +218,23 @@ ldap:
       image_size: 256
       max_file_size: 250
 
+# --- Image Import (External Sources) ---
+# Controls whether users can import images from external sources (Gravatar,
+# remote URL) instead of uploading a file directly.
+image_import:
+  # Gravatar import: fetch avatar by email address from gravatar.com
+  gravatar:
+    # Set to false to hide the Gravatar import option from the UI
+    enabled: true
+  # URL import: fetch an image from any user-provided URL
+  url:
+    # Set to false to hide the URL import option from the UI
+    enabled: true
+    # Block URLs that resolve to private or internal IP addresses (SSRF
+    # protection).  Prevents users from using the server as a proxy to
+    # access internal services (e.g. 127.0.0.1, 10.x, 192.168.x, etc.).
+    restrict_private_ips: true
+
 # --- Image Processing ---
 images:
   # Sizes to generate (width x height, always square)

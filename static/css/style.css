@@ -169,9 +169,9 @@ body {
   gap: 0.5rem;
 }
 
-/* Settings overlay */
+/* Dialog overlay (shared by settings and import dialogs) */
 .settings-btn,
-.settings-close {
+.dialog-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -184,7 +184,7 @@ body {
 }
 
 .settings-btn:hover,
-.settings-close:hover {
+.dialog-close:hover {
   color: var(--text);
   background: var(--accent-soft);
 }
@@ -194,7 +194,7 @@ body {
   height: 30px;
 }
 
-.settings-overlay {
+.dialog-overlay {
   position: fixed;
   inset: 0;
   z-index: 500;
@@ -212,7 +212,7 @@ body {
   to   { opacity: 1; }
 }
 
-.settings-panel {
+.dialog-panel {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
@@ -229,33 +229,33 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
-.settings-header {
+.dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
 }
 
-.settings-title {
+.dialog-title {
   font-size: 1.2rem;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 
-.settings-close {
+.dialog-close {
   width: 32px;
   height: 32px;
 }
 
-.settings-group {
+.dialog-group {
   margin-bottom: 1.25rem;
 }
 
-.settings-group:last-child {
+.dialog-group:last-child {
   margin-bottom: 0;
 }
 
-.settings-label {
+.dialog-label {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
@@ -265,13 +265,13 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.settings-options {
+.dialog-options {
   display: flex;
   gap: 0.4rem;
 }
 
-/* Override .btn defaults for settings option buttons */
-.btn.settings-option {
+/* Override .btn defaults for dialog option buttons (pill-style tab switchers) */
+.btn.dialog-option {
   flex: 1;
   padding: 0.5rem 0.6rem;
   font-size: 0.88rem;
@@ -282,14 +282,14 @@ body {
   box-shadow: none;
 }
 
-.btn.settings-option:hover:not(:disabled) {
+.btn.dialog-option:hover:not(:disabled) {
   color: var(--text);
   border-color: var(--border-strong);
   background: var(--surface-hover);
   box-shadow: none;
 }
 
-.btn.settings-option.active {
+.btn.dialog-option.active {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -297,7 +297,7 @@ body {
   box-shadow: none;
 }
 
-.settings-badge {
+.dialog-badge {
   display: inline-block;
   font-size: 0.65rem;
   font-weight: 700;
@@ -310,7 +310,7 @@ body {
   vertical-align: baseline;
 }
 
-.settings-footer {
+.dialog-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -546,6 +546,140 @@ body {
   margin-top: 0.5rem;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+/* Import section (trigger buttons on the dashboard) */
+.import-section {
+  margin-top: 1rem;
+}
+
+.import-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.import-divider::before,
+.import-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+
+.import-triggers {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.btn.btn-import {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: none;
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+
+.btn.btn-import:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.btn.btn-import:disabled {
+  opacity: 0.5;
+}
+
+/* Import dialog (modal overlay) */
+.import-panel {
+  max-width: 480px;
+}
+
+.import-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.import-input:focus {
+  border-color: var(--accent);
+}
+
+.import-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.import-field-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.import-preview {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.import-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  object-fit: cover;
+}
+
+.import-error {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--error);
+  background: var(--error-soft);
+  border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.import-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.import-cancel {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+}
+
+.import-cancel:hover {
+  color: var(--text);
+  background: var(--surface-hover);
 }
 
 /* Cropper area */

@@ -43,6 +43,9 @@ The application reads the configuration file once at startup. Changes require a 
 | [`rate_limiting.eviction_interval`](#rate_limiting_eviction_interval)   | Integer | Stale-entry cleanup interval in seconds             |
 | [`rate_limiting.avatars`](#rate_limiting_avatars)                       | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limiting_metadata)                     | Object  | Rate limit settings for metadata JSON requests      |
+| [`image_import.gravatar.enabled`](#image_import_gravatar_enabled)       | Boolean | Enable Gravatar import in the UI                    |
+| [`image_import.url.enabled`](#image_import_url_enabled)                 | Boolean | Enable URL import in the UI                         |
+| [`image_import.url.restrict_private_ips`](#image_import_url_restrict)   | Boolean | Block URLs resolving to private IP addresses        |
 | [`sentry.enabled`](#sentry_enabled)                                     | Boolean | Master switch for Sentry error tracking             |
 | [`sentry.dsn`](#sentry_dsn)                                             | String  | Sentry project DSN (ingest URL)                     |
 | [`sentry.capture_errors`](#sentry_capture_errors)                       | Boolean | Send unhandled exceptions to Sentry                 |
@@ -978,6 +981,59 @@ photos:
     image_size: 648
     max_file_size: 0
 ```
+
+---
+
+## Image Import (External Sources)
+
+Controls whether users can import images from external sources (Gravatar by email, or a remote URL) instead of uploading
+a file directly. Both import methods are enabled by default. When a method is disabled, its trigger button is hidden from
+the dashboard and the corresponding server endpoint returns HTTP 403.
+
+<a id="image_import_gravatar_enabled"></a>
+
+### `image_import.gravatar.enabled`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled (default), users can import their avatar from [Gravatar](https://gravatar.com) by entering an email address.
+The server fetches the image from Gravatar's API and proxies it back to the browser. Set to `false` to hide the Gravatar
+import option from the UI entirely.
+
+<a id="image_import_url_enabled"></a>
+
+### `image_import.url.enabled`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled (default), users can import an image from any HTTP/HTTPS URL. The server fetches the image and proxies it
+back to the browser. Set to `false` to hide the URL import option from the UI entirely.
+
+<a id="image_import_url_restrict"></a>
+
+### `image_import.url.restrict_private_ips`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled (default), the server resolves the hostname of a user-provided URL before fetching and blocks requests that
+resolve to private, loopback, link-local, or otherwise non-globally-routable IP addresses. This prevents
+[Server-Side Request Forgery (SSRF)](https://owasp.org/www-community/attacks/Server-Side_Request_Forgery) attacks where a
+user could use the import feature to probe or access internal services.
+
+Blocked ranges include `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8` (loopback), `169.254.0.0/16`
+(link-local), and their IPv6 equivalents.
+
+Set to `false` only if your deployment requires fetching images from internal network hosts (not recommended in
+production).
 
 ---
 

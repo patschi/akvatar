@@ -62,6 +62,27 @@
           <span id="fileName" class="file-name"></span>
         </div>
 
+        {% if import_gravatar_enabled or import_url_enabled %}
+          <!-- Import triggers: open the import dialog with the selected tab -->
+          <div id="importSection" class="import-section">
+            <div class="import-divider"><span>{{ t('import_or') }}</span></div>
+            <div class="import-triggers">
+              {% if import_gravatar_enabled %}
+                <button class="btn btn-import" data-import-tab="gravatar" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+                  {{ t('import_gravatar') }}
+                </button>
+              {% endif %}
+              {% if import_url_enabled %}
+                <button class="btn btn-import" data-import-tab="url" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+                  URL
+                </button>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+
         <!-- Cropper preview area (hidden until an image is chosen) -->
         <div id="cropperWrapper" class="cropper-wrapper hidden">
           <img id="cropperImage" src="" alt="Preview" />
@@ -83,9 +104,15 @@
     </div>
   </main>
 
+  {% if import_gravatar_enabled or import_url_enabled %}
+    {% include 'partials/image-import-external.html' %}
+  {% endif %}
+
   <!-- Server-provided constants consumed by dashboard.js -->
   <script>
     const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
+    const GRAVATAR_ENDPOINT  = "{{ url_for('import.api_fetch_gravatar') }}";
+    const URL_FETCH_ENDPOINT = "{{ url_for('import.api_fetch_url') }}";
     const MAX_AVATAR_SIZE    = {{ max_size }};
     const CSRF_TOKEN         = "{{ csrf_token() }}";
     const I18N               = {{ i18n | tojson }};
@@ -93,6 +120,9 @@
     const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});
   </script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  {% if import_gravatar_enabled or import_url_enabled %}
+    <script src="{{ url_for('static', filename='js/image-import-external.js') }}"></script>
+  {% endif %}
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
 </body>

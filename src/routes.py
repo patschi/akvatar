@@ -19,6 +19,7 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
+from src.config import import_cfg
 from src.csrf import validate_csrf_token
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
@@ -73,6 +74,8 @@ def dashboard():
     return render_template(
         'dashboard.html', user=user, ldap_enabled=ldap_is_enabled(),
         max_size=MAX_SIZE, allowed_extensions=sorted(ALLOWED_EXTENSIONS),
+        import_gravatar_enabled=import_cfg.get('gravatar', {}).get('enabled', True),
+        import_url_enabled=import_cfg.get('url', {}).get('enabled', True),
     )
 
 
