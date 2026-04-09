@@ -118,9 +118,11 @@ function showResult(cssClass, messageHTML) {
         buildRetryButtonHTML();
 }
 
-// File selection: validate extension and initialise cropper
-fileInput.addEventListener("change", function (event) {
-    var selectedFile = event.target.files[0];
+// Drop zone element reference
+var dropZone = document.getElementById("dropZone");
+
+/** Validate a selected file and initialise the cropper. Used by both file input and drag-and-drop. */
+function handleFileSelection(selectedFile) {
     if (!selectedFile) return;
 
     // Extract and validate file extension (case-insensitive)
@@ -170,6 +172,56 @@ fileInput.addEventListener("change", function (event) {
         cropBoxResizable: true,
         toggleDragModeOnDblclick: false,
     });
+}
+
+// File selection via file picker button
+fileInput.addEventListener("change", function (event) {
+    handleFileSelection(event.target.files[0]);
+});
+
+// Clicking anywhere in the drop zone opens the file dialog
+dropZone.addEventListener("click", function (event) {
+    // Avoid triggering twice when the label/button itself is clicked (it already opens the dialog)
+    if (event.target === fileInput || event.target.closest(".file-label")) return;
+    fileInput.click();
+});
+
+// Drag-and-drop: prevent default browser behaviour on the entire page to avoid
+// accidentally navigating to the dropped file
+document.addEventListener("dragover", function (event) {
+    event.preventDefault();
+});
+document.addEventListener("drop", function (event) {
+    event.preventDefault();
+});
+
+// Drag-and-drop: visual feedback when hovering over the drop zone
+dropZone.addEventListener("dragenter", function (event) {
+    event.preventDefault();
+    dropZone.classList.add("drop-zone--active");
+});
+dropZone.addEventListener("dragover", function (event) {
+    event.preventDefault();
+    dropZone.classList.add("drop-zone--active");
+});
+dropZone.addEventListener("dragleave", function (event) {
+    // Only remove the highlight when the cursor truly leaves the drop zone,
+    // not when hovering over a child element (relatedTarget still inside)
+    if (!dropZone.contains(event.relatedTarget)) {
+        dropZone.classList.remove("drop-zone--active");
+    }
+});
+
+// Drag-and-drop: handle the dropped file
+dropZone.addEventListener("drop", function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    dropZone.classList.remove("drop-zone--active");
+
+    var droppedFile = event.dataTransfer.files[0];
+    if (droppedFile) {
+        handleFileSelection(droppedFile);
+    }
 });
 
 // Upload flow with SSE streaming progress

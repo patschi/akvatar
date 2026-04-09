@@ -38,17 +38,27 @@
         <h1>{{ t('upload_heading') }}</h1>
         <p class="subtitle">{{ t('upload_subtitle') | safe }}</p>
 
-        <!-- File picker -->
+        <!-- File picker + drop zone -->
         <div id="filePicker">
-          <label class="btn file-label" for="fileInput">
-            {{ t('upload_choose') }}
-            <input
-              type="file"
-              id="fileInput"
-              accept="{% for ext in allowed_extensions %}.{{ ext }}{% if not loop.last %},{% endif %}{% endfor %}"
-              hidden
-            />
-          </label>
+          <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-content">
+              <svg class="drop-zone-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <p class="drop-zone-hint">{{ t('upload_drop_hint') }}</p>
+              <label class="btn file-label" for="fileInput">
+                {{ t('upload_choose') }}
+                <input
+                  type="file"
+                  id="fileInput"
+                  accept="{% for ext in allowed_extensions %}.{{ ext }}{% if not loop.last %},{% endif %}{% endfor %}"
+                  hidden
+                />
+              </label>
+            </div>
+          </div>
           <span id="fileName" class="file-name"></span>
         </div>
 

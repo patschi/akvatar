@@ -482,6 +482,58 @@ body {
   margin: 1.25rem 0;
 }
 
+/* Drop zone */
+.drop-zone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1.75rem 1rem;
+  text-align: center;
+  transition: border-color var(--transition), background var(--transition);
+  cursor: pointer;
+}
+
+.drop-zone:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Active state when a file is being dragged over the zone */
+.drop-zone--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  border-style: solid;
+}
+
+.drop-zone-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+/* Re-enable pointer events on the button so it remains clickable */
+.drop-zone-content .file-label {
+  pointer-events: auto;
+}
+
+.drop-zone-icon {
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+  transition: color var(--transition);
+}
+
+.drop-zone:hover .drop-zone-icon,
+.drop-zone--active .drop-zone-icon {
+  color: var(--accent);
+}
+
+.drop-zone-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
 /* File input */
 .file-label {
   padding: 0.5rem 1.1rem;
@@ -491,10 +543,9 @@ body {
 
 .file-name {
   display: inline-block;
-  margin-left: 0.75rem;
+  margin-top: 0.5rem;
   color: var(--text-muted);
   font-size: 0.8rem;
-  vertical-align: middle;
 }
 
 /* Cropper area */
