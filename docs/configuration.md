@@ -64,6 +64,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`oidc.client_id`](#oidc_client_id)                                     | String  | OAuth2 client ID                                    |
 | [`oidc.client_secret`](#oidc_client_secret)                             | String  | OAuth2 client secret                                |
 | [`oidc.username_claim`](#oidc_username_claim)                           | String  | OIDC claim used as the username                     |
+| [`oidc.end_provider_session`](#oidc_end_provider_session)               | Boolean | End Authentik SSO session on logout                  |
 | [`authentik.base_url`](#authentik_base_url)                             | URL     | Authentik instance base URL                         |
 | [`authentik.api_token`](#authentik_api_token)                           | String  | Authentik Admin API token                           |
 | [`authentik.avatar_size`](#authentik_avatar_size)                       | Integer | Image size (px) used for the Authentik avatar URL   |
@@ -714,6 +715,25 @@ The OAuth2 client secret from the Authentik provider configuration. Treat as a s
 
 The OIDC claim that carries the unique username. The value of this claim is used to look up the user via the Authentik
 API. In most Authentik setups, `preferred_username` is correct.
+
+<a id="oidc_end_provider_session"></a>
+
+### `oidc.end_provider_session`
+
+|             |         |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When enabled, logging out of the app also terminates the user's Authentik SSO session via
+[RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html). This means the user is logged
+out of **all applications** using that Authentik session, not just this app.
+
+When disabled (default), only the local app session is cleared — the user remains logged into Authentik and can
+immediately sign back in without re-entering credentials.
+
+If you enable this, you must also register the post-logout redirect URI in your Authentik provider. See
+[Post-Logout Redirect URI](authentik-oidc-setup.md#post-logout-redirect-uri) for details.
 
 ---
 

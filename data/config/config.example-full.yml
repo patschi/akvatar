@@ -142,6 +142,13 @@ oidc:
   client_secret: "CHANGE-ME"
   # OIDC claim that carries the unique username
   username_claim: "preferred_username"
+  # When true, logging out also terminates the Authentik SSO session via
+  # RP-Initiated Logout (OIDC end_session_endpoint). This logs the user out
+  # of ALL applications using that Authentik session, not just this app.
+  # When false, only the local app session is cleared.
+  # If enabled, the post-logout redirect URI must be registered in Authentik.
+  # See docs/authentik-oidc-setup.md for details.
+  end_provider_session: false
 
 # --- Authentik Admin API ---
 authentik:

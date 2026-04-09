@@ -88,6 +88,32 @@ causes a "mismatching redirection URI" error during login.
 
 See also: [Subfolder Deployment](subfolder-deployment.md) for subfolder-specific considerations.
 
+## Post-Logout Redirect URI
+
+> **Note:** This section only applies when [`oidc.end_provider_session`](configuration.md#oidc_end_provider_session)
+> is set to `true`. By default, logging out only clears the local app session and this step is not needed.
+
+When `oidc.end_provider_session` is enabled, logging out performs **RP-Initiated Logout**: the app clears the local
+session and redirects the browser to Authentik's `end_session_endpoint` so the SSO session is terminated as well. This
+logs the user out of **all applications** using that Authentik session. Authentik then redirects the user back to the
+app's `/logged-out` page.
+
+For this redirect to work, the post-logout URI must be registered in the Authentik provider's
+"Redirect URIs/Origins" field alongside the login callback URI:
+
+```text
+  Root domain:    https://avatar.example.com/logged-out
+  Subfolder:      https://portal.example.com/avatar/logged-out
+```
+
+| Deployment  | Post-Logout Redirect URI                        |
+|-------------|-------------------------------------------------|
+| Root domain | `https://avatar.example.com/logged-out`         |
+| Subfolder   | `https://portal.example.com/avatar/logged-out`  |
+
+If the post-logout URI is not registered, Authentik will still end the SSO session but may show its own
+generic logged-out page instead of redirecting back to the app.
+
 ## OIDC claims used
 
 The app reads the following claims from the ID token / userinfo response:
