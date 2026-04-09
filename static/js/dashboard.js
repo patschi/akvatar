@@ -217,7 +217,6 @@ dropZone.addEventListener("dragenter", function (event) {
 });
 dropZone.addEventListener("dragover", function (event) {
     event.preventDefault();
-    dropZone.classList.add("drop-zone--active");
 });
 dropZone.addEventListener("dragleave", function (event) {
     // Only remove the highlight when the cursor truly leaves the drop zone,

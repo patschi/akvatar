@@ -42,9 +42,9 @@ _MIME_TO_EXT: dict[str, str] = {
 }
 
 # Config: per-source enable flags and URL security settings
-_GRAVATAR_ENABLED = import_cfg.get('gravatar', {}).get('enabled', True)
-_URL_ENABLED = import_cfg.get('url', {}).get('enabled', True)
-_RESTRICT_PRIVATE_IPS = import_cfg.get('url', {}).get('restrict_private_ips', True)
+GRAVATAR_ENABLED = import_cfg.get('gravatar', {}).get('enabled', True)
+URL_ENABLED = import_cfg.get('url', {}).get('enabled', True)
+RESTRICT_PRIVATE_IPS = import_cfg.get('url', {}).get('restrict_private_ips', True)
 
 
 # Helpers
@@ -63,15 +63,13 @@ def _read_with_limit(resp: http_requests.Response) -> bytes | None:
         resp.close()
         return None
 
-    chunks = []
-    total = 0
+    buf = bytearray()
     for chunk in resp.iter_content(8192):
-        total += len(chunk)
-        if total > _MAX_FETCH_SIZE:
+        buf += chunk
+        if len(buf) > _MAX_FETCH_SIZE:
             resp.close()
             return None
-        chunks.append(chunk)
-    return b''.join(chunks)
+    return bytes(buf)
 
 
 def _resolves_to_private_ip(hostname: str) -> bool:
@@ -89,7 +87,9 @@ def _resolves_to_private_ip(hostname: str) -> bool:
         return False
 
     for result in results:
-        addr = ipaddress.ip_address(result[4][0])
+        # Strip IPv6 scope/zone ID (e.g. '%eth0') which ipaddress does not accept
+        addr_str = result[4][0].split('%')[0]
+        addr = ipaddress.ip_address(addr_str)
         if not addr.is_global:
             log.warning('Blocked URL import: hostname %r resolves to non-global IP %s.', hostname, addr)
             return True
@@ -109,7 +109,7 @@ def api_fetch_gravatar():
     is fetched at 1024px.  Returns the raw image bytes on success, or
     JSON error on failure.
     """
-    if not _GRAVATAR_ENABLED:
+    if not GRAVATAR_ENABLED:
         return jsonify({'error': 'Gravatar import is disabled.'}), 403
 
     csrf_rejection = validate_csrf_token()
@@ -174,7 +174,7 @@ def api_fetch_url():
     IP ranges (SSRF protection), and checks Content-Type (image/* only)
     before proxying the response.
     """
-    if not _URL_ENABLED:
+    if not URL_ENABLED:
         return jsonify({'error': 'URL import is disabled.'}), 403
 
     csrf_rejection = validate_csrf_token()
@@ -195,7 +195,7 @@ def api_fetch_url():
         return jsonify({'error': 'Invalid URL.'}), 400
 
     # SSRF protection: block URLs that resolve to private/internal IP ranges
-    if _RESTRICT_PRIVATE_IPS and _resolves_to_private_ip(parsed.hostname):
+    if RESTRICT_PRIVATE_IPS and _resolves_to_private_ip(parsed.hostname):
         return jsonify({'error': 'url_not_allowed'}), 400
 
     log.debug('Fetching remote image from: %r', url)
