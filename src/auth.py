@@ -115,7 +115,9 @@ def auth_callback():
     log.debug('OIDC locale claim: %r -> resolved to %r.', oidc_locale_raw, session['locale'])
 
     log.info('User %r (pk=%s) logged in successfully.', username, pk)
-    log.debug('User session data: %s', session)
+    # Redact sensitive session values (id_token, csrf_token) before logging
+    _redacted_session = {k: ('[REDACTED]' if k in ('id_token', 'csrf_token') else v) for k, v in session.items()}
+    log.debug('User session data: %s', _redacted_session)
     return redirect(url_for('routes.dashboard'))
 
 
