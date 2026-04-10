@@ -46,6 +46,7 @@ upload:
   choose: "Bild auswählen…"
   disclaimer: "Mit dem Hochladen bestätigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden."
   button: "Hochladen & Avatar aktualisieren"
+  discard_current: "Anderes Bild wählen"
   processing: "Verarbeitung…"
   invalid_ext: "Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}"
 

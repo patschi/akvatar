@@ -83,6 +83,15 @@
           </div>
         {% endif %}
 
+        <!-- Shown when image is selected: filename + discard button (replaces file picker and import) -->
+        <div id="imageSelectedBar" class="image-selected-bar hidden">
+          <span id="imageSelectedName" class="image-selected-name"></span>
+          <button id="discardImageBtn" class="discard-btn" type="button">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            {{ t('upload.discard_current') }}
+          </button>
+        </div>
+
         <!-- Cropper preview area (hidden until an image is chosen) -->
         <div id="cropperWrapper" class="cropper-wrapper hidden">
           <img id="cropperImage" src="" alt="Preview" />

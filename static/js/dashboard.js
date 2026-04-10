@@ -11,7 +11,9 @@
 const uploadSection      = document.getElementById("uploadSection");
 const filePicker         = document.getElementById("filePicker");
 const fileInput          = document.getElementById("fileInput");
-const fileNameDisplay    = document.getElementById("fileName");
+const imageSelectedBar   = document.getElementById("imageSelectedBar");
+const imageSelectedName  = document.getElementById("imageSelectedName");
+const discardImageBtn    = document.getElementById("discardImageBtn");
 const cropperWrapper     = document.getElementById("cropperWrapper");
 const cropperImage       = document.getElementById("cropperImage");
 const uploadButton       = document.getElementById("uploadBtn");
@@ -129,7 +131,11 @@ var dropZone = document.getElementById("dropZone");
  * Shared by file selection, Gravatar import, and URL import.
  */
 function initCropper(imageSrc, displayName) {
-    fileNameDisplay.textContent = displayName;
+    // Hide file picker and import section; reveal the image-selected bar
+    filePicker.classList.add("hidden");
+    if (importSection) importSection.classList.add("hidden");
+    imageSelectedName.textContent = displayName;
+    imageSelectedBar.classList.remove("hidden");
 
     // Clean up previous cropper instance and revoke its object URL to free memory
     if (cropperImage.src.startsWith("blob:")) {
@@ -167,6 +173,34 @@ function initCropper(imageSrc, displayName) {
         },
     });
 }
+
+/** Discard the selected image and restore the file picker and import section. */
+function discardImage() {
+    // Destroy the cropper and free the blob URL
+    if (cropperImage.src.startsWith("blob:")) {
+        URL.revokeObjectURL(cropperImage.src);
+    }
+    if (cropperInstance) {
+        cropperInstance.destroy();
+        cropperInstance = null;
+    }
+    cropperImage.src = "";
+
+    // Clear the file input so the same file can be re-selected
+    fileInput.value = "";
+
+    // Hide image bar and cropper controls
+    imageSelectedBar.classList.add("hidden");
+    cropperWrapper.classList.add("hidden");
+    uploadDisclaimer.classList.add("hidden");
+    uploadButton.classList.add("hidden");
+
+    // Restore file picker and import section
+    filePicker.classList.remove("hidden");
+    if (importSection) importSection.classList.remove("hidden");
+}
+
+discardImageBtn.addEventListener("click", discardImage);
 
 /** Validate a selected file and initialise the cropper. Used by both file input and drag-and-drop. */
 function handleFileSelection(selectedFile) {
