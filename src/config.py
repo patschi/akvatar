@@ -41,12 +41,12 @@ except yaml.YAMLError as exc:
 # Convenience references for each config section
 dry_run = cfg.get("dry_run", False)
 branding_cfg = cfg.get("branding", {})
-app_cfg = cfg["app"]
-web_cfg = cfg["webserver"]
-oidc_cfg = cfg["oidc"]
-ak_cfg = cfg["authentik"]
+app_cfg = cfg.get("app", {})
+web_cfg = cfg.get("webserver", {})
+oidc_cfg = cfg.get("oidc", {})
+ak_cfg = cfg.get("authentik", {})
 ldap_cfg = cfg.get("ldap", {})  # May be absent if disabled
-img_cfg = cfg["images"]
+img_cfg = cfg.get("images", {})
 cleanup_cfg = cfg.get("cleanup", {})
 import_cfg = cfg.get("image_import", {})
 sentry_cfg = cfg.get("sentry", {})

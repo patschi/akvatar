@@ -119,7 +119,7 @@ def auth_callback():
         "username": username,
         "name": userinfo.get("name", ""),
         "email": userinfo.get("email", ""),
-        "avatar": ak_user["avatar"],
+        "avatar": ak_user.get("avatar", ""),
     }
 
     # Store the raw ID token for RP-Initiated Logout (id_token_hint parameter)
