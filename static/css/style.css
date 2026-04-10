@@ -608,10 +608,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.6rem 0.85rem;
-  background: var(--surface-hover);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
   margin-bottom: 0.75rem;
 }
 
@@ -889,11 +885,6 @@ body {
 }
 
 /* Progress panel */
-.progress-panel {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-}
-
 .progress-panel h2 {
   font-weight: 600;
   letter-spacing: 0.06em;

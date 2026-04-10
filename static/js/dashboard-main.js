@@ -115,9 +115,6 @@ function resetUploadButton() {
 /** Switch from the upload form to the result view (hides upload controls, shows progress panel). */
 function showResultView() {
     uploadSection.classList.add("hidden");
-    profileDivider.classList.add("hidden");
-    progressPanel.style.marginTop = "0";
-    progressPanel.style.paddingTop = "10px";
 }
 
 /**
@@ -287,11 +284,7 @@ uploadButton.addEventListener("click", async function () {
     if (!cropperInstance) return;
 
     // Lock the UI and switch to progress view
-    uploadButton.disabled = true;
-    uploadButton.textContent = I18N.upload_processing;
-    filePicker.classList.add("hidden");
-    if (importSection) importSection.classList.add("hidden");
-    cropperWrapper.classList.add("hidden");
+    uploadSection.classList.add("hidden");
     progressPanel.classList.remove("hidden");
     progressList.innerHTML = "";
     resultMessage.innerHTML = "";
