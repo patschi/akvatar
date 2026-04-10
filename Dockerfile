@@ -53,7 +53,7 @@ RUN mkdir -p /data-skel/user-avatars /data-skel/config && \
 # gcr.io/distroless/python3 contains only the Python interpreter and its
 # core C libraries — no shell, no package manager, minimal attack surface.
 # The :nonroot tag sets the default user to 65532 (nonroot).
-FROM gcr.io/distroless/python3-debian13:nonroot@sha256:2882f4f2053db02a4c51fb88edc1488d1005971b28206fad7c699a93a4703737
+FROM gcr.io/distroless/python3-debian13:nonroot@sha256:51b1acc177d535f20fa30a175a657079ee7dce6e326541cfd83a474d9928e123
 
 WORKDIR /app
 
