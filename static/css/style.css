@@ -295,9 +295,9 @@ body {
 }
 
 .btn.dialog-option.active {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--info);
+  border-color: var(--info);
+  background: var(--info-soft);
   font-weight: 600;
   box-shadow: none;
 }
