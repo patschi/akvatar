@@ -57,6 +57,59 @@ def _parse_json(resp: http_requests.Response) -> dict:
     return data
 
 
+def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
+    """
+    Fetch the current user object, merge *data* into it, and PATCH it back.
+
+    Authentik replaces top-level fields wholesale on PATCH, so a naive
+    ``{"attributes": {"avatar-url": "x"}}`` would wipe every other attribute.
+    This helper GETs the current state first and merges *data* into it:
+
+    - Top-level keys in *data* overwrite the corresponding keys in the
+      current user object.
+    - If both the current value and the incoming value for a key are dicts
+      (e.g. ``attributes``), their contents are shallow-merged so that
+      only the specific sub-keys in *data* are updated.
+
+    Returns ``(pre_patch, post_patch)`` — the user data before and after the
+    update.  In dry-run mode *post_patch* equals *pre_patch* (no PATCH is
+    sent).  Respects dry-run mode.
+    """
+    url = f'{_users_url}{pk}/'
+
+    # Fetch current user data (always performed — callers may rely on the
+    # returned pre-patch dict even in dry-run mode).
+    log.debug('GET %s – fetching current user data for patch.', url)
+    get_resp = _session.get(url, timeout=_TIMEOUT)
+    get_resp.raise_for_status()
+    current = _parse_json(get_resp)
+
+    # Merge incoming data into current user object
+    payload = {}
+    for key, value in data.items():
+        current_value = current.get(key)
+        # Shallow-merge dicts (e.g. attributes) to preserve sibling keys
+        if isinstance(current_value, dict) and isinstance(value, dict):
+            merged = {**current_value, **value}
+            payload[key] = merged
+        else:
+            payload[key] = value
+
+    log.debug('PATCH %s – merged payload: %s', url, payload)
+
+    if dry_run:
+        log.info('[DRY-RUN] Would PATCH %s with: %s', url, payload)
+        return current, current
+
+    patch_resp = _session.patch(url, json=payload, timeout=_TIMEOUT)
+    patch_resp.raise_for_status()
+
+    result = _parse_json(patch_resp)
+    log.debug('PATCH %s – response (HTTP %d): %s', 
+              url, patch_resp.status_code, result.get('attributes', {}))
+    return current, result
+
+
 # Public API
 
 def retrieve_user(username: str) -> dict:
@@ -105,20 +158,14 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
 
     Accepts the Authentik PK directly so no username->PK lookup is needed.
 
-    The GET to fetch current attributes is always performed (even in dry-run
-    mode) so callers can inspect the returned attributes.  Only the PATCH
-    is skipped in dry-run mode.
+    The GET is always performed (even in dry-run mode) so callers can
+    inspect the returned attributes.  Only the PATCH is skipped in
+    dry-run mode.
     """
-    url = f'{_users_url}{pk}/'
+    # Fetch current user, merge the avatar attribute, and PATCH back
+    pre_patch, post_patch = _patch_user(pk, {'attributes': {_avatar_attr: avatar_url}})
 
-    # Fetch current attributes (always performed — callers rely on the returned dict,
-    # e.g. to read ldap_uniq before attempting an LDAP update).
-    log.debug('GET %s – fetching current user attributes.', url)
-    resp = _session.get(url, timeout=_TIMEOUT)
-    resp.raise_for_status()
-
-    user_data = _parse_json(resp)
-    current_attrs = user_data.get('attributes')
+    current_attrs = pre_patch.get('attributes')
     if not isinstance(current_attrs, dict):
         raise TypeError(
             f'Authentik user pk={pk} has unexpected attributes type '
@@ -126,27 +173,19 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
         )
 
     old_url = current_attrs.get(_avatar_attr)
-    log.debug('Current attributes: %s', current_attrs)
     log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
 
+    # In dry-run mode, return the current (unmodified) attributes
     if dry_run:
-        log.info('[DRY-RUN] Would update Authentik %r for pk=%d to %s.', _avatar_attr, pk, avatar_url)
         return current_attrs, old_url
 
-    # PATCH the avatar attribute on the Authentik user object
-    current_attrs[_avatar_attr] = avatar_url
-    log.debug('PATCH %s – setting %s to: %s', url, _avatar_attr, avatar_url)
-    patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
-    patch_resp.raise_for_status()
-
     # Verify the API accepted the change by checking the response body
-    patched_data = _parse_json(patch_resp)
-    patched_attrs = patched_data.get('attributes', {})
+    patched_attrs = post_patch.get('attributes', {})
     actual_value = patched_attrs.get(_avatar_attr)
     if actual_value != avatar_url:
         log.warning(
-            'Authentik PATCH returned HTTP %d but %s is %r instead of expected %r.',
-            patch_resp.status_code, _avatar_attr, actual_value, avatar_url,
+            'Authentik PATCH returned %s=%r instead of expected %r.',
+            _avatar_attr, actual_value, avatar_url,
         )
 
     log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
@@ -155,66 +194,29 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
 
 def remove_avatar_url(pk: int) -> None:
     """
-    Remove the user's custom avatar attribute from Authentik.
+    Reset the user's custom avatar attribute to null in Authentik.
 
-    GETs the current attributes, pops the avatar key, and PATCHes back.
-    After removal Authentik falls back to its default avatar (e.g. Gravatar
-    or initials).  Respects dry-run mode.
+    Sets the avatar attribute to null (rather than removing the key entirely)
+    so Authentik falls back to its default avatar (e.g. Gravatar or initials).
+    Respects dry-run mode.
     """
-    url = f'{_users_url}{pk}/'
+    # Partial update: set the avatar attribute to null
+    _pre, _post = _patch_user(pk, {'attributes': {_avatar_attr: None}})
 
-    log.debug('GET %s – fetching current attributes for avatar removal.', url)
-    resp = _session.get(url, timeout=_TIMEOUT)
-    resp.raise_for_status()
-
-    user_data = _parse_json(resp)
-    current_attrs = user_data.get('attributes')
-    if not isinstance(current_attrs, dict):
-        raise TypeError(
-            f'Authentik user pk={pk} has unexpected attributes type '
-            f'{type(current_attrs).__name__} (expected dict).'
-        )
-
-    old_url = current_attrs.pop(_avatar_attr, None)
-    log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
-
-    if dry_run:
-        log.info('[DRY-RUN] Would remove Authentik %r for pk=%d.', _avatar_attr, pk)
-        return
-
-    log.debug('PATCH %s – removing %s attribute.', url, _avatar_attr)
-    patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
-    patch_resp.raise_for_status()
-
-    log.info('Authentik %s removed for pk=%d (was: %s).', _avatar_attr, pk, old_url or '(not set)')
+    if not dry_run:
+        log.info('Authentik %s set to null for pk=%d.', _avatar_attr, pk)
 
 
 def revert_avatar_url(pk: int, old_url: str | None) -> None:
     """
-    Restore the user's avatar attribute to *old_url* (or remove it if
+    Restore the user's avatar attribute to *old_url* (or set it to null if
     *old_url* is ``None``).  Used during rollback when a later pipeline
     step fails after Authentik was already updated.
     """
-    url = f'{_users_url}{pk}/'
-
-    log.debug('GET %s – fetching current attributes for rollback.', url)
-    resp = _session.get(url, timeout=_TIMEOUT)
-    resp.raise_for_status()
-
-    user_data = _parse_json(resp)
-    current_attrs = user_data.get('attributes')
-    if not isinstance(current_attrs, dict):
-        current_attrs = {}
-
-    if old_url is None:
-        current_attrs.pop(_avatar_attr, None)
-    else:
-        current_attrs[_avatar_attr] = old_url
-
-    display = old_url or '(removed)'
+    # Partial update: set the avatar attribute to the old value (or null)
+    display = old_url or '(null)'
     log.info('Rolling back Authentik %s for pk=%d to: %s', _avatar_attr, pk, display)
-    patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
-    patch_resp.raise_for_status()
+    _pre, _post = _patch_user(pk, {'attributes': {_avatar_attr: old_url}})
     log.info('Authentik rollback successful for pk=%d.', pk)
 
 
