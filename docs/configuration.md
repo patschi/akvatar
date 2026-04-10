@@ -96,7 +96,7 @@ The application reads the configuration file once at startup. Changes require a 
 
 ### `dry_run`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -113,7 +113,7 @@ affecting real user accounts.
 
 ### `branding.name`
 
-|             |                    |
+| Property    | Value              |
 |-------------|--------------------|
 | **Type**    | String             |
 | **Default** | `"Avatar Updater"` |
@@ -129,7 +129,7 @@ organization's branding (e.g. `"Contoso Avatar Updater"`).
 
 ### `app.secret_key`
 
-|             |                                                                     |
+| Property    | Value                                                               |
 |-------------|---------------------------------------------------------------------|
 | **Type**    | String                                                              |
 | **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder, must be changed) |
@@ -148,7 +148,7 @@ See [Flask Session Key](flask-session-key.md) for generation instructions.
 
 ### `app.max_upload_size_mb`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `10`    |
@@ -161,7 +161,7 @@ regardless of this limit.
 
 ### `app.avatar_storage_path`
 
-|             |                       |
+| Property    | Value                 |
 |-------------|-----------------------|
 | **Type**    | String (file path)    |
 | **Default** | `"data/user-avatars"` |
@@ -174,7 +174,7 @@ not exist.
 
 ### `app.public_base_url`
 
-|             |                                                  |
+| Property    | Value                                            |
 |-------------|--------------------------------------------------|
 | **Type**    | String (URL)                                     |
 | **Default** | `"https://avatar.example.com"` (must be changed) |
@@ -190,7 +190,7 @@ Must **not** have a trailing slash.
 
 ### `app.session_cookie_secure`
 
-|             |                                                   |
+| Property    | Value                                             |
 |-------------|---------------------------------------------------|
 | **Type**    | Boolean or `null`                                 |
 | **Default** | `null` (auto-detected from `app.public_base_url`) |
@@ -212,7 +212,7 @@ reverse-proxy setups where TLS is terminated at the proxy and the internal conne
 
 ### `app.public_avatar_url`
 
-|             |                                                               |
+| Property    | Value                                                         |
 |-------------|---------------------------------------------------------------|
 | **Type**    | String (URL)                                                  |
 | **Default** | `"https://avatar.example.com/user-avatars"` (must be changed) |
@@ -227,7 +227,7 @@ Must **not** have a trailing slash.
 
 ### `app.web_session_lifetime_seconds`
 
-|             |                     |
+| Property    | Value               |
 |-------------|---------------------|
 | **Type**    | Integer             |
 | **Default** | `1800` (30 minutes) |
@@ -239,7 +239,7 @@ again via Authentik. The timer starts from the moment of login and is not extend
 
 ### `app.log_level`
 
-|                  |                                                 |
+| Property         | Value                                           |
 |------------------|-------------------------------------------------|
 | **Type**         | String (enum)                                   |
 | **Default**      | `"INFO"`                                        |
@@ -259,7 +259,7 @@ Controls the verbosity of log output:
 
 ### `app.debug_full`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -280,7 +280,7 @@ Enables full debug mode. When active:
 
 ### `cleanup.interval`
 
-|             |                                  |
+| Property    | Value                            |
 |-------------|----------------------------------|
 | **Type**    | String (cron expression)         |
 | **Default** | `"0 2 * * *"` (daily at 2:00 AM) |
@@ -301,7 +301,7 @@ Set to `""` (empty string) to disable the cleanup job entirely.
 
 ### `cleanup.on_startup`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -313,7 +313,7 @@ Useful for catching up after extended downtime.
 
 ### `cleanup.avatar_retention_count`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `2`     |
@@ -325,7 +325,7 @@ the oldest ones. Set to `0` to keep all uploads indefinitely (no retention clean
 
 ### `cleanup.when_user_deleted`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -339,7 +339,7 @@ Disable this setting only if you want to retain avatars indefinitely even for us
 
 ### `cleanup.when_user_deactivated`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -374,7 +374,7 @@ Exceeding the limit returns HTTP 429 Too Many Requests with a `Retry-After` head
 
 ### `rate_limiting.enabled`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -385,7 +385,7 @@ Master switch for rate limiting. When `false`, no rate limiting is applied and n
 
 ### `rate_limiting.ip_whitelist`
 
-|             |                        |
+| Property    | Value                  |
 |-------------|------------------------|
 | **Type**    | List of strings        |
 | **Default** | `["127.0.0.1", "::1"]` |
@@ -397,7 +397,7 @@ notation (e.g. `192.168.0.0/16`). Both IPv4 and IPv6 are supported. Invalid entr
 
 ### `rate_limiting.points_cost_404`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `5`     |
@@ -409,7 +409,7 @@ values penalize URL-guessing attempts more aggressively by consuming the client'
 
 ### `rate_limiting.eviction_interval`
 
-|             |                   |
+| Property    | Value             |
 |-------------|-------------------|
 | **Type**    | Integer (seconds) |
 | **Default** | `10`              |
@@ -422,7 +422,7 @@ the master process.
 
 ### `rate_limiting.avatars`
 
-|          |        |
+| Property | Value  |
 |----------|--------|
 | **Type** | Object |
 
@@ -438,7 +438,7 @@ Rate limit settings for avatar image requests (`/user-avatars/<dimensions>/<file
 
 ### `rate_limiting.metadata`
 
-|          |        |
+| Property | Value  |
 |----------|--------|
 | **Type** | Object |
 
@@ -463,7 +463,7 @@ When disabled (the default), `sentry-sdk` is never imported and adds zero runtim
 
 ### `sentry.enabled`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -475,7 +475,7 @@ A warning is logged at startup if this is `true` but the DSN is empty.
 
 ### `sentry.dsn`
 
-|             |                |
+| Property    | Value          |
 |-------------|----------------|
 | **Type**    | String (URL)   |
 | **Default** | `""` (empty)   |
@@ -488,7 +488,7 @@ sending events (not reading them), exposing it allows anyone to submit events to
 
 ### `sentry.capture_errors`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -501,7 +501,7 @@ separately.
 
 ### `sentry.capture_performance`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -514,7 +514,7 @@ because performance tracing produces significantly more data than error tracking
 
 ### `sentry.sample_rate`
 
-|             |                   |
+| Property    | Value             |
 |-------------|-------------------|
 | **Type**    | Float (0.0–1.0)   |
 | **Default** | `1.0`             |
@@ -529,7 +529,7 @@ high-traffic deployment generating excessive duplicate errors.
 
 ### `sentry.traces_sample_rate`
 
-|             |                   |
+| Property    | Value             |
 |-------------|-------------------|
 | **Type**    | Float (0.0–1.0)   |
 | **Default** | `0.2`             |
@@ -544,7 +544,7 @@ complete picture but can quickly consume event budgets on busy instances.
 
 ### `sentry.environment`
 
-|             |                                      |
+| Property    | Value                                |
 |-------------|--------------------------------------|
 | **Type**    | String                               |
 | **Default** | `""` (auto-detected from debug mode) |
@@ -565,7 +565,7 @@ Set explicitly to `"staging"`, `"testing"`, or any custom value if the auto-dete
 
 ### `sentry.send_default_pii`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -588,7 +588,7 @@ development), only `host`, `port`, and TLS settings are used.
 
 ### `webserver.proxy_mode`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -604,7 +604,7 @@ disabled, any forwarded headers sent by clients are ignored.
 
 ### `webserver.access_log`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -616,7 +616,7 @@ but verbose in production.
 
 ### `webserver.workers`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `2`     |
@@ -629,7 +629,7 @@ processing is the bottleneck, not concurrency.
 
 ### `webserver.threads`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `4`     |
@@ -642,7 +642,7 @@ workers).
 
 ### `webserver.timeout`
 
-|             |                   |
+| Property    | Value             |
 |-------------|-------------------|
 | **Type**    | Integer (seconds) |
 | **Default** | `120`             |
@@ -655,7 +655,7 @@ Should be long enough for the slowest expected request (e.g., large image upload
 
 ### `webserver.tls_cert` / `tls_key`
 
-|             |                      |
+| Property    | Value                |
 |-------------|----------------------|
 | **Type**    | String (file path)   |
 | **Default** | `""` (empty, no TLS) |
@@ -675,7 +675,7 @@ See [Authentik OIDC Setup](authentik-oidc-setup.md) for step-by-step setup instr
 
 ### `oidc.issuer_url`
 
-|             |                                                                             |
+| Property    | Value                                                                       |
 |-------------|-----------------------------------------------------------------------------|
 | **Type**    | String (URL)                                                                |
 | **Default** | `"https://auth.example.com/application/o/avatar-updater"` (must be changed) |
@@ -689,7 +689,7 @@ Must **not** have a trailing slash.
 
 ### `oidc.client_id`
 
-|             |                                      |
+| Property    | Value                                |
 |-------------|--------------------------------------|
 | **Type**    | String                               |
 | **Default** | `"avatar-updater"` (must be changed) |
@@ -700,7 +700,7 @@ The OAuth2 client ID from the Authentik provider configuration.
 
 ### `oidc.client_secret`
 
-|             |                                 |
+| Property    | Value                           |
 |-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
@@ -711,7 +711,7 @@ The OAuth2 client secret from the Authentik provider configuration. Treat as a s
 
 ### `oidc.username_claim`
 
-|             |                        |
+| Property    | Value                  |
 |-------------|------------------------|
 | **Type**    | String                 |
 | **Default** | `"preferred_username"` |
@@ -723,7 +723,7 @@ API. In most Authentik setups, `preferred_username` is correct.
 
 ### `oidc.end_provider_session`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -748,7 +748,7 @@ See [Authentik API Token](authentik-api-token.md) for step-by-step setup instruc
 
 ### `authentik.base_url`
 
-|             |                                                |
+| Property    | Value                                          |
 |-------------|------------------------------------------------|
 | **Type**    | String (URL)                                   |
 | **Default** | `"https://auth.example.com"` (must be changed) |
@@ -760,7 +760,7 @@ The base URL of your Authentik instance (without trailing slash). The applicatio
 
 ### `authentik.api_token`
 
-|             |                                 |
+| Property    | Value                           |
 |-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
@@ -772,7 +772,7 @@ required permissions.
 
 ### `authentik.avatar_size`
 
-|             |                  |
+| Property    | Value            |
 |-------------|------------------|
 | **Type**    | Integer (pixels) |
 | **Default** | `1024`           |
@@ -784,7 +784,7 @@ entries in `images.sizes`. The application validates this at startup and exits w
 
 ### `authentik.avatar_attribute`
 
-|             |                |
+| Property    | Value          |
 |-------------|----------------|
 | **Type**    | String         |
 | **Default** | `"avatar-url"` |
@@ -804,7 +804,7 @@ Directory.
 
 ### `ldap.enabled`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -816,7 +816,7 @@ are made.
 
 ### `ldap.servers`
 
-|             |                                                     |
+| Property    | Value                                               |
 |-------------|-----------------------------------------------------|
 | **Type**    | String                                              |
 | **Default** | `"ldaps://dc1.example.com,ldaps://dc2.example.com"` |
@@ -855,7 +855,7 @@ ldap:
 
 ### `ldap.port`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Integer |
 | **Default** | `636`   |
@@ -867,7 +867,7 @@ for LDAPS, `389` for LDAP.
 
 ### `ldap.use_ssl`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -880,7 +880,7 @@ any server will connect without SSL.
 
 ### `ldap.skip_cert_verify`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `false` |
@@ -892,7 +892,7 @@ warning is logged at startup when this is enabled, as it makes the connection vu
 
 ### `ldap.bind_dn`
 
-|             |                                                         |
+| Property    | Value                                                   |
 |-------------|---------------------------------------------------------|
 | **Type**    | String                                                  |
 | **Default** | `"CN=svc-avatar,OU=Service Accounts,DC=example,DC=com"` |
@@ -904,7 +904,7 @@ read access to search for users and write access to the photo attribute.
 
 ### `ldap.bind_password`
 
-|             |                                 |
+| Property    | Value                           |
 |-------------|---------------------------------|
 | **Type**    | String                          |
 | **Default** | `"CHANGE-ME"` (must be changed) |
@@ -915,7 +915,7 @@ The password for the LDAP bind DN. Treat as a secret.
 
 ### `ldap.search_base`
 
-|             |                       |
+| Property    | Value                 |
 |-------------|-----------------------|
 | **Type**    | String                |
 | **Default** | `"DC=example,DC=com"` |
@@ -927,7 +927,7 @@ are found.
 
 ### `ldap.search_filter`
 
-|             |                             |
+| Property    | Value                       |
 |-------------|-----------------------------|
 | **Type**    | String                      |
 | **Default** | `"(objectSid={ldap_uniq})"` |
@@ -942,7 +942,7 @@ directories, change this to match your schema (e.g. `(uid={ldap_uniq})` for Open
 
 ### `ldap.photos`
 
-|          |                 |
+| Property | Value           |
 |----------|-----------------|
 | **Type** | List of objects |
 
@@ -994,7 +994,7 @@ the dashboard and the corresponding server endpoint returns HTTP 403.
 
 ### `image_import.gravatar.enabled`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -1007,7 +1007,7 @@ import option from the UI entirely.
 
 ### `image_import.url.enabled`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -1019,7 +1019,7 @@ back to the browser. Set to `false` to hide the URL import option from the UI en
 
 ### `image_import.url.restrict_private_ips`
 
-|             |         |
+| Property    | Value   |
 |-------------|---------|
 | **Type**    | Boolean |
 | **Default** | `true`  |
@@ -1043,7 +1043,7 @@ production).
 
 ### `images.sizes`
 
-|             |                                  |
+| Property    | Value                            |
 |-------------|----------------------------------|
 | **Type**    | List of integers                 |
 | **Default** | `[1024, 648, 512, 256, 128, 64]` |
@@ -1056,7 +1056,7 @@ their `image_size` to be in this list.
 
 ### `images.formats`
 
-|             |                          |
+| Property    | Value                    |
 |-------------|--------------------------|
 | **Type**    | List of strings          |
 | **Default** | `["jpg", "png", "webp"]` |
@@ -1068,7 +1068,7 @@ JPEG), `png`, `webp`.
 
 ### `images.jpeg_quality`
 
-|             |                  |
+| Property    | Value            |
 |-------------|------------------|
 | **Type**    | Integer (1--100) |
 | **Default** | `90`             |
@@ -1079,7 +1079,7 @@ JPEG compression quality. Higher values produce better quality but larger files.
 
 ### `images.webp_quality`
 
-|             |                  |
+| Property    | Value            |
 |-------------|------------------|
 | **Type**    | Integer (1--100) |
 | **Default** | `85`             |
@@ -1091,7 +1091,7 @@ quality.
 
 ### `images.png_compress_level`
 
-|             |                |
+| Property    | Value          |
 |-------------|----------------|
 | **Type**    | Integer (0--9) |
 | **Default** | `6`            |
