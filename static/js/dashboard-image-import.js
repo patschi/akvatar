@@ -1,5 +1,5 @@
 /**
- * image-import.js – Import dialog for fetching images from Gravatar or a remote URL.
+ * dashboard-image-import.js – Import dialog for fetching images from Gravatar or a remote URL.
  *
  * Opens a modal overlay with tab switching between Gravatar (by email) and URL
  * modes.  Each tab has an input field and a "Load" button that fetches the image
@@ -9,7 +9,7 @@
  * Depends on server-provided constants injected by the template:
  *   GRAVATAR_ENDPOINT, URL_FETCH_ENDPOINT, CSRF_TOKEN, I18N,
  *   IMPORT_GRAVATAR_ENABLED, IMPORT_URL_ENABLED
- * Depends on initCropper() from dashboard.js (loaded before this script).
+ * Depends on initCropper() from dashboard-main.js (loaded before this script).
  */
 (function () {
     "use strict";

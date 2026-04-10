@@ -7,7 +7,6 @@ Contains:
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
   - POST /api/upload                    -> accept cropped image, process, update backends
-  - POST /api/remove-avatar             -> remove custom avatar from Authentik
 """
 
 import logging
@@ -20,7 +19,6 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
-from src.authentik import remove_avatar_url
 from src.csrf import validate_csrf_token
 from src.image_import import GRAVATAR_ENABLED, URL_ENABLED
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
@@ -152,29 +150,3 @@ def api_upload():
         mimetype='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
-
-
-# Remove avatar API
-@routes_bp.route('/api/remove-avatar', methods=['POST'])
-@login_required
-def api_remove_avatar():
-    """Remove the user's custom avatar attribute from Authentik and clear it from the session."""
-    # CSRF token validation (returns JSON 403 on failure)
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
-    user = session['user']
-    log.info('Avatar removal requested by user %r (pk=%s).', user['username'], user['pk'])
-
-    try:
-        remove_avatar_url(user['pk'])
-    except Exception:
-        log.exception('Failed to remove avatar for user %r (pk=%s).', user['username'], user['pk'])
-        return jsonify({'error': 'remove_failed'}), 500
-
-    # Clear the avatar from the session so the UI reflects the change immediately
-    session['user']['avatar'] = ''
-    session.modified = True
-    log.info('Avatar removed for user %r (pk=%s).', user['username'], user['pk'])
-    return jsonify({'success': True})

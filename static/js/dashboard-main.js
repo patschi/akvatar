@@ -1,5 +1,5 @@
 /**
- * dashboard.js – Avatar upload with client-side cropping and server-side
+ * dashboard-main.js – Avatar upload with client-side cropping and server-side
  * processing streamed back as Server-Sent Events (SSE).
  *
  * Depends on server-provided constants injected inline by the template
@@ -65,7 +65,10 @@ const STEP_STATUS_ICONS = {
 
 // Progress step list helpers
 
-/** Escape a string for safe insertion into innerHTML. */
+/**
+ * Escape a string for safe insertion into innerHTML.
+ * Also used by dashboard-remove-avatar.js and dashboard-image-import.js.
+ */
 var _escapeDiv = document.createElement("div");
 function escapeHTML(s) {
     _escapeDiv.textContent = s;
@@ -75,6 +78,8 @@ function escapeHTML(s) {
 /** Build the inner HTML for a single progress step row. */
 function buildStepHTML(label, status, detail) {
     var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
+    // All dynamic values (label, detail) are escaped via escapeHTML() before
+    // insertion — only static SVG icon markup is injected unescaped.
     return '<span class="step-icon">' + icon + '</span>'
         + '<span class="step-label">' + escapeHTML(label) + '</span>'
         + (detail ? '<span class="step-detail">' + escapeHTML(detail) + '</span>' : "");
@@ -115,9 +120,14 @@ function showResultView() {
     progressPanel.style.paddingTop = "10px";
 }
 
-/** Display a result message with a retry button and switch to the result view. */
+/**
+ * Display a result message with a retry button and switch to the result view.
+ * Also used by dashboard-remove-avatar.js for error display.
+ */
 function showResult(cssClass, messageHTML) {
     showResultView();
+    // messageHTML is pre-escaped by the caller via escapeHTML() — only static
+    // CSS class names and the escaped message are inserted here.
     resultMessage.innerHTML =
         '<p class="' + cssClass + '">' + messageHTML + '</p>' +
         buildRetryButtonHTML();
@@ -272,88 +282,6 @@ dropZone.addEventListener("drop", function (event) {
     }
 });
 
-// Remove avatar: custom confirmation dialog (only present when a custom avatar is set)
-var removeAvatarBtn       = document.getElementById("removeAvatarBtn");
-var removeAvatarOverlay   = document.getElementById("removeAvatarOverlay");
-
-if (removeAvatarBtn && removeAvatarOverlay) {
-    var removeAvatarTitle      = document.getElementById("removeAvatarTitle");
-    var removeAvatarMessage    = document.getElementById("removeAvatarMessage");
-    var removeAvatarCloseBtn   = document.getElementById("removeAvatarCloseBtn");
-    var removeAvatarCancelBtn  = document.getElementById("removeAvatarCancelBtn");
-    var removeAvatarConfirmBtn = document.getElementById("removeAvatarConfirmBtn");
-
-    // Populate text from translations
-    removeAvatarTitle.textContent      = I18N.reset_avatar_confirm_title;
-    removeAvatarMessage.textContent    = I18N.reset_avatar_confirm_message;
-    removeAvatarCancelBtn.textContent  = I18N.reset_avatar_confirm_no;
-    removeAvatarConfirmBtn.textContent = I18N.reset_avatar_confirm_yes;
-
-    function openRemoveDialog() {
-        removeAvatarOverlay.classList.remove("hidden");
-    }
-
-    function closeRemoveDialog() {
-        removeAvatarOverlay.classList.add("hidden");
-    }
-
-    // Open dialog when remove button is clicked
-    removeAvatarBtn.addEventListener("click", openRemoveDialog);
-
-    // Close handlers: X button, Cancel button, backdrop click, Escape key
-    removeAvatarCloseBtn.addEventListener("click", closeRemoveDialog);
-    removeAvatarCancelBtn.addEventListener("click", closeRemoveDialog);
-    removeAvatarOverlay.addEventListener("click", function (event) {
-        if (!event.target.closest(".dialog-panel")) closeRemoveDialog();
-    });
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && !removeAvatarOverlay.classList.contains("hidden")) {
-            closeRemoveDialog();
-        }
-    });
-
-    // Confirm: send the removal request
-    removeAvatarConfirmBtn.addEventListener("click", async function () {
-        removeAvatarConfirmBtn.disabled = true;
-        removeAvatarCancelBtn.disabled = true;
-
-        try {
-            var resp = await fetch(REMOVE_AVATAR_ENDPOINT, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": CSRF_TOKEN,
-                },
-            });
-
-            closeRemoveDialog();
-
-            if (!resp.ok) {
-                showResult("result-error", escapeHTML(I18N.reset_avatar_failed));
-                return;
-            }
-
-            // Replace the avatar <img> with a placeholder initial-letter circle
-            var profileAvatar = document.querySelector(".profile-avatar");
-            if (profileAvatar) {
-                var placeholder = document.createElement("div");
-                placeholder.className = "profile-avatar profile-avatar--placeholder";
-                placeholder.textContent = AVATAR_INITIAL;
-                profileAvatar.replaceWith(placeholder);
-            }
-
-            // Hide the remove button (avatar is gone)
-            removeAvatarBtn.classList.add("hidden");
-        } catch (e) {
-            closeRemoveDialog();
-            showResult("result-error", escapeHTML(I18N.reset_avatar_failed));
-        } finally {
-            removeAvatarConfirmBtn.disabled = false;
-            removeAvatarCancelBtn.disabled = false;
-        }
-    });
-}
-
 // Upload flow with SSE streaming progress
 uploadButton.addEventListener("click", async function () {
     if (!cropperInstance) return;
@@ -421,8 +349,7 @@ uploadButton.addEventListener("click", async function () {
                 return;
             }
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
-            // Note: showResult uses escapeHTML internally for all dynamic content.
-            // The resultMessage.innerHTML below only contains static I18N strings
+            // resultMessage.innerHTML only contains static I18N strings
             // that are escaped via escapeHTML() – no untrusted data is interpolated.
             resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
             resetUploadButton();

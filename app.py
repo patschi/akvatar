@@ -23,6 +23,7 @@ from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations, AVAILABLE_LANGUAGES
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.image_import import import_bp
+from src.reset_avatar import reset_avatar_bp
 from src.routes import routes_bp
 
 log = logging.getLogger('app')
@@ -123,8 +124,9 @@ def create_app() -> Flask:
 
     # Register route blueprints
     app.register_blueprint(auth_bp)    # /login, /callback, /logout, /logged-out
-    app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
-    app.register_blueprint(import_bp)   # /api/fetch-gravatar, /api/fetch-url
+    app.register_blueprint(routes_bp)       # /, /dashboard, /api/upload, /user-avatars
+    app.register_blueprint(reset_avatar_bp) # /api/remove-avatar
+    app.register_blueprint(import_bp)       # /api/fetch-gravatar, /api/fetch-url
 
     # Rate limiting on avatar/metadata serving endpoints (before_request hook).
     # Deferred import: rate_limit imports src.config at module level which triggers

@@ -142,10 +142,10 @@
     {% include 'partials/image-import-external.html' %}
   {% endif %}
 
-  <!-- Server-provided constants consumed by dashboard.js -->
+  <!-- Server-provided constants consumed by dashboard scripts -->
   <script>
     const UPLOAD_ENDPOINT         = "{{ url_for('routes.api_upload') }}";
-    const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('routes.api_remove_avatar') }}";
+    const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('reset_avatar.api_remove_avatar') }}";
     const GRAVATAR_ENDPOINT       = "{{ url_for('import.api_fetch_gravatar') }}";
     const URL_FETCH_ENDPOINT      = "{{ url_for('import.api_fetch_url') }}";
     const MAX_AVATAR_SIZE         = {{ max_size }};
@@ -155,9 +155,12 @@
     const ALLOWED_EXTENSIONS      = new Set({{ allowed_extensions | tojson }});
     const AVATAR_INITIAL          = "{{ (user.name or user.username)[0] | upper }}";
   </script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard-main.js') }}"></script>
+  {% if user.avatar %}
+    <script src="{{ url_for('static', filename='js/dashboard-remove-avatar.js') }}"></script>
+  {% endif %}
   {% if import_gravatar_enabled or import_url_enabled %}
-    <script src="{{ url_for('static', filename='js/image-import.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard-image-import.js') }}"></script>
   {% endif %}
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
