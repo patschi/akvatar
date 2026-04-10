@@ -32,7 +32,7 @@
     <!-- Language selection (dynamically rendered from loaded translation files) -->
     <div class="dialog-group">
       <span class="dialog-label">{{ t('settings.language') }}</span>
-      <div class="dialog-options">
+      <div class="dialog-options dialog-options--lang">
         {% for lang in languages %}
         <button class="btn dialog-option" data-locale="{{ lang.locale }}" type="button">
           <span class="dialog-badge">{{ lang.code }}</span> {{ lang.name }}
