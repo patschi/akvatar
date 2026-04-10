@@ -13,8 +13,17 @@ import logging
 import re
 
 from flask import (
-    Blueprint, Response, abort, redirect, url_for, session, request,
-    jsonify, send_from_directory, render_template, stream_with_context,
+    Blueprint,
+    Response,
+    abort,
+    redirect,
+    url_for,
+    session,
+    request,
+    jsonify,
+    send_from_directory,
+    render_template,
+    stream_with_context,
 )
 
 from src.app_static import serve_static_file
@@ -25,65 +34,68 @@ from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.upload import validate_upload, generate_sse, ValidationError
 
-log = logging.getLogger('routes')
+log = logging.getLogger("routes")
 
-routes_bp = Blueprint('routes', __name__)
+routes_bp = Blueprint("routes", __name__)
 
 # Allowed error keys for the login page (reject arbitrary reflected strings)
-_VALID_ERROR_KEYS = frozenset({'oidc_failed', 'pk_failed'})
+_VALID_ERROR_KEYS = frozenset({"oidc_failed", "pk_failed"})
 
 
 # robots.txt – serve from static cache (crawlers expect /robots.txt at the root)
-@routes_bp.route('/robots.txt')
+@routes_bp.route("/robots.txt")
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
-    return serve_static_file('robots.txt')
+    return serve_static_file("robots.txt")
 
 
 # Health check
-@routes_bp.route('/healthz')
+@routes_bp.route("/healthz")
 def healthz():
     """Lightweight health probe for load balancers or healthchecks."""
-    return Response('OK', mimetype='text/plain')
+    return Response("OK", mimetype="text/plain")
 
 
 # Public login page
-@routes_bp.route('/')
+@routes_bp.route("/")
 def login_page():
     """Show a static landing page with a login button, or redirect to dashboard if already authenticated."""
-    if 'user' in session:
-        log.debug('User already authenticated – redirecting to dashboard.')
-        return redirect(url_for('routes.dashboard'))
-    error_key = request.args.get('error', '')
-    if not error_key and 'autologin' in request.args:
-        return redirect(url_for('auth.login'))
+    if "user" in session:
+        log.debug("User already authenticated – redirecting to dashboard.")
+        return redirect(url_for("routes.dashboard"))
+    error_key = request.args.get("error", "")
+    if not error_key and "autologin" in request.args:
+        return redirect(url_for("auth.login"))
     if error_key not in _VALID_ERROR_KEYS:
-        error_key = ''
+        error_key = ""
     if error_key:
-        log.debug('Login page rendered with error=%r.', error_key)
-    return render_template('login.html', error_key=error_key)
+        log.debug("Login page rendered with error=%r.", error_key)
+    return render_template("login.html", error_key=error_key)
 
 
 # Dashboard (authenticated)
-@routes_bp.route('/dashboard')
+@routes_bp.route("/dashboard")
 @login_required
 def dashboard():
     """Serve the authenticated avatar upload / crop page."""
-    user = session['user']
-    log.debug('Serving dashboard for user %r.', user['username'])
+    user = session["user"]
+    log.debug("Serving dashboard for user %r.", user["username"])
 
     # Build user initials: first letter of first name + first letter of last name.
     # Falls back to the first letter of the username if name parts are unavailable.
-    name_parts = user.get('name', '').split()
+    name_parts = user.get("name", "").split()
     if len(name_parts) >= 2:
         initials = (name_parts[0][0] + name_parts[-1][0]).upper()
     else:
-        initials = (user.get('username', '') or '?')[0].upper()
+        initials = (user.get("username", "") or "?")[0].upper()
 
     return render_template(
-        'dashboard.html', user=user, user_initials=initials,
+        "dashboard.html",
+        user=user,
+        user_initials=initials,
         ldap_enabled=ldap_is_enabled(),
-        max_size=MAX_SIZE, allowed_extensions=sorted(ALLOWED_EXTENSIONS),
+        max_size=MAX_SIZE,
+        allowed_extensions=sorted(ALLOWED_EXTENSIONS),
         import_gravatar_enabled=GRAVATAR_ENABLED,
         import_url_enabled=URL_ENABLED,
     )
@@ -91,37 +103,38 @@ def dashboard():
 
 # Serve stored avatar files
 # Dimensions must be NxN (e.g. "256x256") – reject anything else before touching the filesystem
-_DIMENSIONS_RE = re.compile(r'^\d{1,5}x\d{1,5}$')
+_DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 
-@routes_bp.route('/user-avatars/<dimensions>/<filename>')
+
+@routes_bp.route("/user-avatars/<dimensions>/<filename>")
 def serve_avatar(dimensions, filename):
     """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
     if not _DIMENSIONS_RE.match(dimensions):
-        log.debug('Avatar request rejected – invalid dimensions: %r', dimensions)
+        log.debug("Avatar request rejected – invalid dimensions: %r", dimensions)
         abort(404)
-    filepath = f'{dimensions}/{filename}'
-    log.debug('Serving avatar file: %s', filepath)
+    filepath = f"{dimensions}/{filename}"
+    log.debug("Serving avatar file: %s", filepath)
     # Avatar URLs are immutable: filenames are cryptographically random per upload
     # (uuid4 + token_urlsafe + nanosecond timestamp).  A new upload always produces
     # a new URL, so the content at any given URL never changes.  The immutable
     # directive tells supporting browsers not to revalidate even on explicit refresh.
     resp = send_from_directory(AVATAR_ROOT, filepath)
-    resp.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return resp
 
 
 # Serve avatar metadata JSON files
-@routes_bp.route('/user-avatars/_metadata/<filename>')
+@routes_bp.route("/user-avatars/_metadata/<filename>")
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory."""
-    log.debug('Serving metadata file: %s', filename)
-    resp = send_from_directory(METADATA_ROOT, filename, mimetype='application/json')
-    resp.headers['Cache-Control'] = 'no-store'
+    log.debug("Serving metadata file: %s", filename)
+    resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
+    resp.headers["Cache-Control"] = "no-store"
     return resp
 
 
 # Upload & process API (Server-Sent Events for real-time progress)
-@routes_bp.route('/api/upload', methods=['POST'])
+@routes_bp.route("/api/upload", methods=["POST"])
 @login_required
 def api_upload():
     """
@@ -137,26 +150,30 @@ def api_upload():
     if csrf_rejection:
         return csrf_rejection
 
-    user = session['user']
-    log.info('Upload request from user %r.', user['username'])
+    user = session["user"]
+    log.info("Upload request from user %r.", user["username"])
 
     # Synchronous validation (returns JSON 400 on failure)
-    if 'file' not in request.files:
-        log.warning('Upload rejected – no file part in request.')
-        return jsonify({'error': 'No file part in the request.'}), 400
+    if "file" not in request.files:
+        log.warning("Upload rejected – no file part in request.")
+        return jsonify({"error": "No file part in the request."}), 400
 
     try:
-        image = validate_upload(request.files['file'])
+        image = validate_upload(request.files["file"])
     except ValidationError as exc:
-        log.warning('Upload rejected: %s', exc)
-        return jsonify({'error': str(exc)}), 400
+        log.warning("Upload rejected: %s", exc)
+        return jsonify({"error": str(exc)}), 400
 
-    log.info('Image validated – mode=%s, size=%dx%d. Starting SSE stream.',
-             image.mode, image.width, image.height)
+    log.info(
+        "Image validated – mode=%s, size=%dx%d. Starting SSE stream.",
+        image.mode,
+        image.width,
+        image.height,
+    )
 
     # Stream processing progress as SSE
     return Response(
         stream_with_context(generate_sse(user, image)),
-        mimetype='text/event-stream',
-        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

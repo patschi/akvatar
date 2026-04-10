@@ -13,12 +13,12 @@ import requests as http_requests
 from src import USER_AGENT
 from src.config import ak_cfg, dry_run
 
-log = logging.getLogger('authentik')
+log = logging.getLogger("authentik")
 
 # Module-level configuration
 
 # Which Authentik user attribute stores the avatar URL (configurable in config)
-_avatar_attr = ak_cfg.get('avatar_attribute', 'avatar-url')
+_avatar_attr = ak_cfg.get("avatar_attribute", "avatar-url")
 
 # Timeout in seconds for individual API requests (longer for paginated list)
 _TIMEOUT = 15
@@ -27,18 +27,21 @@ _TIMEOUT_LIST = 30
 # Pre-build a requests.Session for TCP connection pooling across API calls.
 # Avoids a fresh TCP+TLS handshake for every request to the same Authentik host.
 _session = http_requests.Session()
-_session.headers.update({
-    'Authorization': f'Bearer {ak_cfg["api_token"]}',
-    'Content-Type': 'application/json',
-    'User-Agent': USER_AGENT,
-})
+_session.headers.update(
+    {
+        "Authorization": f"Bearer {ak_cfg['api_token']}",
+        "Content-Type": "application/json",
+        "User-Agent": USER_AGENT,
+    }
+)
 
 # Pre-compute base URLs used in every call
-_base_url = ak_cfg['base_url']
-_users_url = f'{_base_url}/api/v3/core/users/'
+_base_url = ak_cfg["base_url"]
+_users_url = f"{_base_url}/api/v3/core/users/"
 
 
 # Response helpers
+
 
 def _parse_json(resp: http_requests.Response) -> dict:
     """Parse JSON from a response, raising a clear error on failure."""
@@ -46,13 +49,13 @@ def _parse_json(resp: http_requests.Response) -> dict:
         data = resp.json()
     except (ValueError, TypeError) as exc:
         raise ValueError(
-            f'Authentik API returned non-JSON response (HTTP {resp.status_code}, '
-            f'Content-Type: {resp.headers.get("Content-Type", "unknown")}): {exc}'
+            f"Authentik API returned non-JSON response (HTTP {resp.status_code}, "
+            f"Content-Type: {resp.headers.get('Content-Type', 'unknown')}): {exc}"
         ) from exc
     if not isinstance(data, dict):
         raise TypeError(
-            f'Authentik API returned unexpected JSON type {type(data).__name__} '
-            f'(expected dict) from {resp.request.method} {resp.url}.'
+            f"Authentik API returned unexpected JSON type {type(data).__name__} "
+            f"(expected dict) from {resp.request.method} {resp.url}."
         )
     return data
 
@@ -75,11 +78,11 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
     update.  In dry-run mode *post_patch* equals *pre_patch* (no PATCH is
     sent).  Respects dry-run mode.
     """
-    url = f'{_users_url}{pk}/'
+    url = f"{_users_url}{pk}/"
 
     # Fetch current user data (always performed — callers may rely on the
     # returned pre-patch dict even in dry-run mode).
-    log.debug('GET %s – fetching current user data for patch.', url)
+    log.debug("GET %s – fetching current user data for patch.", url)
     get_resp = _session.get(url, timeout=_TIMEOUT)
     get_resp.raise_for_status()
     current = _parse_json(get_resp)
@@ -95,22 +98,27 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
         else:
             payload[key] = value
 
-    log.debug('PATCH %s – merged payload: %s', url, payload)
+    log.debug("PATCH %s – merged payload: %s", url, payload)
 
     if dry_run:
-        log.info('[DRY-RUN] Would PATCH %s with: %s', url, payload)
+        log.info("[DRY-RUN] Would PATCH %s with: %s", url, payload)
         return current, current
 
     patch_resp = _session.patch(url, json=payload, timeout=_TIMEOUT)
     patch_resp.raise_for_status()
 
     result = _parse_json(patch_resp)
-    log.debug('PATCH %s – response (HTTP %d): %s', 
-              url, patch_resp.status_code, result.get('attributes', {}))
+    log.debug(
+        "PATCH %s – response (HTTP %d): %s",
+        url,
+        patch_resp.status_code,
+        result.get("attributes", {}),
+    )
     return current, result
 
 
 # Public API
+
 
 def retrieve_user(username: str) -> dict:
     """
@@ -121,29 +129,39 @@ def retrieve_user(username: str) -> dict:
     The PK is stored in the session for all subsequent API operations; the
     avatar is used to display the current profile picture on the dashboard.
     """
-    log.debug('GET %s?username=%s – retrieving user.', _users_url, username)
-    resp = _session.get(_users_url, params={'username': username}, timeout=_TIMEOUT)
+    log.debug("GET %s?username=%s – retrieving user.", _users_url, username)
+    resp = _session.get(_users_url, params={"username": username}, timeout=_TIMEOUT)
     resp.raise_for_status()
 
     data = _parse_json(resp)
-    results = data.get('results')
+    results = data.get("results")
     if not isinstance(results, list) or not results:
-        raise ValueError(f'User {username!r} not found in Authentik (got {len(results) if isinstance(results, list) else 0} result(s)).')
+        raise ValueError(
+            f"User {username!r} not found in Authentik (got {len(results) if isinstance(results, list) else 0} result(s))."
+        )
 
     user = results[0]
 
-    pk = user.get('pk')
+    pk = user.get("pk")
     if not isinstance(pk, int):
-        raise TypeError(f'Authentik returned non-integer PK {pk!r} for user {username!r}.')
+        raise TypeError(
+            f"Authentik returned non-integer PK {pk!r} for user {username!r}."
+        )
 
     # Read the custom avatar URL from the configured attribute (e.g. 'avatar-url')
     # rather than the top-level 'avatar' field, which is Authentik's computed avatar
     # (Gravatar, initials, etc.) and doesn't distinguish custom from default.
-    attrs = user.get('attributes', {})
-    avatar = attrs.get(_avatar_attr, '') if isinstance(attrs, dict) else ''
+    attrs = user.get("attributes", {})
+    avatar = attrs.get(_avatar_attr, "") if isinstance(attrs, dict) else ""
 
-    log.debug('Retrieved user %r: pk=%d, %s=%s.', username, pk, _avatar_attr, avatar or '(not set)')
-    return {'pk': pk, 'avatar': avatar}
+    log.debug(
+        "Retrieved user %r: pk=%d, %s=%s.",
+        username,
+        pk,
+        _avatar_attr,
+        avatar or "(not set)",
+    )
+    return {"pk": pk, "avatar": avatar}
 
 
 def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
@@ -163,31 +181,39 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
     dry-run mode.
     """
     # Fetch current user, merge the avatar attribute, and PATCH back
-    pre_patch, post_patch = _patch_user(pk, {'attributes': {_avatar_attr: avatar_url}})
+    pre_patch, post_patch = _patch_user(pk, {"attributes": {_avatar_attr: avatar_url}})
 
-    current_attrs = pre_patch.get('attributes')
+    current_attrs = pre_patch.get("attributes")
     if not isinstance(current_attrs, dict):
         raise TypeError(
-            f'Authentik user pk={pk} has unexpected attributes type '
-            f'{type(current_attrs).__name__} (expected dict).'
+            f"Authentik user pk={pk} has unexpected attributes type "
+            f"{type(current_attrs).__name__} (expected dict)."
         )
 
     old_url = current_attrs.get(_avatar_attr)
-    log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
+    log.debug("Previous %s: %s", _avatar_attr, old_url or "(not set)")
 
     # Verify the API accepted the change by checking the response body
     # (skipped in dry-run mode where post_patch == pre_patch)
     if not dry_run:
-        patched_attrs = post_patch.get('attributes', {})
+        patched_attrs = post_patch.get("attributes", {})
         actual_value = patched_attrs.get(_avatar_attr)
         if actual_value != avatar_url:
             log.warning(
-                'Authentik PATCH returned %s=%r instead of expected %r.',
-                _avatar_attr, actual_value, avatar_url,
+                "Authentik PATCH returned %s=%r instead of expected %r.",
+                _avatar_attr,
+                actual_value,
+                avatar_url,
             )
-        log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
+        log.info(
+            "Authentik %s updated for pk=%d: %s -> %s",
+            _avatar_attr,
+            pk,
+            old_url or "(not set)",
+            avatar_url,
+        )
 
-    result_attrs = post_patch.get('attributes', current_attrs)
+    result_attrs = post_patch.get("attributes", current_attrs)
     return result_attrs, old_url
 
 
@@ -200,10 +226,10 @@ def remove_avatar_url(pk: int) -> None:
     Respects dry-run mode.
     """
     # Partial update: set the avatar attribute to null
-    _patch_user(pk, {'attributes': {_avatar_attr: None}})
+    _patch_user(pk, {"attributes": {_avatar_attr: None}})
 
     if not dry_run:
-        log.info('Authentik %s set to null for pk=%d.', _avatar_attr, pk)
+        log.info("Authentik %s set to null for pk=%d.", _avatar_attr, pk)
 
 
 def revert_avatar_url(pk: int, old_url: str | None) -> None:
@@ -213,10 +239,10 @@ def revert_avatar_url(pk: int, old_url: str | None) -> None:
     step fails after Authentik was already updated.
     """
     # Partial update: set the avatar attribute to the old value (or null)
-    display = old_url or '(null)'
-    log.info('Rolling back Authentik %s for pk=%d to: %s', _avatar_attr, pk, display)
-    _patch_user(pk, {'attributes': {_avatar_attr: old_url}})
-    log.info('Authentik rollback successful for pk=%d.', pk)
+    display = old_url or "(null)"
+    log.info("Rolling back Authentik %s for pk=%d to: %s", _avatar_attr, pk, display)
+    _patch_user(pk, {"attributes": {_avatar_attr: old_url}})
+    log.info("Authentik rollback successful for pk=%d.", pk)
 
 
 def _list_user_pks(active_only: bool = False) -> set[int]:
@@ -231,35 +257,40 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     page = 0
 
     url: str | None = _users_url
-    params: dict | None = {'page_size': 100}
+    params: dict | None = {"page_size": 100}
     if active_only:
-        params['is_active'] = 'true'
+        params["is_active"] = "true"
 
     # Paginate through all result pages, collecting PKs from each page
     while url:
         page += 1
-        log.debug('GET %s (page %d) – fetching user list.', url, page)
+        log.debug("GET %s (page %d) – fetching user list.", url, page)
         resp = _session.get(url, params=params, timeout=_TIMEOUT_LIST)
         resp.raise_for_status()
 
         data = _parse_json(resp)
-        page_results = data.get('results')
+        page_results = data.get("results")
         if not isinstance(page_results, list):
             raise TypeError(
-                f'Authentik user list page {page} returned non-list results '
-                f'(type={type(page_results).__name__}).'
+                f"Authentik user list page {page} returned non-list results "
+                f"(type={type(page_results).__name__})."
             )
 
         for user in page_results:
-            pk = user.get('pk')
+            pk = user.get("pk")
             if isinstance(pk, int):
                 pks.add(pk)
 
-        log.debug('Page %d: received %d user(s), running total %d.', page, len(page_results), len(pks))
+        log.debug(
+            "Page %d: received %d user(s), running total %d.",
+            page,
+            len(page_results),
+            len(pks),
+        )
 
         # Authentik embeds the full next-page URL including query params,
         # so we only pass our own params on the first request.
-        url = data.get('pagination', {}).get('next')
+        url = data.get("pagination", {}).get("next")
         params = None
 
     return pks
@@ -274,7 +305,7 @@ def list_all_user_pks() -> set[int]:
     exists in Authentik at all.
     """
     pks = _list_user_pks(active_only=False)
-    log.debug('Fetched %d user PK(s) from Authentik (active + deactivated).', len(pks))
+    log.debug("Fetched %d user PK(s) from Authentik (active + deactivated).", len(pks))
     return pks
 
 
@@ -289,5 +320,5 @@ def list_active_user_pks() -> set[int]:
     is called — anything not in the active set is cleaned up.
     """
     pks = _list_user_pks(active_only=True)
-    log.debug('Fetched %d active user PK(s) from Authentik.', len(pks))
+    log.debug("Fetched %d active user PK(s) from Authentik.", len(pks))
     return pks

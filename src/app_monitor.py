@@ -10,15 +10,15 @@ import logging
 import threading
 import time
 
-log = logging.getLogger('app.monitor')
+log = logging.getLogger("app.monitor")
 
 
 def _get_rss_mb() -> float | None:
     """Return current process RSS in MB, or None if unavailable."""
     # Linux: parse VmRSS from /proc/self/status (value in KB)
     try:
-        with open('/proc/self/status') as f:
-            line = next(ln for ln in f if ln.startswith('VmRSS:'))
+        with open("/proc/self/status") as f:
+            line = next(ln for ln in f if ln.startswith("VmRSS:"))
         return int(line.split()[1]) / 1024
     except Exception:
         return None
@@ -30,12 +30,12 @@ def _memory_log_loop() -> None:
     while True:
         mem = _get_rss_mb()
         if mem is not None and (last_mem is None or abs(mem - last_mem) > 0.25):
-            log.debug('Monitor: Process memory: %.1f MB', mem)
+            log.debug("Monitor: Process memory: %.1f MB", mem)
             last_mem = mem
         time.sleep(3)
 
 
 def start_memory_monitor() -> None:
     """Start the memory monitor thread (once)."""
-    threading.Thread(target=_memory_log_loop, name='memlog', daemon=True).start()
-    log.debug('Memory monitor thread started.')
+    threading.Thread(target=_memory_log_loop, name="memlog", daemon=True).start()
+    log.debug("Memory monitor thread started.")

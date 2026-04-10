@@ -17,16 +17,16 @@ import secrets
 
 from flask import session, request, jsonify
 
-log = logging.getLogger('csrf')
+log = logging.getLogger("csrf")
 
 # Token length in bytes (32 bytes = 64 hex characters)
 _TOKEN_BYTES = 32
 
 # Session key where the token is stored
-_SESSION_KEY = 'csrf_token'
+_SESSION_KEY = "csrf_token"
 
 # HTTP header carrying the token from the client
-_HEADER_NAME = 'X-CSRF-Token'
+_HEADER_NAME = "X-CSRF-Token"
 
 
 def generate_csrf_token() -> str:
@@ -48,9 +48,14 @@ def validate_csrf_token():
             return rejection
     """
     expected = session.get(_SESSION_KEY, None)
-    provided = request.headers.get(_HEADER_NAME, '')
+    provided = request.headers.get(_HEADER_NAME, "")
     if expected and provided and secrets.compare_digest(expected, provided):
         return None
-    log.warning('CSRF validation failed on %s %s from %s (token present: %s).',
-                request.method, request.path, request.remote_addr, bool(provided))
-    return jsonify({'error': 'csrf_failed'}), 403
+    log.warning(
+        "CSRF validation failed on %s %s from %s (token present: %s).",
+        request.method,
+        request.path,
+        request.remote_addr,
+        bool(provided),
+    )
+    return jsonify({"error": "csrf_failed"}), 403

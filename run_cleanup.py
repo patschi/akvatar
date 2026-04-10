@@ -16,13 +16,13 @@ import sys
 # in this process.  os.environ is set so gunicorn and any subprocesses it spawns
 # inherit the setting without needing their own flag.
 sys.dont_write_bytecode = True
-os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 # Ensure immediate log output (no buffering)
-os.environ.setdefault('PYTHONUNBUFFERED', '1')
+os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
 from src.cleanup import run_cleanup  # noqa: E402
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_cleanup()
     sys.exit(0)

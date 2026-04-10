@@ -26,31 +26,33 @@ from src.image_import import import_bp
 from src.reset_avatar import reset_avatar_bp
 from src.routes import routes_bp
 
-log = logging.getLogger('app')
+log = logging.getLogger("app")
 
 # Logger dedicated to HTTP request logging (keeps it separate from application logic)
-http_log = logging.getLogger('http')
+http_log = logging.getLogger("http")
 
 # Sentry SDK initialisation – runs once at import time (before Flask is created)
 # so the SDK can hook into framework internals.
 init_sentry()
 
 # Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
-logging.getLogger('werkzeug').setLevel(logging.WARNING)
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 
 def create_app() -> Flask:
     """Application factory – build and configure the Flask instance."""
 
-    # Start the memory monitor thread immediately when DEBUG enabled so 
+    # Start the memory monitor thread immediately when DEBUG enabled so
     # it runs during startup and continues in workers after fork.
     if log.isEnabledFor(logging.DEBUG):
         start_memory_monitor()
 
     # Initialize flask app
-    app = Flask(__name__, template_folder='src/templates', static_folder=None)
-    app.secret_key = app_cfg['secret_key']
-    app.config['MAX_CONTENT_LENGTH'] = app_cfg['max_upload_size_mb'] * 1024 * 1024  # MB -> bytes
+    app = Flask(__name__, template_folder="src/templates", static_folder=None)
+    app.secret_key = app_cfg["secret_key"]
+    app.config["MAX_CONTENT_LENGTH"] = (
+        app_cfg["max_upload_size_mb"] * 1024 * 1024
+    )  # MB -> bytes
 
     # Strip blank lines introduced by Jinja2 block tags in rendered HTML output.
     # trim_blocks:   removes the newline after a block tag ({% ... %})
@@ -76,35 +78,41 @@ def create_app() -> Flask:
     #   only when Flask's own built-in server has TLS configured.
     #   app.session_cookie_secure overrides this auto-detection when set explicitly.
     # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
-    _secure_override = app_cfg.get('session_cookie_secure', None)
-    _tls_active = _secure_override if _secure_override is not None else app_cfg.get('public_base_url', '').startswith('https://')
-    app.config['SESSION_COOKIE_NAME'] = 'akvatar_session'
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['SESSION_COOKIE_SECURE'] = _tls_active
-    app.config['PERMANENT_SESSION_LIFETIME'] = app_cfg.get('web_session_lifetime_seconds', 1800)
+    _secure_override = app_cfg.get("session_cookie_secure", None)
+    _tls_active = (
+        _secure_override
+        if _secure_override is not None
+        else app_cfg.get("public_base_url", "").startswith("https://")
+    )
+    app.config["SESSION_COOKIE_NAME"] = "akvatar_session"
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = _tls_active
+    app.config["PERMANENT_SESSION_LIFETIME"] = app_cfg.get(
+        "web_session_lifetime_seconds", 1800
+    )
 
     app.debug = debug_full
-    app.config['TEMPLATES_AUTO_RELOAD'] = debug_full
+    app.config["TEMPLATES_AUTO_RELOAD"] = debug_full
 
-    log.debug('Flask app created (max upload = %d MB).', app_cfg['max_upload_size_mb'])
+    log.debug("Flask app created (max upload = %d MB).", app_cfg["max_upload_size_mb"])
 
     # Ensure the avatar storage directory tree exists (root + all size sub-dirs)
     AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
     METADATA_ROOT.mkdir(parents=True, exist_ok=True)
     ensure_size_directories_existence()
-    log.debug('Avatar storage root: %s', AVATAR_ROOT.resolve())
-    log.debug('Metadata storage root: %s', METADATA_ROOT.resolve())
+    log.debug("Avatar storage root: %s", AVATAR_ROOT.resolve())
+    log.debug("Metadata storage root: %s", METADATA_ROOT.resolve())
 
     # Subfolder support
     # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
     # "https://portal.example.com/avatar-update").  Apply PrefixMiddleware as
     # the inner middleware so it only fires when the reverse proxy has NOT
     # already set SCRIPT_NAME via X-Forwarded-Prefix (handled by ProxyFix).
-    _public_path = urlparse(app_cfg.get('public_base_url', '')).path.rstrip('/')
+    _public_path = urlparse(app_cfg.get("public_base_url", "")).path.rstrip("/")
     if _public_path:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
-        log.info('PrefixMiddleware applied – app is served under %r.', _public_path)
+        log.info("PrefixMiddleware applied – app is served under %r.", _public_path)
 
     # Reverse proxy support
     # ProxyFix is the OUTER middleware (runs first on every request).  It reads
@@ -113,99 +121,109 @@ def create_app() -> Flask:
     # IMPORTANT: must wrap PrefixMiddleware so that when X-Forwarded-Prefix is
     # present, ProxyFix sets SCRIPT_NAME before PrefixMiddleware checks it.
     # Disable via webserver.proxy_mode: false when running without a reverse proxy.
-    if web_cfg.get('proxy_mode', True):
+    if web_cfg.get("proxy_mode", True):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-        log.debug('ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1).')
+        log.debug(
+            "ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1)."
+        )
     else:
-        log.info('Proxy mode disabled – ProxyFix middleware not applied.')
+        log.info("Proxy mode disabled – ProxyFix middleware not applied.")
 
     # Initialise OIDC / OAuth
     init_oauth(app)
 
     # Register route blueprints
-    app.register_blueprint(auth_bp)    # /login, /callback, /logout, /logged-out
-    app.register_blueprint(routes_bp)       # /, /dashboard, /api/upload, /user-avatars
-    app.register_blueprint(reset_avatar_bp) # /api/remove-avatar
-    app.register_blueprint(import_bp)       # /api/fetch-gravatar, /api/fetch-url
+    app.register_blueprint(auth_bp)  # /login, /callback, /logout, /logged-out
+    app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
+    app.register_blueprint(reset_avatar_bp)  # /api/remove-avatar
+    app.register_blueprint(import_bp)  # /api/fetch-gravatar, /api/fetch-url
 
     # Rate limiting on avatar/metadata serving endpoints (before_request hook).
     # Deferred import: rate_limit imports src.config at module level which triggers
     # config validation; importing here keeps the startup sequence predictable.
     from src.rate_limit import init_rate_limiting
+
     init_rate_limiting(app)
 
     # Serve static files from in-memory cache
-    @app.route('/static/<path:filename>', endpoint='static')
+    @app.route("/static/<path:filename>", endpoint="static")
     def _serve_static(filename):
         return serve_static_file(filename)
 
-    log.debug('Web routes registered.')
-    log.info('App initialized.')
+    log.debug("Web routes registered.")
+    log.info("App initialized.")
 
     # Template context processor – inject shared variables into all templates
-    _brand_name = branding_cfg.get('name', 'Avatar Updater')
+    _brand_name = branding_cfg.get("name", "Avatar Updater")
 
     @app.context_processor
     def _inject_globals():
         locale = get_locale()
         return {
-            'brand_name': _brand_name,
-            'app_version': APP_VERSION,
-            't': t,
-            'lang': locale.split('_')[0],
-            'locale': locale,
-            'i18n': get_js_translations(locale),
-            'languages': AVAILABLE_LANGUAGES,
-            'csrf_token': generate_csrf_token,
+            "brand_name": _brand_name,
+            "app_version": APP_VERSION,
+            "t": t,
+            "lang": locale.split("_")[0],
+            "locale": locale,
+            "i18n": get_js_translations(locale),
+            "languages": AVAILABLE_LANGUAGES,
+            "csrf_token": generate_csrf_token,
         }
 
     # Security response headers – applied to every response
     @app.after_request
     def _set_security_headers(response):
         # Prevent MIME-type sniffing (e.g. serving a JPEG as text/html)
-        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers["X-Content-Type-Options"] = "nosniff"
         # Clickjacking protection only applies to HTML documents that a browser
         # could render inside an <iframe>.  Setting it on images or JSON would
         # be meaningless and clutters responses unnecessarily.
-        if response.content_type.startswith('text/html'):
-            response.headers['X-Frame-Options'] = 'DENY'
+        if response.content_type.startswith("text/html"):
+            response.headers["X-Frame-Options"] = "DENY"
         # Limit referrer information sent to cross-origin destinations
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
 
     # HTTP request logging (non-static requests only)
     if access_log:
+
         @app.after_request
         def _after_request(response):
-            if not request.path.startswith('/static/'):
-                http_log.debug('%s %s %s (client=%s)', request.method, request.path, response.status_code, request.remote_addr)
+            if not request.path.startswith("/static/"):
+                http_log.debug(
+                    "%s %s %s (client=%s)",
+                    request.method,
+                    request.path,
+                    response.status_code,
+                    request.remote_addr,
+                )
             return response
 
     # Template cache warm-up – pre-compile all templates so workers forked
     # via --preload inherit them and the first request has zero disk I/O.
     all_templates = app.jinja_loader.list_templates()
-    log.info('Warming up template cache by pre-compiling all templates...')
+    log.info("Warming up template cache by pre-compiling all templates...")
     for template_name in all_templates:
-        log.debug('Pre-compiling template: %s', template_name)
+        log.debug("Pre-compiling template: %s", template_name)
         app.jinja_env.get_template(template_name)
-    log.info('Template cache warmed: %d template(s) pre-compiled.', len(all_templates))
+    log.info("Template cache warmed: %d template(s) pre-compiled.", len(all_templates))
 
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
 
     # Start the background cleanup thread (respects config interval; 0 = disabled)
     start_cleanup_thread()
 
     # TLS support
-    tls_cert = web_cfg.get('tls_cert', '')
-    tls_key = web_cfg.get('tls_key', '')
+    tls_cert = web_cfg.get("tls_cert", "")
+    tls_key = web_cfg.get("tls_key", "")
     ssl_context = (tls_cert, tls_key) if tls_cert and tls_key else None
-    scheme = 'https' if ssl_context else 'http'
-    host = web_cfg.get('host', '0.0.0.0')
-    port = web_cfg.get('port', 5000)
+    scheme = "https" if ssl_context else "http"
+    host = web_cfg.get("host", "0.0.0.0")
+    port = web_cfg.get("port", 5000)
 
-    log.info('Webserver starting on %s://%s:%s...', scheme, host, port)
+    log.info("Webserver starting on %s://%s:%s...", scheme, host, port)
     app.run(host=host, port=port, debug=debug_full, ssl_context=ssl_context)
