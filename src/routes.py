@@ -71,8 +71,18 @@ def dashboard():
     """Serve the authenticated avatar upload / crop page."""
     user = session['user']
     log.debug('Serving dashboard for user %r.', user['username'])
+
+    # Build user initials: first letter of first name + first letter of last name.
+    # Falls back to the first letter of the username if name parts are unavailable.
+    name_parts = user.get('name', '').split()
+    if len(name_parts) >= 2:
+        initials = (name_parts[0][0] + name_parts[-1][0]).upper()
+    else:
+        initials = (user.get('username', '') or '?')[0].upper()
+
     return render_template(
-        'dashboard.html', user=user, ldap_enabled=ldap_is_enabled(),
+        'dashboard.html', user=user, user_initials=initials,
+        ldap_enabled=ldap_is_enabled(),
         max_size=MAX_SIZE, allowed_extensions=sorted(ALLOWED_EXTENSIONS),
         import_gravatar_enabled=GRAVATAR_ENABLED,
         import_url_enabled=URL_ENABLED,
