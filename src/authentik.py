@@ -175,21 +175,20 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
     old_url = current_attrs.get(_avatar_attr)
     log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
 
-    # In dry-run mode, return the current (unmodified) attributes
-    if dry_run:
-        return current_attrs, old_url
-
     # Verify the API accepted the change by checking the response body
-    patched_attrs = post_patch.get('attributes', {})
-    actual_value = patched_attrs.get(_avatar_attr)
-    if actual_value != avatar_url:
-        log.warning(
-            'Authentik PATCH returned %s=%r instead of expected %r.',
-            _avatar_attr, actual_value, avatar_url,
-        )
+    # (skipped in dry-run mode where post_patch == pre_patch)
+    if not dry_run:
+        patched_attrs = post_patch.get('attributes', {})
+        actual_value = patched_attrs.get(_avatar_attr)
+        if actual_value != avatar_url:
+            log.warning(
+                'Authentik PATCH returned %s=%r instead of expected %r.',
+                _avatar_attr, actual_value, avatar_url,
+            )
+        log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
 
-    log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
-    return patched_attrs, old_url
+    result_attrs = post_patch.get('attributes', current_attrs)
+    return result_attrs, old_url
 
 
 def remove_avatar_url(pk: int) -> None:
