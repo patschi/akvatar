@@ -677,7 +677,6 @@ body {
   transition: color var(--transition), background var(--transition);
 }
 
-/* Red tint on hover signals discarding changes */
 .import-cancel:hover {
   color: var(--error);
   background: var(--error-soft);

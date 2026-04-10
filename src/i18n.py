@@ -240,4 +240,4 @@ def get_js_translations(locale: str | None = None) -> dict[str, str]:
     """Return the pre-computed subset of translations needed by client-side JavaScript."""
     if locale is None:
         locale = get_locale()
-    return _JS_TRANSLATIONS.get(locale, _JS_TRANSLATIONS[DEFAULT_LOCALE])
+    return _JS_TRANSLATIONS.get(locale, _JS_TRANSLATIONS.get(DEFAULT_LOCALE, {}))
