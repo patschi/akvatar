@@ -33,7 +33,7 @@ stages:
   - build-container
   - test
 
-lint-ruff:
+lint-ruff-check:
   stage: lint
   image: python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d
   cache:
@@ -45,6 +45,25 @@ lint-ruff:
     - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
   script:
     - ruff check *.py src/
+  rules:
+    - changes:
+        - "**/*.py"
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+      when: always
+    - when: never
+
+lint-ruff-format:
+  stage: lint
+  image: python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d
+  cache:
+    key: pip-$CI_COMMIT_REF_SLUG
+    paths:
+      - .pip-cache/
+  before_script:
+    - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
+    - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
+  script:
     - ruff format --check *.py src/
   rules:
     - changes:
@@ -66,7 +85,7 @@ lint-pip-audit:
     - pip install --quiet --root-user-action=ignore pip-audit --cache-dir .pip-cache
     - pip install --quiet --root-user-action=ignore -r requirements.txt --cache-dir .pip-cache
   script:
-    - pip-audit --require-hashes=false -r requirements.txt
+    - pip-audit -r requirements.txt
   rules:
     - changes:
         - "requirements.txt"
