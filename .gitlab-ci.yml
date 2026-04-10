@@ -35,7 +35,7 @@ stages:
 
 lint-ruff-check:
   stage: lint
-  image: python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d
+  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
   cache:
     key: pip-$CI_COMMIT_REF_SLUG
     paths:
@@ -55,7 +55,7 @@ lint-ruff-check:
 
 lint-ruff-format:
   stage: lint
-  image: python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d
+  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
   cache:
     key: pip-$CI_COMMIT_REF_SLUG
     paths:
@@ -75,7 +75,7 @@ lint-ruff-format:
 
 lint-pip-audit:
   stage: lint
-  image: python:3.13-slim@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d
+  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
   cache:
     key: pip-$CI_COMMIT_REF_SLUG
     paths:
