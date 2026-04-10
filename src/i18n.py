@@ -50,6 +50,11 @@ def _load_translations() -> None:
     """
     Scan the languages directory for .yml files and load each into TRANSLATIONS.
 
+    English (DEFAULT_LOCALE) is loaded first and serves as the reference language.
+    All other locales are checked against English; any missing keys are backfilled
+    from English at load time so that every locale is guaranteed to be complete.
+    This eliminates the need for runtime fallback logic in ``t()``.
+
     Each file must be named ``<locale>.yml`` (e.g. ``en_US.yml``).
     YAML files use a grouped structure where each top-level key is a section
     (e.g. ``login``, ``settings``) containing nested translation keys.  The
@@ -59,6 +64,7 @@ def _load_translations() -> None:
     Special keys ``_code`` and ``_name`` provide UI metadata for the language selector.
     """
     global TRANSLATIONS, SUPPORTED_LOCALES, AVAILABLE_LANGUAGES
+    log.info('Loading translations...')
 
     translations: dict[str, dict[str, str]] = {}
     languages: list[dict[str, str]] = []
@@ -67,43 +73,67 @@ def _load_translations() -> None:
         log.error('Languages directory not found: %s', _LANGUAGES_DIR)
         return
 
-    # Sort for deterministic load order
-    for yml_path in sorted(_LANGUAGES_DIR.glob('*.yml')):
-        locale = yml_path.stem
+    # Load the reference language (English) first
+    default_path = _LANGUAGES_DIR / f'{DEFAULT_LOCALE}.yml'
+    if not default_path.is_file():
+        log.error('Reference language file not found: %s – i18n will be broken.', default_path)
+        return
+
+    # Helper: load and flatten a single YAML file, returning (flat_dict, raw_data) or None
+    def _load_file(yml_path: Path) -> tuple[dict[str, str], dict] | None:
         try:
             with open(yml_path, encoding='utf-8') as fh:
                 data = yaml.safe_load(fh)
             if not isinstance(data, dict):
                 log.warning('Skipping %s – expected a YAML mapping, got %s.', yml_path.name, type(data).__name__)
-                continue
-            # Flatten nested groups into dot-separated keys
-            flat = _flatten(data)
-            translations[locale] = flat
-            # Build language selector entry from metadata keys
-            languages.append({
-                'locale': locale,
-                'code':   data.get('_code', locale.split('_')[0].upper()),
-                'name':   data.get('_name', locale),
-            })
-            log.info('Loaded %d translation key(s) from %s.', len(flat), yml_path.name)
+                return None
+            return _flatten(data), data
         except Exception:
             log.exception('Failed to load translation file %s.', yml_path.name)
+            return None
 
-    if DEFAULT_LOCALE not in translations:
-        log.error('Default locale %r not found in %s – i18n will be broken.', DEFAULT_LOCALE, _LANGUAGES_DIR)
+    # Load English as the reference
+    result = _load_file(default_path)
+    if result is None:
+        log.error('Failed to parse reference language file %s.', default_path.name)
+        return
+    default_strings, default_raw = result
+    translations[DEFAULT_LOCALE] = default_strings
+    languages.append({
+        'locale': DEFAULT_LOCALE,
+        'code':   default_raw.get('_code', DEFAULT_LOCALE.split('_')[0].upper()),
+        'name':   default_raw.get('_name', DEFAULT_LOCALE),
+    })
+    log.debug('Loaded %d translation key(s) from %s (reference language).', len(default_strings), default_path.name)
 
-    # Warn about missing keys so gaps are visible at startup rather than silently at runtime
-    if DEFAULT_LOCALE in translations:
-        default_keys = set(translations[DEFAULT_LOCALE].keys())
-        for locale, strings in translations.items():
-            if locale == DEFAULT_LOCALE:
-                continue
-            missing = default_keys - set(strings.keys())
-            if missing:
-                log.warning(
-                    'Locale %r is missing %d translation key(s): %s',
-                    locale, len(missing), ', '.join(sorted(missing)),
-                )
+    # Load all other languages, backfilling missing keys from English
+    for yml_path in sorted(_LANGUAGES_DIR.glob('*.yml')):
+        locale = yml_path.stem
+        if locale == DEFAULT_LOCALE:
+            continue
+
+        result = _load_file(yml_path)
+        if result is None:
+            continue
+        flat, raw_data = result
+
+        # Check for missing keys and backfill from English
+        missing = set(default_strings.keys()) - set(flat.keys())
+        if missing:
+            log.warning(
+                'Locale %r is missing %d key(s), backfilling from %s: %s',
+                locale, len(missing), DEFAULT_LOCALE, ', '.join(sorted(missing)),
+            )
+            for key in missing:
+                flat[key] = default_strings[key]
+
+        translations[locale] = flat
+        languages.append({
+            'locale': locale,
+            'code':   raw_data.get('_code', locale.split('_')[0].upper()),
+            'name':   raw_data.get('_name', locale),
+        })
+        log.debug('Loaded %d translation key(s) from %s.', len(flat), yml_path.name)
 
     TRANSLATIONS = translations
     SUPPORTED_LOCALES = frozenset(translations.keys())
@@ -113,8 +143,8 @@ def _load_translations() -> None:
 # Load translations immediately at import time (application startup)
 _load_translations()
 
-# Cached reference to the default locale's strings (used by t() for fallback lookups
-# on every call where a key is missing from the active locale).
+# Cached reference to the default locale's strings (used by JS translation
+# precomputation and as the canonical key set for the application).
 _DEFAULT_STRINGS: dict[str, str] = TRANSLATIONS.get(DEFAULT_LOCALE, {})
 
 # Pre-compute a lookup from language prefix to full locale (e.g. 'en' -> 'en_US')
@@ -191,15 +221,12 @@ def get_locale() -> str:
 def t(key: str, **kwargs) -> str:
     """Translate *key* into the current request's locale, with optional format arguments.
 
-    Falls back to the English (DEFAULT_LOCALE) translation when the key is absent from the
-    active locale, and finally to the bare key name if it is missing from English too.
+    All locales are guaranteed complete at startup (missing keys are backfilled from
+    English during loading), so no per-call fallback logic is needed.  The bare key
+    name is returned only if the key does not exist in English either (programming error).
     """
     locale = get_locale()
-    locale_strings = TRANSLATIONS.get(locale, {})
-    text = locale_strings.get(key, None)
-    if text is None:
-        # Key missing from current locale: fall back to English, then to the bare key
-        text = _DEFAULT_STRINGS.get(key, key)
+    text = TRANSLATIONS.get(locale, _DEFAULT_STRINGS).get(key, key)
     if kwargs:
         text = text.format(**kwargs)
     return text
@@ -233,12 +260,9 @@ _JS_KEYS = (
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request).
 # Dots are converted to underscores so JS can access keys as properties (e.g. I18N.step_crop).
-# Missing keys fall back to English so a partial translation never crashes the JS bundle.
+# All locales are guaranteed complete (backfilled at load time), so no fallback needed here.
 _JS_TRANSLATIONS: dict[str, dict[str, str]] = {
-    locale: {
-        k.replace('.', '_'): strings.get(k, _DEFAULT_STRINGS.get(k, k))
-        for k in _JS_KEYS
-    }
+    locale: {k.replace('.', '_'): strings[k] for k in _JS_KEYS}
     for locale, strings in TRANSLATIONS.items()
 }
 

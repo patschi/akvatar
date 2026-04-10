@@ -21,6 +21,7 @@ _STATIC_DIR = Path(__file__).resolve().parent.parent / 'static'
 def _build_static_cache() -> dict[str, tuple[bytes, str, str]]:
     """Read every file under static/ into {rel_path: (data, mimetype, etag)}."""
     cache = {}
+    log.info('Building static file cache...')
     for path in sorted(_STATIC_DIR.rglob('*')):
         if not path.is_file():
             continue
