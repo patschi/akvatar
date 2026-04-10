@@ -183,10 +183,15 @@ body {
   transition: color 0.15s, background 0.15s;
 }
 
-.settings-btn:hover,
-.dialog-close:hover {
+.settings-btn:hover {
   color: var(--text);
   background: var(--accent-soft);
+}
+
+/* Red tint on hover signals discarding changes */
+.dialog-close:hover {
+  color: var(--error);
+  background: var(--error-soft);
 }
 
 .settings-btn {
@@ -672,9 +677,10 @@ body {
   transition: color var(--transition), background var(--transition);
 }
 
+/* Red tint on hover signals discarding changes */
 .import-cancel:hover {
-  color: var(--text);
-  background: var(--surface-hover);
+  color: var(--error);
+  background: var(--error-soft);
 }
 
 /* Cropper area */
