@@ -214,6 +214,10 @@ _JS_KEYS = (
     'step.save_failed',
     'result.success', 'result.retry', 'result.error', 'result.csrf_failed',
     'result.contact_admin', 'result.network_error',
+    # Avatar removal confirmation dialog
+    'reset_avatar.confirm_title', 'reset_avatar.confirm_message',
+    'reset_avatar.confirm_yes', 'reset_avatar.confirm_no',
+    'reset_avatar.failed',
     # Import dialog (loading states and error messages used in JS)
     'import.load', 'import.gravatar_loading',
     'import.gravatar_not_found', 'import.gravatar_error',

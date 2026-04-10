@@ -38,6 +38,15 @@ logout:
   subtitle: "Sie wurden abgemeldet. Bis zum nächsten Mal!"
   button: "Zurück zur Anmeldung"
 
+# Avatar-Entfernung
+reset_avatar:
+  button: "Aktuellen Avatar entfernen"
+  confirm_title: "Avatar entfernen"
+  confirm_message: "Möchten Sie Ihren Avatar wirklich entfernen? Er wird auf den Standard zurückgesetzt."
+  confirm_yes: "Entfernen"
+  confirm_no: "Abbrechen"
+  failed: "Avatar konnte nicht entfernt werden. Bitte versuchen Sie es erneut."
+
 # Dashboard Uploadbereich
 upload:
   heading: "Profilbild aktualisieren"

@@ -252,6 +252,12 @@ body {
   height: 32px;
 }
 
+/* Narrower dialog variant for simple confirmations */
+.dialog-panel--narrow {
+  min-width: 320px;
+  max-width: 400px;
+}
+
 .dialog-group {
   margin-bottom: 1.25rem;
 }
@@ -488,6 +494,36 @@ body {
 .profile-email {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* Remove avatar button (positioned at the right edge of the profile header) */
+.remove-avatar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.remove-avatar-btn:hover {
+  color: var(--error);
+  background: var(--error-soft);
+  border-color: color-mix(in srgb, var(--error) 25%, transparent);
+}
+
+.remove-avatar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .divider {
@@ -790,6 +826,46 @@ body {
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Ghost cancel button (no fill, just text) */
+.btn.btn-cancel {
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+}
+
+.btn.btn-cancel:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+
+/* Destructive action button (red) */
+.btn.btn-danger {
+  background: var(--error);
+  box-shadow: none;
+}
+
+.btn.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error) 85%, #000);
+  box-shadow: none;
+}
+
+/* Remove avatar confirmation dialog content */
+.remove-avatar-message {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.remove-avatar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
 }
 
 .upload-disclaimer {

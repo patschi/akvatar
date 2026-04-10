@@ -38,6 +38,15 @@ logout:
   subtitle: "Has cerrado sesión. ¡Hasta la próxima!"
   button: "Volver al inicio de sesión"
 
+# Eliminación de avatar
+reset_avatar:
+  button: "Eliminar avatar actual"
+  confirm_title: "Eliminar avatar"
+  confirm_message: "¿Estás seguro de que quieres eliminar tu avatar? Se restablecerá al predeterminado."
+  confirm_yes: "Eliminar"
+  confirm_no: "Cancelar"
+  failed: "No se pudo eliminar tu avatar. Por favor, inténtalo de nuevo."
+
 # Zona de subida del panel
 upload:
   heading: "Actualizar tu foto de perfil"

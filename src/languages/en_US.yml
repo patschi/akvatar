@@ -38,6 +38,15 @@ logout:
   subtitle: "You have been signed out. See you next time!"
   button: "Back to login"
 
+# Avatar removal
+reset_avatar:
+  button: "Remove current avatar"
+  confirm_title: "Remove avatar"
+  confirm_message: "Are you sure you want to remove your avatar? This will reset it to the default."
+  confirm_yes: "Remove"
+  confirm_no: "Cancel"
+  failed: "Could not remove your avatar. Please try again."
+
 # Dashboard upload area
 upload:
   heading: "Update your profile picture"

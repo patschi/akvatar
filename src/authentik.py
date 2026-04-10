@@ -83,10 +83,13 @@ def retrieve_user(username: str) -> dict:
     if not isinstance(pk, int):
         raise TypeError(f'Authentik returned non-integer PK {pk!r} for user {username!r}.')
 
-    # Read the current avatar URL from the API response (authoritative source)
-    avatar = user.get('avatar', '')
+    # Read the custom avatar URL from the configured attribute (e.g. 'avatar-url')
+    # rather than the top-level 'avatar' field, which is Authentik's computed avatar
+    # (Gravatar, initials, etc.) and doesn't distinguish custom from default.
+    attrs = user.get('attributes', {})
+    avatar = attrs.get(_avatar_attr, '') if isinstance(attrs, dict) else ''
 
-    log.debug('Retrieved user %r: pk=%d, avatar=%s.', username, pk, avatar or '(none)')
+    log.debug('Retrieved user %r: pk=%d, %s=%s.', username, pk, _avatar_attr, avatar or '(not set)')
     return {'pk': pk, 'avatar': avatar}
 
 
@@ -148,6 +151,42 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
 
     log.info('Authentik %s updated for pk=%d: %s -> %s', _avatar_attr, pk, old_url or '(not set)', avatar_url)
     return patched_attrs, old_url
+
+
+def remove_avatar_url(pk: int) -> None:
+    """
+    Remove the user's custom avatar attribute from Authentik.
+
+    GETs the current attributes, pops the avatar key, and PATCHes back.
+    After removal Authentik falls back to its default avatar (e.g. Gravatar
+    or initials).  Respects dry-run mode.
+    """
+    url = f'{_users_url}{pk}/'
+
+    log.debug('GET %s – fetching current attributes for avatar removal.', url)
+    resp = _session.get(url, timeout=_TIMEOUT)
+    resp.raise_for_status()
+
+    user_data = _parse_json(resp)
+    current_attrs = user_data.get('attributes')
+    if not isinstance(current_attrs, dict):
+        raise TypeError(
+            f'Authentik user pk={pk} has unexpected attributes type '
+            f'{type(current_attrs).__name__} (expected dict).'
+        )
+
+    old_url = current_attrs.pop(_avatar_attr, None)
+    log.debug('Previous %s: %s', _avatar_attr, old_url or '(not set)')
+
+    if dry_run:
+        log.info('[DRY-RUN] Would remove Authentik %r for pk=%d.', _avatar_attr, pk)
+        return
+
+    log.debug('PATCH %s – removing %s attribute.', url, _avatar_attr)
+    patch_resp = _session.patch(url, json={'attributes': current_attrs}, timeout=_TIMEOUT)
+    patch_resp.raise_for_status()
+
+    log.info('Authentik %s removed for pk=%d (was: %s).', _avatar_attr, pk, old_url or '(not set)')
 
 
 def revert_avatar_url(pk: int, old_url: str | None) -> None:

@@ -16,7 +16,7 @@
   <main class="container">
     <div class="card">
 
-      <!-- Current profile: avatar + display name -->
+      <!-- Current profile: avatar + display name + remove button -->
       <div class="profile-header">
         {% if user.avatar %}
           <img class="profile-avatar" src="{{ user.avatar }}" alt="Current avatar" />
@@ -30,6 +30,12 @@
           <h2 class="profile-name">{{ user.name or user.username }}</h2>
           <p class="profile-email">{{ user.email }}</p>
         </div>
+        {% if user.avatar %}
+          <button id="removeAvatarBtn" class="remove-avatar-btn" type="button">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            {{ t('reset_avatar.button') }}
+          </button>
+        {% endif %}
       </div>
 
       <hr id="profileDivider" class="divider" />
@@ -113,20 +119,41 @@
     </div>
   </main>
 
+  {% if user.avatar %}
+    <!-- Confirmation dialog for avatar removal -->
+    <div id="removeAvatarOverlay" class="dialog-overlay hidden">
+      <div class="dialog-panel dialog-panel--narrow">
+        <div class="dialog-header">
+          <h2 class="dialog-title" id="removeAvatarTitle"></h2>
+          <button class="dialog-close" id="removeAvatarCloseBtn" type="button">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+          </button>
+        </div>
+        <p class="remove-avatar-message" id="removeAvatarMessage"></p>
+        <div class="remove-avatar-actions">
+          <button id="removeAvatarCancelBtn" class="btn btn-cancel" type="button"></button>
+          <button id="removeAvatarConfirmBtn" class="btn btn-danger" type="button"></button>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
   {% if import_gravatar_enabled or import_url_enabled %}
     {% include 'partials/image-import-external.html' %}
   {% endif %}
 
   <!-- Server-provided constants consumed by dashboard.js -->
   <script>
-    const UPLOAD_ENDPOINT    = "{{ url_for('routes.api_upload') }}";
-    const GRAVATAR_ENDPOINT  = "{{ url_for('import.api_fetch_gravatar') }}";
-    const URL_FETCH_ENDPOINT = "{{ url_for('import.api_fetch_url') }}";
-    const MAX_AVATAR_SIZE    = {{ max_size }};
-    const CSRF_TOKEN         = "{{ csrf_token() }}";
-    const I18N               = {{ i18n | tojson }};
-    const LDAP_ENABLED       = {{ ldap_enabled | tojson }};
-    const ALLOWED_EXTENSIONS = new Set({{ allowed_extensions | tojson }});
+    const UPLOAD_ENDPOINT         = "{{ url_for('routes.api_upload') }}";
+    const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('routes.api_remove_avatar') }}";
+    const GRAVATAR_ENDPOINT       = "{{ url_for('import.api_fetch_gravatar') }}";
+    const URL_FETCH_ENDPOINT      = "{{ url_for('import.api_fetch_url') }}";
+    const MAX_AVATAR_SIZE         = {{ max_size }};
+    const CSRF_TOKEN              = "{{ csrf_token() }}";
+    const I18N                    = {{ i18n | tojson }};
+    const LDAP_ENABLED            = {{ ldap_enabled | tojson }};
+    const ALLOWED_EXTENSIONS      = new Set({{ allowed_extensions | tojson }});
+    const AVATAR_INITIAL          = "{{ (user.name or user.username)[0] | upper }}";
   </script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
   {% if import_gravatar_enabled or import_url_enabled %}

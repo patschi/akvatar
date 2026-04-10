@@ -38,6 +38,15 @@ logout:
   subtitle: "Vous avez été déconnecté. À bientôt !"
   button: "Retour à la connexion"
 
+# Suppression de l'avatar
+reset_avatar:
+  button: "Supprimer l'avatar actuel"
+  confirm_title: "Supprimer l'avatar"
+  confirm_message: "Êtes-vous sûr de vouloir supprimer votre avatar ? Il sera réinitialisé par défaut."
+  confirm_yes: "Supprimer"
+  confirm_no: "Annuler"
+  failed: "Impossible de supprimer votre avatar. Veuillez réessayer."
+
 # Zone de téléchargement du tableau de bord
 upload:
   heading: "Mettre à jour votre photo de profil"
