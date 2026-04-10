@@ -11,7 +11,7 @@
 #   - No .dockerignore needed — only explicitly listed files are copied
 
 # ---------- Stage 1: build dependencies in a full Python image ----------
-FROM python:3.13-slim-trixie@sha256:739e7213785e88c0f702dcdc12c0973afcbd606dbf021a589cab77d6b00b579d AS builder
+FROM python:3.13-slim-trixie@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088 AS builder
 
 WORKDIR /build
 
