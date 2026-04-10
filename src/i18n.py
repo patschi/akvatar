@@ -113,6 +113,10 @@ def _load_translations() -> None:
 # Load translations immediately at import time (application startup)
 _load_translations()
 
+# Cached reference to the default locale's strings (used by t() for fallback lookups
+# on every call where a key is missing from the active locale).
+_DEFAULT_STRINGS: dict[str, str] = TRANSLATIONS.get(DEFAULT_LOCALE, {})
+
 # Pre-compute a lookup from language prefix to full locale (e.g. 'en' -> 'en_US')
 _LANG_PREFIX_MAP: dict[str, str] = {}
 for _loc in SUPPORTED_LOCALES:
@@ -195,7 +199,7 @@ def t(key: str, **kwargs) -> str:
     text = locale_strings.get(key, None)
     if text is None:
         # Key missing from current locale: fall back to English, then to the bare key
-        text = TRANSLATIONS.get(DEFAULT_LOCALE, {}).get(key, key)
+        text = _DEFAULT_STRINGS.get(key, key)
     if kwargs:
         text = text.format(**kwargs)
     return text
@@ -230,10 +234,9 @@ _JS_KEYS = (
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request).
 # Dots are converted to underscores so JS can access keys as properties (e.g. I18N.step_crop).
 # Missing keys fall back to English so a partial translation never crashes the JS bundle.
-_default_js_strings = TRANSLATIONS.get(DEFAULT_LOCALE, {})
 _JS_TRANSLATIONS: dict[str, dict[str, str]] = {
     locale: {
-        k.replace('.', '_'): strings.get(k, _default_js_strings.get(k, k))
+        k.replace('.', '_'): strings.get(k, _DEFAULT_STRINGS.get(k, k))
         for k in _JS_KEYS
     }
     for locale, strings in TRANSLATIONS.items()

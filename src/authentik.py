@@ -200,7 +200,7 @@ def remove_avatar_url(pk: int) -> None:
     Respects dry-run mode.
     """
     # Partial update: set the avatar attribute to null
-    _pre, _post = _patch_user(pk, {'attributes': {_avatar_attr: None}})
+    _patch_user(pk, {'attributes': {_avatar_attr: None}})
 
     if not dry_run:
         log.info('Authentik %s set to null for pk=%d.', _avatar_attr, pk)
@@ -215,7 +215,7 @@ def revert_avatar_url(pk: int, old_url: str | None) -> None:
     # Partial update: set the avatar attribute to the old value (or null)
     display = old_url or '(null)'
     log.info('Rolling back Authentik %s for pk=%d to: %s', _avatar_attr, pk, display)
-    _pre, _post = _patch_user(pk, {'attributes': {_avatar_attr: old_url}})
+    _patch_user(pk, {'attributes': {_avatar_attr: old_url}})
     log.info('Authentik rollback successful for pk=%d.', pk)
 
 

@@ -7,8 +7,7 @@
  *
  * Depends on server-provided constants injected by the template:
  *   REMOVE_AVATAR_ENDPOINT, CSRF_TOKEN, I18N, AVATAR_INITIAL
- * Depends on escapeHTML() and showResult() from dashboard-main.js
- *   (loaded before this script).
+ * Depends on escapeHTML() from dashboard-main.js (loaded before this script).
  */
 (function () {
     "use strict";
@@ -29,28 +28,37 @@
     removeAvatarCancelBtn.textContent  = I18N.reset_avatar_confirm_no;
     removeAvatarConfirmBtn.textContent = I18N.reset_avatar_confirm_yes;
 
+    // Escape key handler (attached only while dialog is open)
+    function onEscapeKey(event) {
+        if (event.key === "Escape") closeRemoveDialog();
+    }
+
     function openRemoveDialog() {
         removeAvatarOverlay.classList.remove("hidden");
+        document.addEventListener("keydown", onEscapeKey);
     }
 
     function closeRemoveDialog() {
         removeAvatarOverlay.classList.add("hidden");
+        document.removeEventListener("keydown", onEscapeKey);
     }
 
     // Open dialog when remove button is clicked
     removeAvatarBtn.addEventListener("click", openRemoveDialog);
 
-    // Close handlers: X button, Cancel button, backdrop click, Escape key
+    // Close handlers: X button, Cancel button, backdrop click
     removeAvatarCloseBtn.addEventListener("click", closeRemoveDialog);
     removeAvatarCancelBtn.addEventListener("click", closeRemoveDialog);
     removeAvatarOverlay.addEventListener("click", function (event) {
         if (!event.target.closest(".dialog-panel")) closeRemoveDialog();
     });
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && !removeAvatarOverlay.classList.contains("hidden")) {
-            closeRemoveDialog();
-        }
-    });
+
+    // Show an error message inside the dialog (keeps it open so user can dismiss)
+    function showDialogError(message) {
+        removeAvatarMessage.textContent = message;
+        removeAvatarMessage.classList.add("result-error");
+        removeAvatarConfirmBtn.classList.add("hidden");
+    }
 
     // Confirm: send the removal request
     removeAvatarConfirmBtn.addEventListener("click", async function () {
@@ -66,12 +74,12 @@
                 },
             });
 
-            closeRemoveDialog();
-
             if (!resp.ok) {
-                showResult("result-error", escapeHTML(I18N.reset_avatar_failed));
+                showDialogError(I18N.reset_avatar_failed);
                 return;
             }
+
+            closeRemoveDialog();
 
             // Replace the avatar <img> with a placeholder initial-letter circle
             var profileAvatar = document.querySelector(".profile-avatar");
@@ -85,8 +93,7 @@
             // Hide the remove button (avatar is gone)
             removeAvatarBtn.classList.add("hidden");
         } catch (e) {
-            closeRemoveDialog();
-            showResult("result-error", escapeHTML(I18N.reset_avatar_failed));
+            showDialogError(I18N.reset_avatar_failed);
         } finally {
             removeAvatarConfirmBtn.disabled = false;
             removeAvatarCancelBtn.disabled = false;
