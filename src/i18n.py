@@ -92,6 +92,19 @@ def _load_translations() -> None:
     if DEFAULT_LOCALE not in translations:
         log.error('Default locale %r not found in %s – i18n will be broken.', DEFAULT_LOCALE, _LANGUAGES_DIR)
 
+    # Warn about missing keys so gaps are visible at startup rather than silently at runtime
+    if DEFAULT_LOCALE in translations:
+        default_keys = set(translations[DEFAULT_LOCALE].keys())
+        for locale, strings in translations.items():
+            if locale == DEFAULT_LOCALE:
+                continue
+            missing = default_keys - set(strings.keys())
+            if missing:
+                log.warning(
+                    'Locale %r is missing %d translation key(s): %s',
+                    locale, len(missing), ', '.join(sorted(missing)),
+                )
+
     TRANSLATIONS = translations
     SUPPORTED_LOCALES = frozenset(translations.keys())
     AVAILABLE_LANGUAGES = languages
@@ -172,9 +185,17 @@ def get_locale() -> str:
 
 
 def t(key: str, **kwargs) -> str:
-    """Translate *key* into the current request's locale, with optional format arguments."""
+    """Translate *key* into the current request's locale, with optional format arguments.
+
+    Falls back to the English (DEFAULT_LOCALE) translation when the key is absent from the
+    active locale, and finally to the bare key name if it is missing from English too.
+    """
     locale = get_locale()
-    text = TRANSLATIONS.get(locale, TRANSLATIONS[DEFAULT_LOCALE]).get(key, key)
+    locale_strings = TRANSLATIONS.get(locale, {})
+    text = locale_strings.get(key, None)
+    if text is None:
+        # Key missing from current locale: fall back to English, then to the bare key
+        text = TRANSLATIONS.get(DEFAULT_LOCALE, {}).get(key, key)
     if kwargs:
         text = text.format(**kwargs)
     return text
@@ -204,8 +225,13 @@ _JS_KEYS = (
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request).
 # Dots are converted to underscores so JS can access keys as properties (e.g. I18N.step_crop).
+# Missing keys fall back to English so a partial translation never crashes the JS bundle.
+_default_js_strings = TRANSLATIONS.get(DEFAULT_LOCALE, {})
 _JS_TRANSLATIONS: dict[str, dict[str, str]] = {
-    locale: {k.replace('.', '_'): strings[k] for k in _JS_KEYS}
+    locale: {
+        k.replace('.', '_'): strings.get(k, _default_js_strings.get(k, k))
+        for k in _JS_KEYS
+    }
     for locale, strings in TRANSLATIONS.items()
 }
 
