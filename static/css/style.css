@@ -275,6 +275,15 @@ body {
   gap: 0.4rem;
 }
 
+/* Language selector: 2-column wrapping layout for any number of languages */
+.dialog-options--lang {
+  flex-wrap: wrap;
+}
+
+.dialog-options--lang .btn.dialog-option {
+  flex: 0 0 calc(50% - 0.2rem);
+}
+
 /* Override .btn defaults for dialog option buttons (pill-style tab switchers) */
 .btn.dialog-option {
   flex: 1;
@@ -551,6 +560,10 @@ body {
   margin-top: 0.5rem;
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+.file-name:empty {
+  display: none;
 }
 
 /* Import section (trigger buttons on the dashboard) */
