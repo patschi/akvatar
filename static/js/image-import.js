@@ -1,5 +1,5 @@
 /**
- * image-import-external.js – Import dialog for fetching images from Gravatar or a remote URL.
+ * image-import.js – Import dialog for fetching images from Gravatar or a remote URL.
  *
  * Opens a modal overlay with tab switching between Gravatar (by email) and URL
  * modes.  Each tab has an input field and a "Load" button that fetches the image
