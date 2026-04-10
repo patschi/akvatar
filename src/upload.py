@@ -142,8 +142,8 @@ def _step_process_image(image: Image.Image, filename_base: str):
         size_label = f'{total_bytes / 1024:.0f} KB'
 
     yield _sse({
-        'step': t('step_processed'), 'status': 'success',
-        'detail': t('step_processed_detail',
+        'step': t('step.processed'), 'status': 'success',
+        'detail': t('step.processed_detail',
                      sizes=len(img_cfg['sizes']),
                      formats=len(img_cfg['formats']),
                      total=size_label),
@@ -179,11 +179,11 @@ def _step_sync_authentik(user_pk: int, canonical_url: str):
         ak_attrs, old_url = update_avatar_url(user_pk, canonical_url)
         if not isinstance(ak_attrs, dict):
             raise TypeError(f'Authentik API returned {type(ak_attrs).__name__} instead of dict.')
-        yield _sse({'step': t('step_profile_synced'), 'status': 'dry-run' if dry_run else 'success'})
+        yield _sse({'step': t('step.profile_synced'), 'status': 'dry-run' if dry_run else 'success'})
         return ak_attrs, old_url, False
     except Exception:
         log.exception('Failed to update Authentik avatar for pk=%s.', user_pk)
-        yield _sse({'step': t('step_profile_synced'), 'status': 'failed'})
+        yield _sse({'step': t('step.profile_synced'), 'status': 'failed'})
         return {}, None, True
 
 
@@ -244,18 +244,18 @@ def _step_sync_ldap(image: Image.Image, urls: dict, filename_base: str,
     # Users without ldap_uniq are Authentik-only (not synced from LDAP)
     if not ldap_uniq:
         log.info('User pk=%s has no ldap_uniq – skipping LDAP updates.', user_pk)
-        yield _sse({'step': t('step_ldap_updated'), 'status': 'skipped'})
+        yield _sse({'step': t('step.ldap_updated'), 'status': 'skipped'})
         return False
 
     log.debug('User has ldap_uniq=%r – preparing %d LDAP photo update(s).', ldap_uniq, len(_ldap_photos))
     try:
         ldap_updates = _build_ldap_updates(image, urls, filename_base)
         update_ldap_photos(ldap_uniq, ldap_updates)
-        yield _sse({'step': t('step_ldap_updated'), 'status': 'dry-run' if dry_run else 'success'})
+        yield _sse({'step': t('step.ldap_updated'), 'status': 'dry-run' if dry_run else 'success'})
         return False
     except Exception:
         log.exception('Failed to update LDAP for ldap_uniq=%s.', ldap_uniq)
-        yield _sse({'step': t('step_ldap_updated'), 'status': 'failed'})
+        yield _sse({'step': t('step.ldap_updated'), 'status': 'failed'})
         return True
 
 
@@ -291,11 +291,11 @@ def generate_sse(user: dict, image: Image.Image):
     filename_base = None
 
     try:
-        yield _sse({'step': t('step_validated'), 'status': 'success', 'detail': t('step_validated_detail')})
+        yield _sse({'step': t('step.validated'), 'status': 'success', 'detail': t('step.validated_detail')})
 
         # Step 1: Generate secure filename
         filename_base = generate_filename()
-        yield _sse({'step': t('step_filename'), 'status': 'success'})
+        yield _sse({'step': t('step.filename'), 'status': 'success'})
 
         # Step 2: Resize & save all configured sizes/formats
         urls, total_bytes = yield from _step_process_image(image, filename_base)
@@ -320,7 +320,7 @@ def generate_sse(user: dict, image: Image.Image):
                 except Exception:
                     log.exception('Failed to revert Authentik avatar for pk=%s.', user_pk)
             cleanup_avatar_files(filename_base)
-            yield _sse({'step': t('step_rollback'), 'status': 'success'})
+            yield _sse({'step': t('step.rollback'), 'status': 'success'})
             yield _sse({'done': True, 'error': 'Could not update your avatar. Please try again later.'})
             return
 
@@ -335,5 +335,5 @@ def generate_sse(user: dict, image: Image.Image):
         if filename_base:
             cleanup_avatar_files(filename_base)
         # Show a vague user-friendly message – never expose internal errors to the client
-        yield _sse({'step': t('step_processing_failed'), 'status': 'failed', 'detail': t('step_save_failed')})
+        yield _sse({'step': t('step.processing_failed'), 'status': 'failed', 'detail': t('step.save_failed')})
         yield _sse({'done': True, 'error': 'contact_admin'})

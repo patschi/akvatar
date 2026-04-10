@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/cropper.min.css') }}" />
   <script src="{{ url_for('static', filename='js/vendor/cropper.min.js') }}"></script>
 {% endset %}
-{% with page_title=t('title_dashboard'), head_extra=cropper_head %}
+{% with page_title=t('title.dashboard'), head_extra=cropper_head %}
   {% include 'partials/head.html' %}
 {% endwith %}
 <body>
@@ -35,8 +35,8 @@
       <hr id="profileDivider" class="divider" />
 
       <div id="uploadSection">
-        <h1>{{ t('upload_heading') }}</h1>
-        <p class="subtitle">{{ t('upload_subtitle') }}</p>
+        <h1>{{ t('upload.heading') }}</h1>
+        <p class="subtitle">{{ t('upload.subtitle') }}</p>
 
         <!-- File picker + drop zone -->
         <div id="filePicker">
@@ -47,9 +47,9 @@
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <p class="drop-zone-hint">{{ t('upload_drop_hint') }}</p>
+              <p class="drop-zone-hint">{{ t('upload.drop_hint') }}</p>
               <label class="btn file-label" for="fileInput">
-                {{ t('upload_choose') }}
+                {{ t('upload.choose') }}
                 <input
                   type="file"
                   id="fileInput"
@@ -65,12 +65,12 @@
         {% if import_gravatar_enabled or import_url_enabled %}
           <!-- Import triggers: open the import dialog with the selected tab -->
           <div id="importSection" class="import-section">
-            <div class="import-divider"><span>{{ t('import_or') }}</span></div>
+            <div class="import-divider"><span>{{ t('import.or') }}</span></div>
             <div class="import-triggers">
               {% if import_gravatar_enabled %}
                 <button class="btn btn-import" data-import-tab="gravatar" type="button">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
-                  {{ t('import_gravatar') }}
+                  {{ t('import.gravatar') }}
                 </button>
               {% endif %}
               {% if import_url_enabled %}
@@ -89,15 +89,15 @@
         </div>
 
         <!-- Disclaimer + Upload button (hidden until an image is chosen) -->
-        <p id="uploadDisclaimer" class="upload-disclaimer hidden">{{ t('upload_disclaimer') }}</p>
+        <p id="uploadDisclaimer" class="upload-disclaimer hidden">{{ t('upload.disclaimer') }}</p>
         <button id="uploadBtn" class="btn btn-block hidden" disabled>
-          {{ t('upload_button') }}
+          {{ t('upload.button') }}
         </button>
       </div>
 
       <!-- Progress panel -->
       <div id="progressPanel" class="progress-panel hidden">
-        <h2>{{ t('progress_heading') }}</h2>
+        <h2>{{ t('progress.heading') }}</h2>
         <ul id="progressList" class="progress-list"></ul>
         <div id="resultMessage"></div>
       </div>

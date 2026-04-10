@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
-{% with page_title=t('title_logged_out') %}
+{% with page_title=t('title.logged_out') %}
   {% include 'partials/head.html' %}
 {% endwith %}
 <body>
@@ -11,14 +11,14 @@
     <div class="card login-card">
       <div class="login-hero-wrapper">
         <img class="login-hero" src="{{ url_for('static', filename='images/logo.svg') }}" alt="{{ brand_name }}" />
-        <span class="login-hero-badge login-hero-badge--logout">{{ t('title_logged_out') }}</span>
+        <span class="login-hero-badge login-hero-badge--logout">{{ t('title.logged_out') }}</span>
       </div>
 
-      <h1>{{ t('logout_heading') }}</h1>
-      <p class="subtitle">{{ t('logout_subtitle') }}</p>
+      <h1>{{ t('logout.heading') }}</h1>
+      <p class="subtitle">{{ t('logout.subtitle') }}</p>
 
       <a href="{{ url_for('routes.login_page') }}" class="btn btn-login">
-        {{ t('logout_button') }}
+        {{ t('logout.button') }}
       </a>
     </div>
   </main>

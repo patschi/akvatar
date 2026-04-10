@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
-{% with page_title=t('title_signin') %}
+{% with page_title=t('title.signin') %}
   {% include 'partials/head.html' %}
 {% endwith %}
 <body>
@@ -13,18 +13,18 @@
       <!-- Application logo with page-type overlay badge -->
       <div class="login-hero-wrapper">
         <img class="login-hero" src="{{ url_for('static', filename='images/logo.svg') }}" alt="{{ brand_name }}" />
-        <span class="login-hero-badge">{{ t('title_signin') }}</span>
+        <span class="login-hero-badge">{{ t('title.signin') }}</span>
       </div>
 
-      <h1>{{ t('login_heading') }}</h1>
-      <p class="subtitle">{{ t('login_subtitle') }}</p>
+      <h1>{{ t('login.heading') }}</h1>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
 
       {% if error_key %}
-        <p class="result-error">{{ t('login_error_' + error_key) }}</p>
+        <p class="result-error">{{ t('login.error_' + error_key) }}</p>
       {% endif %}
 
       <a href="{{ url_for('auth.login') }}" class="btn btn-login">
-        {{ t('login_button') }}
+        {{ t('login.button') }}
       </a>
     </div>
   </main>

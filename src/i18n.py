@@ -1,198 +1,104 @@
 """
 i18n.py – Internationalisation support.
 
-Provides translations for all user-facing strings in English (en_US) and German (de_DE).
+Loads translations from YAML files in the ``src/languages/`` directory at startup.
+Each ``.yml`` file represents one locale (e.g. ``en_US.yml``, ``de_DE.yml``).
 The locale is resolved from the OIDC ``locale`` claim at login time, falling back to the
 browser's ``Accept-Language`` header for unauthenticated pages.
 """
 
 import logging
+from pathlib import Path
 
+import yaml
 from flask import g, session, request
 
 log = logging.getLogger('i18n')
 
-SUPPORTED_LOCALES = frozenset(('en_US', 'de_DE'))
+# Directory containing per-locale YAML translation files
+_LANGUAGES_DIR = Path(__file__).resolve().parent / 'languages'
+
 DEFAULT_LOCALE = 'en_US'
 
-# Translation strings
-TRANSLATIONS: dict[str, dict[str, str]] = {
-    'en_US': {
-        # -- Page titles (appended after brand name) --
-        'title_signin':             'Sign in',
-        'title_dashboard':          'Dashboard',
-        'title_logged_out':         'Logged out',
+# Loaded at startup by _load_translations()
+TRANSLATIONS: dict[str, dict[str, str]] = {}
+SUPPORTED_LOCALES: frozenset[str] = frozenset()
 
-        # -- Navbar --
-        'nav_logout':               'Log out',
+# List of available languages for the UI language selector (populated at startup)
+# Each entry is a dict with 'locale', 'code', and 'name'.
+AVAILABLE_LANGUAGES: list[dict[str, str]] = []
 
-        # -- Settings UI --
-        'settings_title':           'Settings',
-        'settings_theme':           'Theme',
-        'settings_light':           'Light',
-        'settings_dark':            'Dark',
-        'settings_auto':            'Auto',
-        'settings_language':        'Language',
-        'settings_reset':           'Reset settings',
 
-        # -- Login page --
-        'login_heading':            'Update your avatar',
-        'login_subtitle':           'Sign in with your organisation account to upload and manage your profile picture.',
-        'login_button':             'Sign in',
-        'login_error_oidc_failed':  'Authentication failed. Please try again or contact your administrator.',
-        'login_error_pk_failed':    'Login could not be completed — unable to retrieve your account. Please try again or contact your administrator.',
+def _flatten(data: dict, prefix: str = '') -> dict[str, str]:
+    """
+    Recursively flatten a nested YAML dict into dot-separated keys.
 
-        # -- Logged-out page --
-        'logout_heading':           'Logout successful',
-        'logout_subtitle':          'You have been signed out. See you next time!',
-        'logout_button':            'Back to login',
+    Example: ``{'login': {'heading': 'Hi'}}`` becomes ``{'login.heading': 'Hi'}``.
+    Top-level string values (like ``_code``) are kept as-is.
+    """
+    flat: dict[str, str] = {}
+    for key, value in data.items():
+        full_key = f'{prefix}{key}' if prefix else key
+        if isinstance(value, dict):
+            flat.update(_flatten(value, f'{full_key}.'))
+        else:
+            flat[full_key] = str(value)
+    return flat
 
-        # -- Dashboard --
-        'upload_heading':           'Update your profile picture',
-        'upload_subtitle':          'Select an image, crop it to a square, and hit Upload. Your avatar will be updated across our systems automatically.',
-        'upload_drop_hint':         'Drag & drop an image here, or',
-        'upload_choose':            'Choose image\u2026',
-        'upload_disclaimer':        'By uploading, you confirm this is an appropriate image and that you have the right to use it.',
-        'upload_button':            'Upload & Update Avatar',
-        'upload_processing':        'Processing\u2026',
-        'progress_heading':         'Progress',
 
-        # -- Import dialog --
-        'import_or':                    'or import from',
-        'import_title':                 'Import image',
-        'import_gravatar':              'Gravatar',
-        'import_gravatar_placeholder':  'Email address',
-        'import_gravatar_loading':      'Loading\u2026',
-        'import_gravatar_not_found':    'No Gravatar found for this email address.',
-        'import_gravatar_error':        'Could not fetch Gravatar. Please try again.',
-        'import_url_placeholder':       'https://example.com/photo.jpg',
-        'import_url_loading':           'Fetching\u2026',
-        'import_url_error':             'Could not fetch the image. Please check the URL and try again.',
-        'import_url_invalid':           'Please enter a valid URL starting with http:// or https://.',
-        'import_fetch_failed':          'Could not fetch the image. Please try again.',
-        'import_image_too_large':       'The image is too large (max {max_size_mb} MB).',
-        'import_url_not_allowed':       'This URL is not allowed.',
-        'import_load':                  'Load',
-        'import_ok':                    'Use image',
-        'import_cancel':                'Cancel',
+def _load_translations() -> None:
+    """
+    Scan the languages directory for .yml files and load each into TRANSLATIONS.
 
-        # -- Client-side validation --
-        'upload_invalid_ext':       'File type .{ext} is not allowed. Accepted: {allowed}',
+    Each file must be named ``<locale>.yml`` (e.g. ``en_US.yml``).
+    YAML files use a grouped structure where each top-level key is a section
+    (e.g. ``login``, ``settings``) containing nested translation keys.  The
+    nested structure is flattened to dot-separated keys at load time
+    (e.g. ``login: {heading: ...}`` becomes ``login.heading``).
 
-        # -- Progress steps (client-side) --
-        'step_crop':                'Cropping image in browser',
-        'step_compress':            'Compressing image in browser',
-        'step_upload':              'Uploading to server',
+    Special keys ``_code`` and ``_name`` provide UI metadata for the language selector.
+    """
+    global TRANSLATIONS, SUPPORTED_LOCALES, AVAILABLE_LANGUAGES
 
-        # -- Progress steps (server-side) --
-        'step_validated':           'Image validated & loaded',
-        'step_validated_detail':    'Image metadata removed',
-        'step_filename':            'Filename generated',
-        'step_processed':           'Image processed & saved in all sizes/formats',
-        'step_processed_detail':    '{sizes} sizes, {formats} formats, {total} total',
-        'step_profile_synced':      'Login Portal Photo updated',
-        'step_ldap_updated':        'User Directory Photo updated',
-        'step_rollback':            'Changes rolled back',
-        'step_processing_failed':   'Processing the image failed',
-        'step_save_failed':         'Could not save your avatar.',
+    translations: dict[str, dict[str, str]] = {}
+    languages: list[dict[str, str]] = []
 
-        # -- Result messages --
-        'result_success':           'Avatar updated successfully!',
-        'result_retry':             'Change avatar again',
-        'result_error':             'Could not update your avatar. Please try again later.',
-        'result_csrf_failed':       'Your session has expired. Please reload the page and try again.',
-        'result_contact_admin':     'Please contact your administrator.',
-        'result_network_error':     'Could not reach the server. Please check your connection and try again.',
-    },
+    if not _LANGUAGES_DIR.is_dir():
+        log.error('Languages directory not found: %s', _LANGUAGES_DIR)
+        return
 
-    'de_DE': {
-        # -- Page titles --
-        'title_signin':             'Anmelden',
-        'title_dashboard':          'Dashboard',
-        'title_logged_out':         'Abgemeldet',
+    # Sort for deterministic load order
+    for yml_path in sorted(_LANGUAGES_DIR.glob('*.yml')):
+        locale = yml_path.stem
+        try:
+            with open(yml_path, encoding='utf-8') as fh:
+                data = yaml.safe_load(fh)
+            if not isinstance(data, dict):
+                log.warning('Skipping %s – expected a YAML mapping, got %s.', yml_path.name, type(data).__name__)
+                continue
+            # Flatten nested groups into dot-separated keys
+            flat = _flatten(data)
+            translations[locale] = flat
+            # Build language selector entry from metadata keys
+            languages.append({
+                'locale': locale,
+                'code':   data.get('_code', locale.split('_')[0].upper()),
+                'name':   data.get('_name', locale),
+            })
+            log.info('Loaded %d translation key(s) from %s.', len(flat), yml_path.name)
+        except Exception:
+            log.exception('Failed to load translation file %s.', yml_path.name)
 
-        # -- Navbar --
-        'nav_logout':               'Abmelden',
+    if DEFAULT_LOCALE not in translations:
+        log.error('Default locale %r not found in %s – i18n will be broken.', DEFAULT_LOCALE, _LANGUAGES_DIR)
 
-        # -- Settings UI --
-        'settings_title':           'Einstellungen',
-        'settings_theme':           'Design',
-        'settings_light':           'Hell',
-        'settings_dark':            'Dunkel',
-        'settings_auto':            'Auto',
-        'settings_language':        'Sprache',
-        'settings_reset':           'Einstellungen zurücksetzen',
+    TRANSLATIONS = translations
+    SUPPORTED_LOCALES = frozenset(translations.keys())
+    AVAILABLE_LANGUAGES = languages
 
-        # -- Login page --
-        'login_heading':            'Avatar aktualisieren',
-        'login_subtitle':           'Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten.',
-        'login_button':             'Anmelden',
-        'login_error_oidc_failed':  'Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator.',
-        'login_error_pk_failed':    'Anmeldung konnte nicht abgeschlossen werden \u2013 Ihr Konto konnte nicht abgerufen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator.',
 
-        # -- Logged-out page --
-        'logout_heading':           'Abmeldung erfolgreich',
-        'logout_subtitle':          'Sie wurden abgemeldet. Bis zum n\u00e4chsten Mal!',
-        'logout_button':            'Zur\u00fcck zur Anmeldung',
-
-        # -- Dashboard --
-        'upload_heading':           'Profilbild aktualisieren',
-        'upload_subtitle':          'W\u00e4hlen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf Hochladen. Ihr Avatar wird automatisch in unseren Systemen aktualisiert.',
-        'upload_drop_hint':         'Bild hierher ziehen, oder',
-        'upload_choose':            'Bild ausw\u00e4hlen\u2026',
-        'upload_disclaimer':        'Mit dem Hochladen best\u00e4tigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden.',
-        'upload_button':            'Hochladen & Avatar aktualisieren',
-        'upload_processing':        'Verarbeitung\u2026',
-        'progress_heading':         'Fortschritt',
-
-        # -- Import dialog --
-        'import_or':                    'oder importieren von',
-        'import_title':                 'Bild importieren',
-        'import_gravatar':              'Gravatar',
-        'import_gravatar_placeholder':  'E-Mail-Adresse',
-        'import_gravatar_loading':      'Wird geladen\u2026',
-        'import_gravatar_not_found':    'Kein Gravatar f\u00fcr diese E-Mail-Adresse gefunden.',
-        'import_gravatar_error':        'Gravatar konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.',
-        'import_url_placeholder':       'https://beispiel.de/foto.jpg',
-        'import_url_loading':           'Wird abgerufen\u2026',
-        'import_url_error':             'Das Bild konnte nicht abgerufen werden. Bitte \u00fcberpr\u00fcfen Sie die URL und versuchen Sie es erneut.',
-        'import_url_invalid':           'Bitte geben Sie eine g\u00fcltige URL ein, die mit http:// oder https:// beginnt.',
-        'import_fetch_failed':          'Das Bild konnte nicht abgerufen werden. Bitte versuchen Sie es erneut.',
-        'import_image_too_large':       'Das Bild ist zu gro\u00df (max. {max_size_mb} MB).',
-        'import_url_not_allowed':       'Diese URL ist nicht erlaubt.',
-        'import_load':                  'Laden',
-        'import_ok':                    'Bild verwenden',
-        'import_cancel':                'Abbrechen',
-
-        # -- Client-side validation --
-        'upload_invalid_ext':       'Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}',
-
-        # -- Progress steps (client-side) --
-        'step_crop':                'Bild wird im Browser zugeschnitten',
-        'step_compress':            'Bild wird im Browser komprimiert',
-        'step_upload':              'Wird auf den Server hochgeladen',
-
-        # -- Progress steps (server-side) --
-        'step_validated':           'Bild validiert & geladen',
-        'step_validated_detail':    'Bildmetadaten entfernt',
-        'step_filename':            'Dateiname generiert',
-        'step_processed':           'Bild in allen Gr\u00f6\u00dfen/Formaten verarbeitet & gespeichert',
-        'step_processed_detail':    '{sizes} Gr\u00f6\u00dfen, {formats} Formate, {total} gesamt',
-        'step_profile_synced':      'Anmelde-Portal Foto aktualisiert',
-        'step_ldap_updated':        'Benutzerverzeichnis Foto aktualisiert',
-        'step_rollback':            '\u00c4nderungen r\u00fcckg\u00e4ngig gemacht',
-        'step_processing_failed':   'Verarbeitung des Bildes fehlgeschlagen',
-        'step_save_failed':         'Avatar konnte nicht gespeichert werden.',
-
-        # -- Result messages --
-        'result_success':           'Avatar erfolgreich aktualisiert!',
-        'result_retry':             'Avatar erneut \u00e4ndern',
-        'result_error':             'Avatar konnte nicht aktualisiert werden. Bitte versuchen Sie es sp\u00e4ter erneut.',
-        'result_csrf_failed':       'Ihre Sitzung ist abgelaufen. Bitte laden Sie die Seite neu und versuchen Sie es erneut.',
-        'result_contact_admin':     'Bitte kontaktieren Sie Ihren Administrator.',
-        'result_network_error':     'Server nicht erreichbar. Bitte \u00fcberpr\u00fcfen Sie Ihre Verbindung und versuchen Sie es erneut.',
-    },
-}
+# Load translations immediately at import time (application startup)
+_load_translations()
 
 # Pre-compute a lookup from language prefix to full locale (e.g. 'en' -> 'en_US')
 _LANG_PREFIX_MAP: dict[str, str] = {}
@@ -208,7 +114,7 @@ def _normalize(raw: str) -> str | None:
         return tag
     # Match by language prefix (e.g. 'en' -> 'en_US')
     prefix = tag.split('_')[0].lower()
-    return _LANG_PREFIX_MAP.get(prefix)
+    return _LANG_PREFIX_MAP.get(prefix, None)
 
 
 def resolve_oidc_locale(oidc_locale: str) -> str:
@@ -276,29 +182,30 @@ def t(key: str, **kwargs) -> str:
 
 _JS_KEYS = (
     # Client-side validation
-    'upload_invalid_ext',
+    'upload.invalid_ext',
     # Client-side step labels
-    'step_crop', 'step_compress', 'step_upload',
+    'step.crop', 'step.compress', 'step.upload',
     # Server-side step labels (needed to pre-render waiting steps before SSE arrives)
-    'step_validated', 'step_filename', 'step_processed',
-    'step_profile_synced', 'step_ldap_updated', 'step_rollback',
+    'step.validated', 'step.filename', 'step.processed',
+    'step.profile_synced', 'step.ldap_updated', 'step.rollback',
     # UI strings
-    'upload_processing', 'upload_button',
-    'step_save_failed',
-    'result_success', 'result_retry', 'result_error', 'result_csrf_failed',
-    'result_contact_admin', 'result_network_error',
+    'upload.processing', 'upload.button',
+    'step.save_failed',
+    'result.success', 'result.retry', 'result.error', 'result.csrf_failed',
+    'result.contact_admin', 'result.network_error',
     # Import dialog (loading states and error messages used in JS)
-    'import_load', 'import_gravatar_loading',
-    'import_gravatar_not_found', 'import_gravatar_error',
-    'import_url_loading',
-    'import_url_error', 'import_url_invalid',
-    'import_fetch_failed', 'import_image_too_large',
-    'import_url_not_allowed',
+    'import.load', 'import.gravatar_loading',
+    'import.gravatar_not_found', 'import.gravatar_error',
+    'import.url_loading',
+    'import.url_error', 'import.url_invalid',
+    'import.fetch_failed', 'import.image_too_large',
+    'import.url_not_allowed',
 )
 
-# Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request)
+# Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request).
+# Dots are converted to underscores so JS can access keys as properties (e.g. I18N.step_crop).
 _JS_TRANSLATIONS: dict[str, dict[str, str]] = {
-    locale: {k: strings[k] for k in _JS_KEYS}
+    locale: {k.replace('.', '_'): strings[k] for k in _JS_KEYS}
     for locale, strings in TRANSLATIONS.items()
 }
 

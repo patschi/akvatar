@@ -1,0 +1,99 @@
+# English (United States) translation file
+
+# Language metadata (used in the UI language selector)
+_code: "EN"
+_name: "English"
+
+# Page titles (appended after brand name)
+title:
+  signin: "Sign in"
+  dashboard: "Dashboard"
+  logged_out: "Logged out"
+
+# Navbar
+nav:
+  logout: "Log out"
+
+# Settings UI
+settings:
+  title: "Settings"
+  theme: "Theme"
+  light: "Light"
+  dark: "Dark"
+  auto: "Auto"
+  language: "Language"
+  reset: "Reset settings"
+
+# Login page
+login:
+  heading: "Update your avatar"
+  subtitle: "Sign in with your organisation account to upload and manage your profile picture."
+  button: "Sign in"
+  error_oidc_failed: "Authentication failed. Please try again or contact your administrator."
+  error_pk_failed: "Login could not be completed — unable to retrieve your account. Please try again or contact your administrator."
+
+# Logged-out page
+logout:
+  heading: "Logout successful"
+  subtitle: "You have been signed out. See you next time!"
+  button: "Back to login"
+
+# Dashboard upload area
+upload:
+  heading: "Update your profile picture"
+  subtitle: "Select an image, crop it to a square, and hit Upload. Your avatar will be updated across our systems automatically."
+  drop_hint: "Drag & drop an image here, or"
+  choose: "Choose image…"
+  disclaimer: "By uploading, you confirm this is an appropriate image and that you have the right to use it."
+  button: "Upload & Update Avatar"
+  processing: "Processing…"
+  invalid_ext: "File type .{ext} is not allowed. Accepted: {allowed}"
+
+# Progress section
+progress:
+  heading: "Progress"
+
+# Import dialog
+import:
+  or: "or import from"
+  title: "Import image"
+  gravatar: "Gravatar"
+  gravatar_placeholder: "Email address"
+  gravatar_loading: "Loading…"
+  gravatar_not_found: "No Gravatar found for this email address."
+  gravatar_error: "Could not fetch Gravatar. Please try again."
+  url_placeholder: "https://example.com/photo.jpg"
+  url_loading: "Fetching…"
+  url_error: "Could not fetch the image. Please check the URL and try again."
+  url_invalid: "Please enter a valid URL starting with http:// or https://."
+  fetch_failed: "Could not fetch the image. Please try again."
+  image_too_large: "The image is too large (max {max_size_mb} MB)."
+  url_not_allowed: "This URL is not allowed."
+  load: "Load"
+  ok: "Use image"
+  cancel: "Cancel"
+
+# Progress steps (client-side and server-side)
+step:
+  crop: "Cropping image in browser"
+  compress: "Compressing image in browser"
+  upload: "Uploading to server"
+  validated: "Image validated & loaded"
+  validated_detail: "Image metadata removed"
+  filename: "Filename generated"
+  processed: "Image processed & saved in all sizes/formats"
+  processed_detail: "{sizes} sizes, {formats} formats, {total} total"
+  profile_synced: "Login Portal Photo updated"
+  ldap_updated: "User Directory Photo updated"
+  rollback: "Changes rolled back"
+  processing_failed: "Processing the image failed"
+  save_failed: "Could not save your avatar."
+
+# Result messages
+result:
+  success: "Avatar updated successfully!"
+  retry: "Change avatar again"
+  error: "Could not update your avatar. Please try again later."
+  csrf_failed: "Your session has expired. Please reload the page and try again."
+  contact_admin: "Please contact your administrator."
+  network_error: "Could not reach the server. Please check your connection and try again."

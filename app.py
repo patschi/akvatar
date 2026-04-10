@@ -20,7 +20,7 @@ from src.auth import auth_bp, init_oauth
 from src.csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
-from src.i18n import t, get_locale, get_js_translations
+from src.i18n import t, get_locale, get_js_translations, AVAILABLE_LANGUAGES
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.image_import import import_bp
 from src.routes import routes_bp
@@ -151,7 +151,9 @@ def create_app() -> Flask:
             'app_version': APP_VERSION,
             't': t,
             'lang': locale.split('_')[0],
+            'locale': locale,
             'i18n': get_js_translations(locale),
+            'languages': AVAILABLE_LANGUAGES,
             'csrf_token': generate_csrf_token,
         }
 

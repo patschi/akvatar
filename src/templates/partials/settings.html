@@ -4,7 +4,7 @@
 
     <!-- Header with title and close button -->
     <div class="dialog-header">
-      <span class="dialog-title">{{ t('settings_title') }}</span>
+      <span class="dialog-title">{{ t('settings.title') }}</span>
       <button class="dialog-close" type="button" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
       </button>
@@ -12,40 +12,39 @@
 
     <!-- Theme selection: Light / Dark / Auto (follows system) -->
     <div class="dialog-group">
-      <span class="dialog-label">{{ t('settings_theme') }}</span>
+      <span class="dialog-label">{{ t('settings.theme') }}</span>
       <div class="dialog-options">
         <button class="btn dialog-option" data-theme-value="light" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          {{ t('settings_light') }}
+          {{ t('settings.light') }}
         </button>
         <button class="btn dialog-option" data-theme-value="dark" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          {{ t('settings_dark') }}
+          {{ t('settings.dark') }}
         </button>
         <button class="btn dialog-option" data-theme-value="auto" type="button">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          {{ t('settings_auto') }}
+          {{ t('settings.auto') }}
         </button>
       </div>
     </div>
 
-    <!-- Language selection: English / Deutsch -->
+    <!-- Language selection (dynamically rendered from loaded translation files) -->
     <div class="dialog-group">
-      <span class="dialog-label">{{ t('settings_language') }}</span>
+      <span class="dialog-label">{{ t('settings.language') }}</span>
       <div class="dialog-options">
-        <button class="btn dialog-option" data-locale="en_US" type="button">
-          <span class="dialog-badge">EN</span> English
+        {% for lang in languages %}
+        <button class="btn dialog-option" data-locale="{{ lang.locale }}" type="button">
+          <span class="dialog-badge">{{ lang.code }}</span> {{ lang.name }}
         </button>
-        <button class="btn dialog-option" data-locale="de_DE" type="button">
-          <span class="dialog-badge">DE</span> Deutsch
-        </button>
+        {% endfor %}
       </div>
     </div>
 
     <!-- Footer with reset button and version info -->
     <div class="dialog-footer">
       <button class="settings-reset" id="settingsReset" type="button">
-        {{ t('settings_reset') }}
+        {{ t('settings.reset') }}
       </button>
       <span class="settings-version">v{{ app_version }}</span>
     </div>

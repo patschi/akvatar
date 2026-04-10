@@ -1,0 +1,99 @@
+# Deutsch (Deutschland) Übersetzungsdatei
+
+# Sprach-Metadaten (werden in der Sprachauswahl der Benutzeroberfläche angezeigt)
+_code: "DE"
+_name: "Deutsch"
+
+# Seitentitel (wird an den Markennamen angehängt)
+title:
+  signin: "Anmelden"
+  dashboard: "Dashboard"
+  logged_out: "Abgemeldet"
+
+# Navigationsleiste
+nav:
+  logout: "Abmelden"
+
+# Einstellungen
+settings:
+  title: "Einstellungen"
+  theme: "Design"
+  light: "Hell"
+  dark: "Dunkel"
+  auto: "Auto"
+  language: "Sprache"
+  reset: "Einstellungen zurücksetzen"
+
+# Anmeldeseite
+login:
+  heading: "Avatar aktualisieren"
+  subtitle: "Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten."
+  button: "Anmelden"
+  error_oidc_failed: "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
+  error_pk_failed: "Anmeldung konnte nicht abgeschlossen werden – Ihr Konto konnte nicht abgerufen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
+
+# Abmeldeseite
+logout:
+  heading: "Abmeldung erfolgreich"
+  subtitle: "Sie wurden abgemeldet. Bis zum nächsten Mal!"
+  button: "Zurück zur Anmeldung"
+
+# Dashboard Uploadbereich
+upload:
+  heading: "Profilbild aktualisieren"
+  subtitle: "Wählen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf Hochladen. Ihr Avatar wird automatisch in unseren Systemen aktualisiert."
+  drop_hint: "Bild hierher ziehen, oder"
+  choose: "Bild auswählen…"
+  disclaimer: "Mit dem Hochladen bestätigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden."
+  button: "Hochladen & Avatar aktualisieren"
+  processing: "Verarbeitung…"
+  invalid_ext: "Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}"
+
+# Fortschrittsabschnitt
+progress:
+  heading: "Fortschritt"
+
+# Importdialog
+import:
+  or: "oder importieren von"
+  title: "Bild importieren"
+  gravatar: "Gravatar"
+  gravatar_placeholder: "E-Mail-Adresse"
+  gravatar_loading: "Wird geladen…"
+  gravatar_not_found: "Kein Gravatar für diese E-Mail-Adresse gefunden."
+  gravatar_error: "Gravatar konnte nicht abgerufen werden. Bitte versuchen Sie es erneut."
+  url_placeholder: "https://beispiel.de/foto.jpg"
+  url_loading: "Wird abgerufen…"
+  url_error: "Das Bild konnte nicht abgerufen werden. Bitte überprüfen Sie die URL und versuchen Sie es erneut."
+  url_invalid: "Bitte geben Sie eine gültige URL ein, die mit http:// oder https:// beginnt."
+  fetch_failed: "Das Bild konnte nicht abgerufen werden. Bitte versuchen Sie es erneut."
+  image_too_large: "Das Bild ist zu groß (max. {max_size_mb} MB)."
+  url_not_allowed: "Diese URL ist nicht erlaubt."
+  load: "Laden"
+  ok: "Bild verwenden"
+  cancel: "Abbrechen"
+
+# Fortschrittsschritte (client-seitig und server-seitig)
+step:
+  crop: "Bild wird im Browser zugeschnitten"
+  compress: "Bild wird im Browser komprimiert"
+  upload: "Wird auf den Server hochgeladen"
+  validated: "Bild validiert & geladen"
+  validated_detail: "Bildmetadaten entfernt"
+  filename: "Dateiname generiert"
+  processed: "Bild in allen Größen/Formaten verarbeitet & gespeichert"
+  processed_detail: "{sizes} Größen, {formats} Formate, {total} gesamt"
+  profile_synced: "Anmelde-Portal Foto aktualisiert"
+  ldap_updated: "Benutzerverzeichnis Foto aktualisiert"
+  rollback: "Änderungen rückgängig gemacht"
+  processing_failed: "Verarbeitung des Bildes fehlgeschlagen"
+  save_failed: "Avatar konnte nicht gespeichert werden."
+
+# Ergebnisnachrichten
+result:
+  success: "Avatar erfolgreich aktualisiert!"
+  retry: "Avatar erneut ändern"
+  error: "Avatar konnte nicht aktualisiert werden. Bitte versuchen Sie es später erneut."
+  csrf_failed: "Ihre Sitzung ist abgelaufen. Bitte laden Sie die Seite neu und versuchen Sie es erneut."
+  contact_admin: "Bitte kontaktieren Sie Ihren Administrator."
+  network_error: "Server nicht erreichbar. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."
