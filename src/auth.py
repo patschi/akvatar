@@ -16,7 +16,7 @@ from authlib.integrations.flask_client import OAuth
 
 from src.config import oidc_cfg, app_cfg
 from src.i18n import resolve_oidc_locale
-from src.authentik import resolve_user_pk
+from src.authentik import retrieve_user
 
 log = logging.getLogger('auth')
 
@@ -85,13 +85,13 @@ def auth_callback():
 
     username = userinfo.get(oidc_cfg['username_claim'], userinfo['sub'])
 
-    # Resolve the Authentik PK (integer primary key) at login time so that
-    # all downstream operations (API updates, metadata, cleanup) can use a
-    # stable, opaque identifier instead of the mutable username.
+    # Retrieve the Authentik user at login time so that the PK (stable,
+    # opaque identifier) and the current avatar URL are available in the
+    # session without additional API calls.
     try:
-        pk = resolve_user_pk(username)
+        ak_user = retrieve_user(username)
     except Exception:
-        log.exception('Failed to resolve Authentik PK for user %r – login aborted.', username)
+        log.exception('Failed to retrieve Authentik user %r – login aborted.', username)
         return redirect(url_for('routes.login_page', error='pk_failed'))
 
     # Mark session as permanent so PERMANENT_SESSION_LIFETIME is enforced.
@@ -99,11 +99,11 @@ def auth_callback():
     session.permanent = True
 
     session['user'] = {
-        'pk':       pk,
+        'pk':       ak_user['pk'],
         'username': username,
         'name':     userinfo.get('name', ''),
         'email':    userinfo.get('email', ''),
-        'avatar':   userinfo.get('picture', ''),
+        'avatar':   ak_user['avatar'],
     }
 
     # Store the raw ID token for RP-Initiated Logout (id_token_hint parameter)
@@ -114,7 +114,7 @@ def auth_callback():
     session['locale'] = resolve_oidc_locale(oidc_locale_raw)
     log.debug('OIDC locale claim: %r -> resolved to %r.', oidc_locale_raw, session['locale'])
 
-    log.info('User %r (pk=%s) logged in successfully.', username, pk)
+    log.info('User %r (pk=%s) logged in successfully.', username, ak_user['pk'])
     # Redact sensitive session values (id_token, csrf_token) before logging
     _redacted_session = {k: ('[REDACTED]' if k in ('id_token', 'csrf_token') else v) for k, v in session.items()}
     log.debug('User session data: %s', _redacted_session)

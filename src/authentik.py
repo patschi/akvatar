@@ -59,14 +59,16 @@ def _parse_json(resp: http_requests.Response) -> dict:
 
 # Public API
 
-def resolve_user_pk(username: str) -> int:
+def retrieve_user(username: str) -> dict:
     """
-    Look up the Authentik integer PK for a given username.
+    Retrieve the Authentik user for a given username.
 
-    Called once at login time so the PK can be stored in the session and
-    reused for all subsequent API operations without another lookup.
+    Called once at login time.  Returns a dict with ``pk`` (integer primary
+    key) and ``avatar`` (current avatar URL from Authentik, or empty string).
+    The PK is stored in the session for all subsequent API operations; the
+    avatar is used to display the current profile picture on the dashboard.
     """
-    log.debug('GET %s?username=%s – resolving user PK.', _users_url, username)
+    log.debug('GET %s?username=%s – retrieving user.', _users_url, username)
     resp = _session.get(_users_url, params={'username': username}, timeout=_TIMEOUT)
     resp.raise_for_status()
 
@@ -75,12 +77,17 @@ def resolve_user_pk(username: str) -> int:
     if not isinstance(results, list) or not results:
         raise ValueError(f'User {username!r} not found in Authentik (got {len(results) if isinstance(results, list) else 0} result(s)).')
 
-    pk = results[0].get('pk')
+    user = results[0]
+
+    pk = user.get('pk')
     if not isinstance(pk, int):
         raise TypeError(f'Authentik returned non-integer PK {pk!r} for user {username!r}.')
 
-    log.debug('Resolved username %r to pk=%d.', username, pk)
-    return pk
+    # Read the current avatar URL from the API response (authoritative source)
+    avatar = user.get('avatar', '')
+
+    log.debug('Retrieved user %r: pk=%d, avatar=%s.', username, pk, avatar or '(none)')
+    return {'pk': pk, 'avatar': avatar}
 
 
 def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
