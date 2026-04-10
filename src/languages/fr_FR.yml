@@ -1,0 +1,99 @@
+# Français (France) fichier de traduction
+
+# Métadonnées de langue (affichées dans le sélecteur de langue de l'interface)
+_code: "FR"
+_name: "Français"
+
+# Titres de page (ajoutés après le nom de la marque)
+title:
+  signin: "Connexion"
+  dashboard: "Tableau de bord"
+  logged_out: "Déconnecté"
+
+# Barre de navigation
+nav:
+  logout: "Se déconnecter"
+
+# Interface des paramètres
+settings:
+  title: "Paramètres"
+  theme: "Thème"
+  light: "Clair"
+  dark: "Sombre"
+  auto: "Auto"
+  language: "Langue"
+  reset: "Réinitialiser les paramètres"
+
+# Page de connexion
+login:
+  heading: "Mettre à jour votre avatar"
+  subtitle: "Connectez-vous avec votre compte d'organisation pour télécharger et gérer votre photo de profil."
+  button: "Se connecter"
+  error_oidc_failed: "Échec de l'authentification. Veuillez réessayer ou contacter votre administrateur."
+  error_pk_failed: "La connexion n'a pas pu être finalisée — impossible de récupérer votre compte. Veuillez réessayer ou contacter votre administrateur."
+
+# Page de déconnexion
+logout:
+  heading: "Déconnexion réussie"
+  subtitle: "Vous avez été déconnecté. À bientôt !"
+  button: "Retour à la connexion"
+
+# Zone de téléchargement du tableau de bord
+upload:
+  heading: "Mettre à jour votre photo de profil"
+  subtitle: "Sélectionnez une image, recadrez-la en carré et cliquez sur Télécharger. Votre avatar sera mis à jour automatiquement dans nos systèmes."
+  drop_hint: "Glissez-déposez une image ici, ou"
+  choose: "Choisir une image…"
+  disclaimer: "En téléchargeant, vous confirmez que cette image est appropriée et que vous avez le droit de l'utiliser."
+  button: "Télécharger & Mettre à jour l'avatar"
+  processing: "Traitement en cours…"
+  invalid_ext: "Le type de fichier .{ext} n'est pas autorisé. Acceptés : {allowed}"
+
+# Section de progression
+progress:
+  heading: "Progression"
+
+# Boîte de dialogue d'importation
+import:
+  or: "ou importer depuis"
+  title: "Importer une image"
+  gravatar: "Gravatar"
+  gravatar_placeholder: "Adresse e-mail"
+  gravatar_loading: "Chargement…"
+  gravatar_not_found: "Aucun Gravatar trouvé pour cette adresse e-mail."
+  gravatar_error: "Impossible de récupérer le Gravatar. Veuillez réessayer."
+  url_placeholder: "https://exemple.com/photo.jpg"
+  url_loading: "Récupération…"
+  url_error: "Impossible de récupérer l'image. Veuillez vérifier l'URL et réessayer."
+  url_invalid: "Veuillez saisir une URL valide commençant par http:// ou https://."
+  fetch_failed: "Impossible de récupérer l'image. Veuillez réessayer."
+  image_too_large: "L'image est trop grande (max. {max_size_mb} Mo)."
+  url_not_allowed: "Cette URL n'est pas autorisée."
+  load: "Charger"
+  ok: "Utiliser l'image"
+  cancel: "Annuler"
+
+# Étapes de progression (côté client et côté serveur)
+step:
+  crop: "Recadrage de l'image dans le navigateur"
+  compress: "Compression de l'image dans le navigateur"
+  upload: "Téléchargement vers le serveur"
+  validated: "Image validée & chargée"
+  validated_detail: "Métadonnées de l'image supprimées"
+  filename: "Nom de fichier généré"
+  processed: "Image traitée & enregistrée dans toutes les tailles/formats"
+  processed_detail: "{sizes} tailles, {formats} formats, {total} au total"
+  profile_synced: "Photo du portail de connexion mise à jour"
+  ldap_updated: "Photo de l'annuaire utilisateurs mise à jour"
+  rollback: "Modifications annulées"
+  processing_failed: "Échec du traitement de l'image"
+  save_failed: "Impossible d'enregistrer votre avatar."
+
+# Messages de résultat
+result:
+  success: "Avatar mis à jour avec succès !"
+  retry: "Modifier l'avatar à nouveau"
+  error: "Impossible de mettre à jour votre avatar. Veuillez réessayer plus tard."
+  csrf_failed: "Votre session a expiré. Veuillez recharger la page et réessayer."
+  contact_admin: "Veuillez contacter votre administrateur."
+  network_error: "Impossible de joindre le serveur. Veuillez vérifier votre connexion et réessayer."

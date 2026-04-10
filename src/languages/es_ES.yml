@@ -1,0 +1,99 @@
+# Español (España) archivo de traducción
+
+# Metadatos de idioma (mostrados en el selector de idioma de la interfaz)
+_code: "ES"
+_name: "Español"
+
+# Títulos de página (añadidos tras el nombre de la marca)
+title:
+  signin: "Iniciar sesión"
+  dashboard: "Panel"
+  logged_out: "Sesión cerrada"
+
+# Barra de navegación
+nav:
+  logout: "Cerrar sesión"
+
+# Interfaz de configuración
+settings:
+  title: "Configuración"
+  theme: "Tema"
+  light: "Claro"
+  dark: "Oscuro"
+  auto: "Auto"
+  language: "Idioma"
+  reset: "Restablecer configuración"
+
+# Página de inicio de sesión
+login:
+  heading: "Actualizar tu avatar"
+  subtitle: "Inicia sesión con tu cuenta de organización para subir y gestionar tu foto de perfil."
+  button: "Iniciar sesión"
+  error_oidc_failed: "Error de autenticación. Por favor, inténtalo de nuevo o contacta con tu administrador."
+  error_pk_failed: "No se pudo completar el inicio de sesión — no se pudo recuperar tu cuenta. Por favor, inténtalo de nuevo o contacta con tu administrador."
+
+# Página de cierre de sesión
+logout:
+  heading: "Sesión cerrada correctamente"
+  subtitle: "Has cerrado sesión. ¡Hasta la próxima!"
+  button: "Volver al inicio de sesión"
+
+# Zona de subida del panel
+upload:
+  heading: "Actualizar tu foto de perfil"
+  subtitle: "Selecciona una imagen, recórtala en cuadrado y pulsa Subir. Tu avatar se actualizará automáticamente en nuestros sistemas."
+  drop_hint: "Arrastra y suelta una imagen aquí, o"
+  choose: "Elegir imagen…"
+  disclaimer: "Al subir, confirmas que esta imagen es apropiada y que tienes derecho a utilizarla."
+  button: "Subir & Actualizar avatar"
+  processing: "Procesando…"
+  invalid_ext: "El tipo de archivo .{ext} no está permitido. Aceptados: {allowed}"
+
+# Sección de progreso
+progress:
+  heading: "Progreso"
+
+# Cuadro de diálogo de importación
+import:
+  or: "o importar desde"
+  title: "Importar imagen"
+  gravatar: "Gravatar"
+  gravatar_placeholder: "Dirección de correo electrónico"
+  gravatar_loading: "Cargando…"
+  gravatar_not_found: "No se encontró ningún Gravatar para esta dirección de correo electrónico."
+  gravatar_error: "No se pudo obtener el Gravatar. Por favor, inténtalo de nuevo."
+  url_placeholder: "https://ejemplo.com/foto.jpg"
+  url_loading: "Obteniendo…"
+  url_error: "No se pudo obtener la imagen. Por favor, comprueba la URL e inténtalo de nuevo."
+  url_invalid: "Por favor, introduce una URL válida que comience con http:// o https://."
+  fetch_failed: "No se pudo obtener la imagen. Por favor, inténtalo de nuevo."
+  image_too_large: "La imagen es demasiado grande (máx. {max_size_mb} MB)."
+  url_not_allowed: "Esta URL no está permitida."
+  load: "Cargar"
+  ok: "Usar imagen"
+  cancel: "Cancelar"
+
+# Pasos de progreso (lado cliente y lado servidor)
+step:
+  crop: "Recortando imagen en el navegador"
+  compress: "Comprimiendo imagen en el navegador"
+  upload: "Subiendo al servidor"
+  validated: "Imagen validada & cargada"
+  validated_detail: "Metadatos de imagen eliminados"
+  filename: "Nombre de archivo generado"
+  processed: "Imagen procesada & guardada en todos los tamaños/formatos"
+  processed_detail: "{sizes} tamaños, {formats} formatos, {total} en total"
+  profile_synced: "Foto del portal de inicio de sesión actualizada"
+  ldap_updated: "Foto del directorio de usuarios actualizada"
+  rollback: "Cambios revertidos"
+  processing_failed: "Error al procesar la imagen"
+  save_failed: "No se pudo guardar tu avatar."
+
+# Mensajes de resultado
+result:
+  success: "¡Avatar actualizado correctamente!"
+  retry: "Cambiar avatar de nuevo"
+  error: "No se pudo actualizar tu avatar. Por favor, inténtalo más tarde."
+  csrf_failed: "Tu sesión ha expirado. Por favor, recarga la página e inténtalo de nuevo."
+  contact_admin: "Por favor, contacta con tu administrador."
+  network_error: "No se pudo conectar con el servidor. Por favor, comprueba tu conexión e inténtalo de nuevo."
