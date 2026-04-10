@@ -49,6 +49,30 @@
     var currentBlobUrl = null;
     var currentDisplayName = null;
 
+    // Cooldown delay (in seconds) before a Load button becomes pressable again
+    var LOAD_COOLDOWN_SECONDS = 3;
+
+    /**
+     * Start a cooldown countdown on a Load button after a fetch completes.
+     * Disables the button and shows "Load (3s)", "Load (2s)", "Load (1s)" before
+     * re-enabling it with the original label.
+     */
+    function startLoadCooldown(btn) {
+        var remaining = LOAD_COOLDOWN_SECONDS;
+        btn.disabled = true;
+        btn.textContent = I18N.import_load + " (" + remaining + "s)";
+        var timer = setInterval(function () {
+            remaining--;
+            if (remaining > 0) {
+                btn.textContent = I18N.import_load + " (" + remaining + "s)";
+            } else {
+                clearInterval(timer);
+                btn.disabled = false;
+                btn.textContent = I18N.import_load;
+            }
+        }, 1000);
+    }
+
     // Map known server error codes to translated messages
     var errorMessages = {
         "csrf_failed":            I18N.result_csrf_failed,
@@ -212,8 +236,7 @@
             } catch (e) {
                 showError(I18N.import_gravatar_error);
             } finally {
-                gravatarLoadBtn.disabled = false;
-                gravatarLoadBtn.textContent = I18N.import_load;
+                startLoadCooldown(gravatarLoadBtn);
             }
         });
 
@@ -266,8 +289,7 @@
             } catch (e) {
                 showError(I18N.import_url_error);
             } finally {
-                urlLoadBtn.disabled = false;
-                urlLoadBtn.textContent = I18N.import_load;
+                startLoadCooldown(urlLoadBtn);
             }
         });
 
