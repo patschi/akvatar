@@ -29,8 +29,8 @@ RUN apt-get update && \
 # Install Python dependencies into a staging directory (no venv needed in
 # Docker). The target path is version-independent so the Dockerfile does
 # not need updating when the base Python version changes.
-COPY requirements.txt .
-RUN pip install --no-cache-dir --target /opt/site-packages -r requirements.txt
+COPY pyproject.toml .
+RUN pip install --no-cache-dir --target /opt/site-packages .
 
 # Resolve symlink chains for Pillow's shared libraries into a flat staging
 # directory. Kaniko cannot follow multi-level .so symlinks across stages,

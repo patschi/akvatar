@@ -85,7 +85,7 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
    ```bash
    git clone https://github.com/patschi/akvatar.git akvatar && cd akvatar
    python3 -m venv .venv && source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install .
    ```
 
 2. Configure:

@@ -37,21 +37,21 @@ container_scanning:
       changes:
         - "**/*.py"
         - "Dockerfile"
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
         - "static/**"
         - "src/**"
       when: always
     - when: never
 
-# Run dependency scanning on scheduled pipelines in addition to requirements.txt changes
+# Run dependency scanning on scheduled pipelines in addition to pyproject.toml changes
 gemnasium-python-dependency_scanning:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: always
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       changes:
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
       when: always
     - when: never
@@ -92,7 +92,7 @@ lint-ruff-check:
   rules:
     - changes:
         - "**/*.py"
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
       when: always
     - when: never
@@ -109,13 +109,13 @@ lint-ruff-format:
   rules:
     - changes:
         - "**/*.py"
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
       when: always
     - when: never
 
 # Audits pinned deps against OSV/PyPI Advisory databases.
-# Runs on requirements.txt changes and on scheduled pipelines (nightly CVE discovery).
+# Runs on pyproject.toml changes and on scheduled pipelines (nightly CVE discovery).
 # Configure the schedule in GitLab UI → CI/CD → Schedules.
 lint-pip-audit:
   extends: .pip-base
@@ -124,9 +124,9 @@ lint-pip-audit:
   before_script:
     - !reference [.pip-base, before_script]
     - pip install --quiet --root-user-action=ignore pip-audit --cache-dir .pip-cache
-    - pip install --quiet --root-user-action=ignore -r requirements.txt --cache-dir .pip-cache
   script:
-    - pip-audit -r requirements.txt
+    # pip-audit resolves and audits project deps from pyproject.toml in an isolated env
+    - pip-audit --cache-dir .pip-cache .
   retry:
     max: 2
     when:
@@ -138,7 +138,7 @@ lint-pip-audit:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       when: always
     - changes:
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
       when: always
     - when: never
@@ -184,7 +184,7 @@ push-container-gitlab:
       changes:
         - "**/*.py"
         - "Dockerfile"
-        - "requirements.txt"
+        - "pyproject.toml"
         - ".gitlab-ci.yml"
         - "static/**"
         - "src/**"

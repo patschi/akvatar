@@ -1,44 +1,15 @@
 # Updating Dependencies
 
-`requirements.txt` pins each package to a minor version (e.g. `Flask==3.1.*`) so patch
-releases are picked up automatically by pip, while major/minor bumps require a deliberate
-edit.
+`pyproject.toml` pins each package to an exact version (e.g. `Flask==3.1.3`) so builds are
+reproducible. Bump versions deliberately — Renovate opens PRs automatically for patch and
+minor updates, so manual bumps are mostly for urgent fixes or major version jumps.
 
-## Patch updates (same minor pin)
+## Patch / minor bumps (via Renovate)
 
-No `requirements.txt` change needed — pip already resolves the latest patch.
+Renovate monitors `pyproject.toml` and opens update PRs automatically. Review and merge
+them like any other dependency PR.
 
-```sh
-pip install --upgrade -r requirements.txt
-```
-
-## Minor / major bumps
-
-### Automatic (recommended)
-
-[`pur`](https://github.com/alanhamlett/pip-update-requirements) rewrites version pins in
-`requirements.txt` in-place to the latest available release while preserving the existing
-constraint style (`==X.Y.*` stays `==X.Y.*`, just with a new version number).
-
-```sh
-# Install once
-pip install pur
-
-# Preview what would change without touching the file
-pur -r requirements.txt --dry-run --dry-run-changed
-
-# Write updates to requirements.txt (bumps patch + minor + major)
-pur -r requirements.txt
-
-# Install the updated pins
-pip install --upgrade -r requirements.txt
-```
-
-> **Note:** `pur` bumps to the absolute latest, including major version jumps. Review the
-> diff (`git diff requirements.txt`) and check changelogs for breaking changes before
-> installing.
-
-### Manual
+## Manual bumps
 
 1. Check what's available:
 
@@ -49,16 +20,16 @@ pip install --upgrade -r requirements.txt
    pip index versions flask
    ```
 
-2. Edit `requirements.txt` — bump the minor (or major) version pin, e.g.:
+2. Edit `pyproject.toml` — bump the version pin in the `dependencies` list, e.g.:
 
-   ```text
-   Flask==3.2.*
+   ```toml
+   "Flask==3.2.0",
    ```
 
-3. Install the new pins:
+3. Install the updated pins into your local environment:
 
    ```sh
-   pip install --upgrade -r requirements.txt
+   pip install --upgrade .
    ```
 
 ### Verify after any bump
@@ -68,7 +39,7 @@ python -m ruff check *.py src/
 python run_cleanup.py          # smoke-test
 ```
 
-If the app runs clean, commit `requirements.txt`.
+If the app runs clean, commit `pyproject.toml`.
 
 ## CI / Dockerfile pins
 

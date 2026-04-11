@@ -44,7 +44,7 @@ docker compose -f compose.dev.yml build --no-cache akvatar
 docker compose -f compose.dev.yml up akvatar
 ```
 
-If you changed `requirements.txt`, always rebuild with `--no-cache` (or at minimum `--build`) to pick up new
+If you changed `pyproject.toml`, always rebuild with `--no-cache` (or at minimum `--build`) to pick up new
 dependencies.
 
 ## Testing
