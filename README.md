@@ -11,9 +11,13 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 
 - **OpenID Connect login** via Authentik (scopes: `openid profile email`)
 - **Multi-language UI**: locale resolved from the OIDC `locale` claim; currently
-  English (default) and German
+  English (default), German, French, and Spanish
 - **Client-side square cropping** with [Cropper.js](https://github.com/fengyuanchen/cropperjs)
   (bundled locally, no external CDN)
+- **Gravatar and URL image import**: optionally import a profile picture from a Gravatar
+  email address or any public image URL directly in the browser (toggleable per source)
+- **Avatar removal**: users can remove their current avatar and reset to the Authentik
+  default via a one-click confirmation dialog
 - **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
 - **Multi-format output**: JPEG, PNG, WebP with configurable quality settings
   (see [Configuration](docs/configuration.md#images_formats))
@@ -35,6 +39,10 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Optional built-in TLS**: serve HTTPS directly without a reverse proxy
 - **Dry-run mode**: processes and saves images but skips all Authentik and LDAP writes;
   logs what would have happened instead
+- **CSRF protection**: per-session token validated server-side via `X-CSRF-Token` header
+  with `secrets.compare_digest()` on all state-changing requests
+- **Client-side session liveness check**: dashboard polls `/api/session` every 60 s and
+  redirects to the login page with a clear "session expired" notice before form submission
 - **Rate limiting**: per-IP point budget on avatar and metadata endpoints, with CIDR
   whitelist support and a configurable 404 penalty
 - **Security response headers**: `X-Content-Type-Options`, `X-Frame-Options` (HTML
@@ -184,8 +192,8 @@ Relevant guides:
 1. User visits the app and clicks **Sign in**
 2. OIDC redirect → Authentik login → callback stores user info and PK in session
 3. Dashboard shows the user's current name and profile picture
-4. User picks an image → Cropper.js enforces a square crop in the browser →
-   compressed to WebP/JPEG via `canvas.toBlob()`
+4. User picks an image file, or imports from Gravatar / URL → Cropper.js enforces a
+   square crop in the browser → compressed to WebP/JPEG via `canvas.toBlob()`
 5. Cropped image is uploaded to `POST /api/upload`
 6. Server validates (extension, magic bytes, Pillow decode, dimensions), strips all
    metadata, then resizes to all configured sizes, and saves as JPEG + PNG + WebP

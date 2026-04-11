@@ -28,9 +28,9 @@ If you already have a signing key for OIDC, skip this step.
     - **Name**: e.g. `Avatar Updater`
     - **Authorization flow**: select your standard authorization flow
     - **Client ID**: note the auto-generated value (or set your own); goes into `oidc.client_id`
-      in [config.yml](configuration.md#oidcclient_id)
+      in [config.yml](configuration.md#oidc_client_id)
     - **Client Secret**: note the auto-generated value; goes into `oidc.client_secret`
-      in [config.yml](configuration.md#oidcclient_secret)
+      in [config.yml](configuration.md#oidc_client_secret)
     - **Redirect URIs/Origins**: set to `https://your-app-url/callback` (the `/callback` path is required and must match
       exactly)
     - **Signing Key**: select the certificate you created in step 1
@@ -90,7 +90,7 @@ See also: [Subfolder Deployment](subfolder-deployment.md) for subfolder-specific
 
 ## Post-Logout Redirect URI
 
-> **Note:** This section only applies when [`oidc.end_provider_session`](configuration.md#oidc_end_provider_session)
+> **Note:** This section only applies when [`oidc.end_provider_session`](configuration.md#oidcend_provider_session)
 > is set to `true`. By default, logging out only clears the local app session and this step is not needed.
 
 When `oidc.end_provider_session` is enabled, logging out performs **RP-Initiated Logout**: the app clears the local
@@ -123,15 +123,15 @@ The app reads the following claims from the ID token / userinfo response:
 | `preferred_username` (or configured `username_claim`) | Identifies the user for Authentik API lookups          | Yes                                                       |
 | `name`                                                | Display name shown on the dashboard                    | No (falls back to username)                               |
 | `email`                                               | Shown on the dashboard                                 | No                                                        |
-| `picture`                                             | Current avatar URL shown on the dashboard              | No                                                        |
 | `locale`                                              | Used to select the UI language (e.g. `en_US`, `de_DE`) | No (falls back to `Accept-Language` header, then English) |
 
 ## Troubleshooting
 
-| Problem                                        | Cause                                                               | Fix                                                                         |
-|------------------------------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| "mismatching redirection URI"                  | Redirect URI in Authentik does not match the app's callback URL     | Ensure the URI in the provider matches `<public_base_url>/callback` exactly |
-| Login redirects back with `?error=oidc_failed` | Token exchange failed (network error, invalid secret, expired code) | Check the app logs for the full exception; verify `client_secret` matches   |
-| Login redirects back with `?error=pk_failed`   | Authentik API could not resolve the user's primary key              | Ensure the [API token](authentik-api-token.md) has permission to read users |
+| Problem                                               | Cause                                                               | Fix                                                                                                |
+|-------------------------------------------------------|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| "mismatching redirection URI"                         | Redirect URI in Authentik does not match the app's callback URL     | Ensure the URI in the provider matches `<public_base_url>/callback` exactly                        |
+| Login redirects back with `?error=oidc_failed`        | Token exchange failed (network error, invalid secret, expired code) | Check the app logs for the full exception; verify `client_secret` matches                          |
+| Login redirects back with `?error=pk_failed`          | Authentik API could not resolve the user's primary key              | Ensure the [API token](authentik-api-token.md) has permission to read users                        |
+| Login page shows "session expired" message            | Dashboard detected an expired server-side session via `/api/session` | Normal behaviour — the user was idle past the session timeout; simply sign in again               |
 
 See also: [Configuration Reference](configuration.md#openid-connect--authentik-login)

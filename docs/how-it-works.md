@@ -42,8 +42,10 @@ sequenceDiagram
     participant K as Authentik
 
     B->>A: GET /
+    A-->>B: 302 Redirect to /login
+    B->>A: GET /login
     A-->>B: Login page (HTML)
-    B->>A: Click "Sign in" → GET /login
+    B->>A: Click "Sign in" → GET /login-start
     A-->>B: 302 Redirect to Authentik
     B->>K: Authorization request (client_id, redirect_uri, scopes)
     K-->>B: Login form
@@ -73,9 +75,9 @@ sequenceDiagram
   identifier — usernames can change, PKs cannot.
 - The **locale** is read from the OIDC `locale` claim. If the user's Authentik profile
   has `locale: de_DE`, the UI switches to German automatically.
-- If the OIDC token exchange fails the user is redirected to `/?error=oidc_failed`. If PK
-  resolution fails the error is `/?error=pk_failed`.
-- Adding `?autologin` to the root URL (`/?autologin`) skips the landing page and
+- If the OIDC token exchange fails the user is redirected to `/login?error=oidc_failed`. If PK
+  resolution fails the error is `/login?error=pk_failed`.
+- Adding `?autologin` to the login URL (`/login?autologin`) skips the landing page and
   immediately initiates the OIDC redirect — useful for deep-linking from a portal.
 
 ## Upload and processing flow
@@ -486,8 +488,12 @@ max-age=86400` header instructs browsers to cache assets locally.
 | Magic byte verification           | Blocks files with fake extensions before they reach the image decoder              |
 | Decompression bomb limit (50 MP)  | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images       |
 | Dimension limits (64–10 000 px)   | Guards against excessive CPU/memory use during resizing                            |
-| Format allow-list                 | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                  |
+| Format allow-list                 | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                 |
 | Metadata stripping                | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII         |
+| CSRF protection                   | Per-session token validated via `X-CSRF-Token` header on all state-changing requests using `secrets.compare_digest()` |
+| SSRF protection                   | URL import (`import.url_enabled`) validates hosts against a configurable allow-list before fetching |
+| Rate limiting                     | Login and upload endpoints are rate-limited per IP to prevent brute-force and abuse |
+| Client-side session liveness      | Dashboard polls `/api/session` every 60 s; redirects to login page before form submission if session expired |
 | LDAP filter escaping              | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
 | Flask session signing             | Session cookies are cryptographically signed with `app.secret_key`                 |
 | Session cookie hardening          | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set   |
