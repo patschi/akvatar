@@ -1,6 +1,7 @@
 # Flask Session Key
 
-The `security.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is predictable, too
+The `security.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is
+predictable, too
 short, or shared between environments, an attacker can forge session cookies and impersonate any user, including
 administrators.
 

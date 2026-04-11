@@ -482,24 +482,24 @@ max-age=86400` header instructs browsers to cache assets locally.
 
 ## Security measures
 
-| Measure                           | Purpose                                                                            |
-|-----------------------------------|------------------------------------------------------------------------------------|
-| Unguessable filenames             | Prevents URL enumeration of other users' avatars                                   |
-| Magic byte verification           | Blocks files with fake extensions before they reach the image decoder              |
-| Decompression bomb limit (50 MP)  | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images       |
-| Dimension limits (64–10 000 px)   | Guards against excessive CPU/memory use during resizing                            |
-| Format allow-list                 | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                 |
-| Metadata stripping                | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII         |
-| CSRF protection                   | Per-session token validated via `X-CSRF-Token` header on all state-changing requests using `secrets.compare_digest()` |
-| SSRF protection                   | URL import (`import.url_enabled`) validates hosts against a configurable allow-list before fetching |
-| Rate limiting                     | Login and upload endpoints are rate-limited per IP to prevent brute-force and abuse |
-| Client-side session liveness      | Dashboard polls `/api/heartbeat` every 60 s; redirects to login page before form submission if session expired |
-| LDAP filter escaping              | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
-| Flask session signing             | Session cookies are cryptographically signed with `security.secret_key`            |
-| Session cookie hardening          | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set   |
-| Security response headers         | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and             |
-|                                   | `Referrer-Policy: strict-origin-when-cross-origin` on every response               |
-| Cleanup safety guard              | Aborts if Authentik returns zero users — prevents mass deletion on API failure     |
-| Non-root Docker container         | Runs as UID 65532 with no shell in a distroless image                              |
-| Read-only root filesystem         | Container filesystem is immutable; only data volumes are writable                  |
-| Dropped capabilities              | `cap_drop: ALL` removes all Linux capabilities from the container                  |
+| Measure                          | Purpose                                                                                                               |
+|----------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| Unguessable filenames            | Prevents URL enumeration of other users' avatars                                                                      |
+| Magic byte verification          | Blocks files with fake extensions before they reach the image decoder                                                 |
+| Decompression bomb limit (50 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images                                          |
+| Dimension limits (64–10 000 px)  | Guards against excessive CPU/memory use during resizing                                                               |
+| Format allow-list                | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                                                     |
+| Metadata stripping               | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII                                            |
+| CSRF protection                  | Per-session token validated via `X-CSRF-Token` header on all state-changing requests using `secrets.compare_digest()` |
+| SSRF protection                  | URL import (`import.url_enabled`) validates hosts against a configurable allow-list before fetching                   |
+| Rate limiting                    | Login and upload endpoints are rate-limited per IP to prevent brute-force and abuse                                   |
+| Client-side session liveness     | Dashboard polls `/api/heartbeat` every 60 s; redirects to login page before form submission if session expired        |
+| LDAP filter escaping             | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection                                    |
+| Flask session signing            | Session cookies are cryptographically signed with `security.secret_key`                                               |
+| Session cookie hardening         | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set                                      |
+| Security response headers        | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and                                                |
+|                                  | `Referrer-Policy: strict-origin-when-cross-origin` on every response                                                  |
+| Cleanup safety guard             | Aborts if Authentik returns zero users — prevents mass deletion on API failure                                        |
+| Non-root Docker container        | Runs as UID 65532 with no shell in a distroless image                                                                 |
+| Read-only root filesystem        | Container filesystem is immutable; only data volumes are writable                                                     |
+| Dropped capabilities             | `cap_drop: ALL` removes all Linux capabilities from the container                                                     |

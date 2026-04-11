@@ -106,10 +106,10 @@ For this redirect to work, the post-logout URI must be registered in the Authent
   Subfolder:      https://portal.example.com/avatar/logged-out
 ```
 
-| Deployment  | Post-Logout Redirect URI                        |
-|-------------|-------------------------------------------------|
-| Root domain | `https://avatar.example.com/logged-out`         |
-| Subfolder   | `https://portal.example.com/avatar/logged-out`  |
+| Deployment  | Post-Logout Redirect URI                       |
+|-------------|------------------------------------------------|
+| Root domain | `https://avatar.example.com/logged-out`        |
+| Subfolder   | `https://portal.example.com/avatar/logged-out` |
 
 If the post-logout URI is not registered, Authentik will still end the SSO session but may show its own
 generic logged-out page instead of redirecting back to the app.
@@ -127,11 +127,11 @@ The app reads the following claims from the ID token / userinfo response:
 
 ## Troubleshooting
 
-| Problem                                               | Cause                                                                  | Fix                                                                                  |
-|-------------------------------------------------------|------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| "mismatching redirection URI"                         | Redirect URI in Authentik does not match the app's callback URL        | Ensure the URI in the provider matches `<public_base_url>/callback` exactly          |
-| Login redirects back with `?error=oidc_failed`        | Token exchange failed (network error, invalid secret, expired code)    | Check the app logs for the full exception; verify `client_secret` matches            |
-| Login redirects back with `?error=pk_failed`          | Authentik API could not resolve the user's primary key                 | Ensure the [API token](authentik-api-token.md) has permission to read users          |
-| Login page shows "session expired" message            | Dashboard detected an expired server-side session via `/api/heartbeat` | Normal behaviour — the user was idle past the session timeout; simply sign in again  |
+| Problem                                        | Cause                                                                  | Fix                                                                                 |
+|------------------------------------------------|------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| "mismatching redirection URI"                  | Redirect URI in Authentik does not match the app's callback URL        | Ensure the URI in the provider matches `<public_base_url>/callback` exactly         |
+| Login redirects back with `?error=oidc_failed` | Token exchange failed (network error, invalid secret, expired code)    | Check the app logs for the full exception; verify `client_secret` matches           |
+| Login redirects back with `?error=pk_failed`   | Authentik API could not resolve the user's primary key                 | Ensure the [API token](authentik-api-token.md) has permission to read users         |
+| Login page shows "session expired" message     | Dashboard detected an expired server-side session via `/api/heartbeat` | Normal behaviour — the user was idle past the session timeout; simply sign in again |
 
 See also: [Configuration Reference](configuration.md#openid-connect--authentik-login)

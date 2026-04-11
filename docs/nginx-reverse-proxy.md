@@ -87,7 +87,7 @@ When nginx terminates TLS, there is no need to configure TLS in the Avatar Updat
 and `webserver.tls.key` empty in `config.yml` and let nginx handle certificates. See
 [App TLS Configuration](app-tls.md) for more details.
 
-The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs 
+The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs
 (redirects, OIDC callbacks) use the correct scheme.
 
 ## HTTP to HTTPS redirect

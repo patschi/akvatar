@@ -22,79 +22,79 @@ effect.
 
 ## Settings overview
 
-| Setting                                                                           | Type    | Description                                         |
-|-----------------------------------------------------------------------------------|---------|-----------------------------------------------------|
-| [`dry_run`](#dry_run)                                                             | Boolean | Skip Authentik/LDAP writes; log all actions instead |
-| [`branding.name`](#brandingname)                                                  | String  | Application name shown in the UI                    |
-| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                                | Integer | Maximum upload size in MB                           |
-| [`app.avatar_storage_path`](#appavatar_storage_path)                              | String  | Directory for stored avatar images                  |
-| [`app.public_base_url`](#apppublic_base_url)                                      | URL     | Public URL where the application is reachable       |
-| [`app.public_avatar_url`](#apppublic_avatar_url)                                  | URL     | Public URL where avatar files are served            |
-| [`security.secret_key`](#securitysecret_key)                                      | String  | Flask session signing key                           |
-| [`security.session_cookie_secure`](#securitysession_cookie_secure)                | Boolean | Override Secure flag on the session cookie          |
-| [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds)  | Integer | Session cookie lifetime in seconds                  |
-| [`security.metadata_access`](#securitymetadata_access)                            | Enum    | Who may access avatar metadata JSON files           |
-| [`security.csp_enabled`](#securitycsp_enabled)                                    | Boolean | Send a Content-Security-Policy header on HTML pages |
-| [`cleanup.interval`](#cleanupinterval)                                            | Cron    | Cron schedule for the cleanup job                   |
-| [`cleanup.on_startup`](#cleanupon_startup)                                        | Boolean | Run cleanup once 60 s after startup                 |
-| [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)                | Integer | Avatar sets to keep per user (0 = unlimited)        |
-| [`cleanup.when_user_deleted`](#cleanupwhen_user_deleted)                          | Boolean | Remove avatars of users deleted from Authentik      |
-| [`cleanup.when_user_deactivated`](#cleanupwhen_user_deactivated)                  | Boolean | Remove avatars of deactivated Authentik users       |
-| [`rate_limiting.enabled`](#rate_limitingenabled)                                  | Boolean | Master switch for rate limiting                     |
-| [`rate_limiting.ip_whitelist`](#rate_limitingip_whitelist)                        | List    | IPs/CIDRs exempt from rate limiting                 |
-| [`rate_limiting.points_cost_404`](#rate_limitingpoints_cost_404)                  | Integer | Point cost for a 404 response                       |
-| [`rate_limiting.eviction_interval`](#rate_limitingeviction_interval)              | Integer | Stale-entry cleanup interval in seconds             |
-| [`rate_limiting.avatars`](#rate_limitingavatars)                                  | Object  | Rate limit settings for avatar image requests       |
-| [`rate_limiting.metadata`](#rate_limitingmetadata)                                | Object  | Rate limit settings for metadata JSON requests      |
-| [`image_import.gravatar.enabled`](#image_importgravatarenabled)                   | Boolean | Enable Gravatar import in the UI                    |
-| [`image_import.gravatar.restrict_email`](#image_importgravatarrestrict_email)     | Boolean | Lock Gravatar email to the session user's address   |
-| [`image_import.url.enabled`](#image_importurlenabled)                             | Boolean | Enable URL import in the UI                         |
-| [`image_import.url.restrict_private_ips`](#image_importurlrestrict_private_ips)   | Boolean | Block URLs resolving to private IP addresses        |
-| [`image_import.webcam.enabled`](#image_importwebcamenabled)                       | Boolean | Enable browser webcam capture in the UI             |
-| [`sentry.enabled`](#sentryenabled)                                                | Boolean | Master switch for Sentry error tracking             |
-| [`sentry.dsn`](#sentrydsn)                                                        | String  | Sentry project DSN (ingest URL)                     |
-| [`sentry.capture_errors`](#sentrycapture_errors)                                  | Boolean | Send unhandled exceptions to Sentry                 |
-| [`sentry.capture_performance`](#sentrycapture_performance)                        | Boolean | Enable transaction / performance tracing            |
-| [`sentry.sample_rate`](#sentrysample_rate)                                        | Float   | Error event sample rate (0.0–1.0)                   |
-| [`sentry.traces_sample_rate`](#sentrytraces_sample_rate)                          | Float   | Performance trace sample rate (0.0–1.0)             |
-| [`sentry.environment`](#sentryenvironment)                                        | String  | Sentry environment tag (auto-detected if empty)     |
-| [`sentry.send_default_pii`](#sentrysend_default_pii)                              | Boolean | Include IP addresses and user details in events     |
-| [`app.log_level`](#applog_level)                                                  | Enum    | Log verbosity                                       |
-| [`app.debug_full`](#appdebug_full)                                                | Boolean | Full debug mode - never enable in production        |
-| [`webserver.proxy_mode`](#webserverproxy_mode)                                    | Boolean | Enable reverse-proxy header support (ProxyFix)      |
-| [`webserver.trusted_hosts`](#webservertrusted_hosts)                              | List    | Restrict which Host header values are accepted      |
-| [`webserver.access_log`](#webserveraccess_log)                                    | Boolean | Log every HTTP request to the console               |
-| [`webserver.workers`](#webserverworkers)                                          | Integer | Number of gunicorn worker processes                 |
-| [`webserver.threads`](#webserverthreads)                                          | Integer | Threads per worker                                  |
-| [`webserver.timeout`](#webservertimeout)                                          | Integer | Worker timeout in seconds                           |
-| [`webserver.tls.cert`](#webservertlscert--tlskey)                                 | String  | Path to TLS certificate file                        |
-| [`webserver.tls.key`](#webservertlscert--tlskey)                                  | String  | Path to TLS private key file                        |
-| [`webserver.tls.min_version`](#webservertlsmin_version)                           | String  | Minimum TLS protocol version accepted by the server |
-| [`webserver.http2.enabled`](#webserverhttp2enabled)                               | Boolean | Enable HTTP/2 via ALPN (requires TLS)               |
-| [`oidc.issuer_url`](#oidcissuer_url)                                              | URL     | Authentik OIDC provider URL                         |
-| [`oidc.client_id`](#oidcclient_id)                                                | String  | OAuth2 client ID                                    |
-| [`oidc.client_secret`](#oidcclient_secret)                                        | String  | OAuth2 client secret                                |
-| [`oidc.username_claim`](#oidcusername_claim)                                      | String  | OIDC claim used as the username                     |
-| [`oidc.end_provider_session`](#oidcend_provider_session)                          | Boolean | End Authentik SSO session on logout                 |
-| [`authentik.base_url`](#authentikbase_url)                                        | URL     | Authentik instance base URL                         |
-| [`authentik.api_token`](#authentikapi_token)                                      | String  | Authentik Admin API token                           |
-| [`authentik.avatar_size`](#authentikavatar_size)                                  | Integer | Image size (px) used for the Authentik avatar URL   |
-| [`authentik.avatar_attribute`](#authentikavatar_attribute)                        | String  | Authentik user attribute to store the avatar URL    |
-| [`ldap.enabled`](#ldapenabled)                                                    | Boolean | Enable LDAP photo attribute updates                 |
-| [`ldap.servers`](#ldapservers)                                                    | String  | LDAP server URL(s), comma-separated                 |
-| [`ldap.port`](#ldapport)                                                          | Integer | LDAP server port (applied to all servers)           |
-| [`ldap.use_ssl`](#ldapuse_ssl)                                                    | Boolean | Use SSL/TLS for the LDAP connection                 |
-| [`ldap.skip_cert_verify`](#ldapskip_cert_verify)                                  | Boolean | Skip TLS certificate verification                   |
-| [`ldap.bind_dn`](#ldapbind_dn)                                                    | String  | Service account DN for LDAP bind                    |
-| [`ldap.bind_password`](#ldapbind_password)                                        | String  | Service account password                            |
-| [`ldap.search_base`](#ldapsearch_base)                                            | String  | Base DN for user searches                           |
-| [`ldap.search_filter`](#ldapsearch_filter)                                        | String  | LDAP filter to locate the user object               |
-| [`ldap.photos`](#ldapphotos)                                                      | List    | LDAP photo attributes to update (see details below) |
-| [`images.sizes`](#imagessizes)                                                    | List    | Square output sizes to generate (px)                |
-| [`images.formats`](#imagesformats)                                                | List    | Output formats to save for each size                |
-| [`images.jpeg_quality`](#imagesjpeg_quality)                                      | Integer | JPEG compression quality (1–100)                    |
-| [`images.webp_quality`](#imageswebp_quality)                                      | Integer | WebP compression quality (1–100)                    |
-| [`images.png_compress_level`](#imagespng_compress_level)                          | Integer | PNG compression level (0–9)                         |
+| Setting                                                                          | Type    | Description                                         |
+|----------------------------------------------------------------------------------|---------|-----------------------------------------------------|
+| [`dry_run`](#dry_run)                                                            | Boolean | Skip Authentik/LDAP writes; log all actions instead |
+| [`branding.name`](#brandingname)                                                 | String  | Application name shown in the UI                    |
+| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                               | Integer | Maximum upload size in MB                           |
+| [`app.avatar_storage_path`](#appavatar_storage_path)                             | String  | Directory for stored avatar images                  |
+| [`app.public_base_url`](#apppublic_base_url)                                     | URL     | Public URL where the application is reachable       |
+| [`app.public_avatar_url`](#apppublic_avatar_url)                                 | URL     | Public URL where avatar files are served            |
+| [`security.secret_key`](#securitysecret_key)                                     | String  | Flask session signing key                           |
+| [`security.session_cookie_secure`](#securitysession_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
+| [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
+| [`security.metadata_access`](#securitymetadata_access)                           | Enum    | Who may access avatar metadata JSON files           |
+| [`security.csp_enabled`](#securitycsp_enabled)                                   | Boolean | Send a Content-Security-Policy header on HTML pages |
+| [`cleanup.interval`](#cleanupinterval)                                           | Cron    | Cron schedule for the cleanup job                   |
+| [`cleanup.on_startup`](#cleanupon_startup)                                       | Boolean | Run cleanup once 60 s after startup                 |
+| [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)               | Integer | Avatar sets to keep per user (0 = unlimited)        |
+| [`cleanup.when_user_deleted`](#cleanupwhen_user_deleted)                         | Boolean | Remove avatars of users deleted from Authentik      |
+| [`cleanup.when_user_deactivated`](#cleanupwhen_user_deactivated)                 | Boolean | Remove avatars of deactivated Authentik users       |
+| [`rate_limiting.enabled`](#rate_limitingenabled)                                 | Boolean | Master switch for rate limiting                     |
+| [`rate_limiting.ip_whitelist`](#rate_limitingip_whitelist)                       | List    | IPs/CIDRs exempt from rate limiting                 |
+| [`rate_limiting.points_cost_404`](#rate_limitingpoints_cost_404)                 | Integer | Point cost for a 404 response                       |
+| [`rate_limiting.eviction_interval`](#rate_limitingeviction_interval)             | Integer | Stale-entry cleanup interval in seconds             |
+| [`rate_limiting.avatars`](#rate_limitingavatars)                                 | Object  | Rate limit settings for avatar image requests       |
+| [`rate_limiting.metadata`](#rate_limitingmetadata)                               | Object  | Rate limit settings for metadata JSON requests      |
+| [`image_import.gravatar.enabled`](#image_importgravatarenabled)                  | Boolean | Enable Gravatar import in the UI                    |
+| [`image_import.gravatar.restrict_email`](#image_importgravatarrestrict_email)    | Boolean | Lock Gravatar email to the session user's address   |
+| [`image_import.url.enabled`](#image_importurlenabled)                            | Boolean | Enable URL import in the UI                         |
+| [`image_import.url.restrict_private_ips`](#image_importurlrestrict_private_ips)  | Boolean | Block URLs resolving to private IP addresses        |
+| [`image_import.webcam.enabled`](#image_importwebcamenabled)                      | Boolean | Enable browser webcam capture in the UI             |
+| [`sentry.enabled`](#sentryenabled)                                               | Boolean | Master switch for Sentry error tracking             |
+| [`sentry.dsn`](#sentrydsn)                                                       | String  | Sentry project DSN (ingest URL)                     |
+| [`sentry.capture_errors`](#sentrycapture_errors)                                 | Boolean | Send unhandled exceptions to Sentry                 |
+| [`sentry.capture_performance`](#sentrycapture_performance)                       | Boolean | Enable transaction / performance tracing            |
+| [`sentry.sample_rate`](#sentrysample_rate)                                       | Float   | Error event sample rate (0.0–1.0)                   |
+| [`sentry.traces_sample_rate`](#sentrytraces_sample_rate)                         | Float   | Performance trace sample rate (0.0–1.0)             |
+| [`sentry.environment`](#sentryenvironment)                                       | String  | Sentry environment tag (auto-detected if empty)     |
+| [`sentry.send_default_pii`](#sentrysend_default_pii)                             | Boolean | Include IP addresses and user details in events     |
+| [`app.log_level`](#applog_level)                                                 | Enum    | Log verbosity                                       |
+| [`app.debug_full`](#appdebug_full)                                               | Boolean | Full debug mode - never enable in production        |
+| [`webserver.proxy_mode`](#webserverproxy_mode)                                   | Boolean | Enable reverse-proxy header support (ProxyFix)      |
+| [`webserver.trusted_hosts`](#webservertrusted_hosts)                             | List    | Restrict which Host header values are accepted      |
+| [`webserver.access_log`](#webserveraccess_log)                                   | Boolean | Log every HTTP request to the console               |
+| [`webserver.workers`](#webserverworkers)                                         | Integer | Number of gunicorn worker processes                 |
+| [`webserver.threads`](#webserverthreads)                                         | Integer | Threads per worker                                  |
+| [`webserver.timeout`](#webservertimeout)                                         | Integer | Worker timeout in seconds                           |
+| [`webserver.tls.cert`](#webservertlscert--tlskey)                                | String  | Path to TLS certificate file                        |
+| [`webserver.tls.key`](#webservertlscert--tlskey)                                 | String  | Path to TLS private key file                        |
+| [`webserver.tls.min_version`](#webservertlsmin_version)                          | String  | Minimum TLS protocol version accepted by the server |
+| [`webserver.http2.enabled`](#webserverhttp2enabled)                              | Boolean | Enable HTTP/2 via ALPN (requires TLS)               |
+| [`oidc.issuer_url`](#oidcissuer_url)                                             | URL     | Authentik OIDC provider URL                         |
+| [`oidc.client_id`](#oidcclient_id)                                               | String  | OAuth2 client ID                                    |
+| [`oidc.client_secret`](#oidcclient_secret)                                       | String  | OAuth2 client secret                                |
+| [`oidc.username_claim`](#oidcusername_claim)                                     | String  | OIDC claim used as the username                     |
+| [`oidc.end_provider_session`](#oidcend_provider_session)                         | Boolean | End Authentik SSO session on logout                 |
+| [`authentik.base_url`](#authentikbase_url)                                       | URL     | Authentik instance base URL                         |
+| [`authentik.api_token`](#authentikapi_token)                                     | String  | Authentik Admin API token                           |
+| [`authentik.avatar_size`](#authentikavatar_size)                                 | Integer | Image size (px) used for the Authentik avatar URL   |
+| [`authentik.avatar_attribute`](#authentikavatar_attribute)                       | String  | Authentik user attribute to store the avatar URL    |
+| [`ldap.enabled`](#ldapenabled)                                                   | Boolean | Enable LDAP photo attribute updates                 |
+| [`ldap.servers`](#ldapservers)                                                   | String  | LDAP server URL(s), comma-separated                 |
+| [`ldap.port`](#ldapport)                                                         | Integer | LDAP server port (applied to all servers)           |
+| [`ldap.use_ssl`](#ldapuse_ssl)                                                   | Boolean | Use SSL/TLS for the LDAP connection                 |
+| [`ldap.skip_cert_verify`](#ldapskip_cert_verify)                                 | Boolean | Skip TLS certificate verification                   |
+| [`ldap.bind_dn`](#ldapbind_dn)                                                   | String  | Service account DN for LDAP bind                    |
+| [`ldap.bind_password`](#ldapbind_password)                                       | String  | Service account password                            |
+| [`ldap.search_base`](#ldapsearch_base)                                           | String  | Base DN for user searches                           |
+| [`ldap.search_filter`](#ldapsearch_filter)                                       | String  | LDAP filter to locate the user object               |
+| [`ldap.photos`](#ldapphotos)                                                     | List    | LDAP photo attributes to update (see details below) |
+| [`images.sizes`](#imagessizes)                                                   | List    | Square output sizes to generate (px)                |
+| [`images.formats`](#imagesformats)                                               | List    | Output formats to save for each size                |
+| [`images.jpeg_quality`](#imagesjpeg_quality)                                     | Integer | JPEG compression quality (1–100)                    |
+| [`images.webp_quality`](#imageswebp_quality)                                     | Integer | WebP compression quality (1–100)                    |
+| [`images.png_compress_level`](#imagespng_compress_level)                         | Integer | PNG compression level (0–9)                         |
 
 ---
 
@@ -268,11 +268,11 @@ extended by activity.
 
 ### `security.metadata_access`
 
-| Property         | Value                         |
-|------------------|-------------------------------|
-| **Type**         | String (enum)                 |
-| **Default**      | `"owner_only"`                |
-| **Valid values** | `owner_only`, `public`        |
+| Property         | Value                  |
+|------------------|------------------------|
+| **Type**         | String (enum)          |
+| **Default**      | `"owner_only"`         |
+| **Valid values** | `owner_only`, `public` |
 
 Controls who may read avatar metadata JSON files served at `/user-avatars/_metadata/<file>`.
 Metadata files contain the user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and
@@ -497,10 +497,10 @@ start sending events. A warning is logged at startup if this is `true` but the D
 
 ### `sentry.dsn`
 
-| Property    | Value          |
-|-------------|----------------|
-| **Type**    | String (URL)   |
-| **Default** | `""` (empty)   |
+| Property    | Value        |
+|-------------|--------------|
+| **Type**    | String (URL) |
+| **Default** | `""` (empty) |
 
 The Sentry DSN (Data Source Name) for your project. Find it in
 **Sentry - Project Settings - Client Keys (DSN)**. The DSN follows the format
@@ -532,10 +532,10 @@ data than error tracking.
 
 ### `sentry.sample_rate`
 
-| Property    | Value             |
-|-------------|-------------------|
-| **Type**    | Float (0.0–1.0)   |
-| **Default** | `1.0`             |
+| Property    | Value           |
+|-------------|-----------------|
+| **Type**    | Float (0.0–1.0) |
+| **Default** | `1.0`           |
 
 Fraction of error events to send. `1.0` sends every error, `0.5` sends roughly half, `0.0` sends
 none. Only applies when [`capture_errors`](#sentry_capture_errors) is `true` - otherwise forced to
@@ -546,10 +546,10 @@ if you have a high-traffic deployment generating excessive duplicate errors.
 
 ### `sentry.traces_sample_rate`
 
-| Property    | Value             |
-|-------------|-------------------|
-| **Type**    | Float (0.0–1.0)   |
-| **Default** | `0.2`             |
+| Property    | Value           |
+|-------------|-----------------|
+| **Type**    | Float (0.0–1.0) |
+| **Default** | `0.2`           |
 
 Fraction of requests to trace for performance monitoring. `1.0` traces every request, `0.2` traces
 roughly 20%. Only applies when [`capture_performance`](#sentry_capture_performance) is `true` -
@@ -617,10 +617,10 @@ access only). When disabled, any forwarded headers sent by clients are ignored.
 
 ### `webserver.trusted_hosts`
 
-| Property    | Value                    |
-|-------------|--------------------------|
-| **Type**    | List of strings or null  |
-| **Default** | `null` (no restriction)  |
+| Property    | Value                   |
+|-------------|-------------------------|
+| **Type**    | List of strings or null |
+| **Default** | `null` (no restriction) |
 
 A list of hostnames (and optional ports) that the application will accept in the HTTP `Host`
 header. Any request whose `Host` value is not in this list is rejected with `HTTP 400 Bad Request`.
@@ -708,20 +708,20 @@ For production, terminate TLS at a reverse proxy instead. See [App TLS Configura
 
 ### `webserver.tls.min_version`
 
-| Property    | Value        |
-|-------------|--------------|
-| **Type**    | String       |
-| **Default** | `TLSv1_2`    |
+| Property    | Value     |
+|-------------|-----------|
+| **Type**    | String    |
+| **Default** | `TLSv1_2` |
 
 Minimum TLS protocol version the server will accept from clients. The value must match a member name
 of Python's `ssl.TLSVersion` enum. Supported values as of Python 3.7+:
 
-| Value      | Protocol  | Notes                                                   |
-|------------|-----------|----------------------------------------------------------|
-| `TLSv1_3`  | TLS 1.3   | Most secure. Drops support for older clients.            |
-| `TLSv1_2`  | TLS 1.2   | Default. Broadly compatible and secure.                  |
-| `TLSv1_1`  | TLS 1.1   | Deprecated and disabled in most Python builds. Insecure. |
-| `TLSv1`    | TLS 1.0   | Deprecated and disabled in most Python builds. Insecure. |
+| Value     | Protocol | Notes                                                    |
+|-----------|----------|----------------------------------------------------------|
+| `TLSv1_3` | TLS 1.3  | Most secure. Drops support for older clients.            |
+| `TLSv1_2` | TLS 1.2  | Default. Broadly compatible and secure.                  |
+| `TLSv1_1` | TLS 1.1  | Deprecated and disabled in most Python builds. Insecure. |
+| `TLSv1`   | TLS 1.0  | Deprecated and disabled in most Python builds. Insecure. |
 
 New TLS versions added to Python's `ssl` module are automatically recognised without requiring
 application updates. If an unrecognised value is configured, the application refuses to start with
@@ -1105,10 +1105,10 @@ recommended in production).
 
 ### `image_import.webcam.enabled`
 
-| Property    | Value  |
-|-------------|--------|
+| Property    | Value   |
+|-------------|---------|
 | **Type**    | Boolean |
-| **Default** | `true` |
+| **Default** | `true`  |
 
 When enabled, a **Webcam** tab is shown in the import dialog that lets users capture a selfie using
 their device's camera via the browser's
