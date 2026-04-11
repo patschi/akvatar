@@ -44,6 +44,17 @@ app:
   # Web session lifetime in seconds.  After this period the session cookie
   # expires and the user must log in again.  Default: 1800 (30 minutes).
   web_session_lifetime_seconds: 1800
+  # Controls who may access avatar metadata JSON files served at
+  # /user-avatars/_metadata/<file>.  Metadata files contain the user's
+  # Authentik PK and should not be exposed to other users or the public.
+  #
+  #   owner_only (default): only the authenticated user who owns the file may
+  #     access it.  Other authenticated users and unauthenticated visitors both
+  #     receive a 404.
+  #   public: no authentication is required.  Suitable only when metadata
+  #     files are needed by an unauthenticated service and the privacy
+  #     implications are acceptable.
+  metadata_access: "owner_only"
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
   # Enable full debug mode: activates Flask debugger, forces log level to

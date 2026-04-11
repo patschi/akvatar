@@ -32,6 +32,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.session_cookie_secure`](#appsession_cookie_secure)                          | Boolean | Override Secure flag on the session cookie          |
 | [`app.public_avatar_url`](#apppublic_avatar_url)                                  | URL     | Public URL where avatar files are served            |
 | [`app.web_session_lifetime_seconds`](#appweb_session_lifetime_seconds)            | Integer | Session cookie lifetime in seconds                  |
+| [`app.metadata_access`](#appmetadata_access)                                      | Enum    | Who may access avatar metadata JSON files           |
 | [`cleanup.interval`](#cleanupinterval)                                            | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanupon_startup)                                        | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)                | Integer | Avatar sets to keep per user (0 = unlimited)        |
@@ -216,6 +217,25 @@ Must **not** have a trailing slash.
 
 How long a login session lasts, in seconds. After this period the session cookie expires and the user must authenticate
 again via Authentik. The timer starts from the moment of login and is not extended by activity.
+
+### `app.metadata_access`
+
+| Property         | Value                         |
+|------------------|-------------------------------|
+| **Type**         | String (enum)                 |
+| **Default**      | `"owner_only"`                |
+| **Valid values** | `owner_only`, `public`        |
+
+Controls who may read avatar metadata JSON files served at `/user-avatars/_metadata/<file>`. Metadata files contain the
+user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and formats. Exposing them to other users or the
+public could allow someone to enumerate user PKs if they can observe or predict filenames.
+
+| Value        | Behaviour                                                                                                                                                         |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user — or a request for a file belonging to a different user — receives a `404` so the caller cannot distinguish "not found" from "not yours". |
+| `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
+
+The default (`owner_only`) is recommended for all standard deployments.
 
 ### `app.log_level`
 

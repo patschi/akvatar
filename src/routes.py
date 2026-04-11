@@ -6,11 +6,12 @@ Contains:
   - GET  /login                         -> public login page (unauthenticated)
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
-  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
+  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by app.metadata_access)
   - GET  /api/session                   -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
 """
 
+import json
 import logging
 import re
 
@@ -30,6 +31,7 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
+from src.config import app_cfg
 from src.i18n import t
 from src.sec_csrf import validate_csrf_token
 from src.image_import import GRAVATAR_ENABLED, URL_ENABLED
@@ -133,12 +135,57 @@ def serve_avatar(dimensions, filename):
     return resp
 
 
-# Serve avatar metadata JSON files (authenticated – metadata contains user_pk)
+# Serve avatar metadata JSON files
+# Access control is governed by app.metadata_access in config.yml:
+#   "owner_only" (default) – only the authenticated user who owns the file may access it
+#   "public"               – no authentication required
+_METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
+
+
 @routes_bp.route("/user-avatars/_metadata/<filename>")
-@login_required
 def serve_avatar_metadata(filename):
-    """Serve avatar metadata JSON from the storage directory."""
-    log.debug("Serving metadata file: %s", filename)
+    """Serve avatar metadata JSON from the storage directory.
+
+    In owner_only mode the requesting session user must match the user_pk stored
+    inside the metadata file.  A 404 is returned for both missing files and
+    ownership mismatches so callers cannot distinguish the two cases.
+    """
+    metadata_access = app_cfg.get("metadata_access", None)
+    if metadata_access not in _METADATA_ACCESS_MODES:
+        if metadata_access is not None:
+            log.warning(
+                "Unknown app.metadata_access value %r – falling back to owner_only.",
+                metadata_access,
+            )
+        metadata_access = "owner_only"
+
+    if metadata_access == "owner_only":
+        # Must be authenticated first
+        if "user" not in session:
+            log.debug(
+                "Unauthenticated metadata request for %r – redirecting to login.", filename
+            )
+            return redirect(url_for("routes.login_page"))
+
+        # Read the metadata to verify that the requesting user owns this file
+        meta_path = METADATA_ROOT / filename
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            # File not found or unreadable – return 404 without leaking details
+            abort(404)
+
+        # Reject access when the session user is not the file owner.
+        # Return 404 (not 403) so callers cannot distinguish "not found" from "not yours".
+        if meta.get("user_pk", None) != session["user"].get("pk", None):
+            log.debug(
+                "Metadata access denied for %r – user pk mismatch (session pk=%r).",
+                filename,
+                session["user"].get("pk", None),
+            )
+            abort(404)
+
+    log.debug("Serving metadata file: %s (access=%s)", filename, metadata_access)
     resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
     resp.headers["Cache-Control"] = "no-store"
     return resp
