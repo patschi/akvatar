@@ -20,7 +20,7 @@
             "description": "Track uv version in UV_VERSION CI variable via PyPI. Groups with the Dockerfile COPY --from=ghcr.io/astral-sh/uv docker ref so both update in one PR.",
             "customType": "regex",
             "managerFilePatterns": [
-                "/^\.gitlab-ci\.yml$/"
+                "/^\\.gitlab-ci\\.yml$/"
             ],
             "matchStrings": ["UV_VERSION: \"(?<currentValue>[^\"]+)\""],
             "depNameTemplate": "uv",
@@ -30,7 +30,7 @@
             "description": "Track ruff version in RUFF_VERSION CI variable via PyPI.",
             "customType": "regex",
             "managerFilePatterns": [
-                "/^\.gitlab-ci\.yml$/"
+                "/^\\.gitlab-ci\\.yml$/"
             ],
             "matchStrings": ["RUFF_VERSION: \"(?<currentValue>[^\"]+)\""],
             "depNameTemplate": "ruff",
@@ -60,7 +60,7 @@
             "description": "Pin Python to 3.13.x across Dockerfile and CI to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump intentionally when moving to a new distroless base.",
             "matchManagers": ["dockerfile", "gitlabci"],
             "matchDepNames": ["python"],
-            "allowedVersions": "/^3\.13/"
+            "allowedVersions": "/^3\\.13/"
         },
         {
             "description": "Automerge Docker patch updates in GitLab CI (e.g. Kaniko).",
