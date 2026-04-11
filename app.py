@@ -154,7 +154,7 @@ def create_app() -> Flask:
     init_rate_limiting(app)
 
     # Serve static files from in-memory cache
-    @app.route("/static/<path:filename>", endpoint="static", methods=["GET", "HEAD"])
+    @app.route("/static/<path:filename>", endpoint="static", methods=["GET"])
     def _serve_static(filename):
         return serve_static_file(filename)
 

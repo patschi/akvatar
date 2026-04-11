@@ -74,7 +74,7 @@ def login_required(f):
     return decorated
 
 
-@auth_bp.route("/login-start", methods=["GET", "HEAD"])
+@auth_bp.route("/login-start", methods=["GET"])
 def login():
     """Redirect the browser to Authentik's authorization endpoint."""
     redirect_uri = url_for("auth.auth_callback", _external=True)
@@ -84,7 +84,7 @@ def login():
     return oauth.authentik.authorize_redirect(redirect_uri)
 
 
-@auth_bp.route("/callback", methods=["GET", "HEAD"])
+@auth_bp.route("/callback", methods=["GET"])
 def auth_callback():
     """OIDC callback - exchange the authorization code for tokens and store the user profile in the session."""
     log.debug("Received OIDC callback. Exchanging code for token...")
@@ -142,7 +142,7 @@ def auth_callback():
     return redirect(url_for("routes.dashboard"))
 
 
-@auth_bp.route("/logout", methods=["GET", "HEAD"])
+@auth_bp.route("/logout", methods=["GET"])
 def logout():
     """Clear the local session and optionally redirect to Authentik's end_session_endpoint (RP-Initiated Logout)."""
     username = session.get("user", {}).get("username", "unknown")
@@ -197,7 +197,7 @@ def logout():
     return redirect(logout_url)
 
 
-@auth_bp.route("/logged-out", methods=["GET", "HEAD"])
+@auth_bp.route("/logged-out", methods=["GET"])
 def logged_out():
     """Post-logout landing page. Authentik redirects here after ending the SSO session."""
     return render_template("logged_out.html")
