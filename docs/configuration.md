@@ -25,15 +25,15 @@ The application reads the configuration file once at startup. Changes require a 
 |-----------------------------------------------------------------------------------|---------|-----------------------------------------------------|
 | [`dry_run`](#dry_run)                                                             | Boolean | Skip Authentik/LDAP writes; log all actions instead |
 | [`branding.name`](#brandingname)                                                  | String  | Application name shown in the UI                    |
-| [`app.secret_key`](#appsecret_key)                                                | String  | Flask session signing key                           |
-| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                                | Integer | Maximum upload size in MB                           |
-| [`app.avatar_storage_path`](#appavatar_storage_path)                              | String  | Directory for stored avatar images                  |
-| [`app.public_base_url`](#apppublic_base_url)                                      | URL     | Public URL where the application is reachable       |
-| [`app.session_cookie_secure`](#appsession_cookie_secure)                          | Boolean | Override Secure flag on the session cookie          |
-| [`app.public_avatar_url`](#apppublic_avatar_url)                                  | URL     | Public URL where avatar files are served            |
-| [`app.web_session_lifetime_seconds`](#appweb_session_lifetime_seconds)            | Integer | Session cookie lifetime in seconds                  |
-| [`app.metadata_access`](#appmetadata_access)                                      | Enum    | Who may access avatar metadata JSON files           |
-| [`app.csp_enabled`](#appcsp_enabled)                                              | Boolean | Send a Content-Security-Policy header on HTML pages |
+| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                                            | Integer | Maximum upload size in MB                           |
+| [`app.avatar_storage_path`](#appavatar_storage_path)                                          | String  | Directory for stored avatar images                  |
+| [`app.public_base_url`](#apppublic_base_url)                                                  | URL     | Public URL where the application is reachable       |
+| [`app.public_avatar_url`](#apppublic_avatar_url)                                              | URL     | Public URL where avatar files are served            |
+| [`security.secret_key`](#securitysecret_key)                                                  | String  | Flask session signing key                           |
+| [`security.session_cookie_secure`](#securitysession_cookie_secure)                            | Boolean | Override Secure flag on the session cookie          |
+| [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds)              | Integer | Session cookie lifetime in seconds                  |
+| [`security.metadata_access`](#securitymetadata_access)                                        | Enum    | Who may access avatar metadata JSON files           |
+| [`security.csp_enabled`](#securitycsp_enabled)                                                | Boolean | Send a Content-Security-Policy header on HTML pages |
 | [`cleanup.interval`](#cleanupinterval)                                            | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanupon_startup)                                        | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)                | Integer | Avatar sets to keep per user (0 = unlimited)        |
@@ -123,23 +123,6 @@ organization's branding (e.g. `"Contoso Avatar Updater"`).
 
 ## Application
 
-### `app.secret_key`
-
-| Property    | Value                                                               |
-|-------------|---------------------------------------------------------------------|
-| **Type**    | String                                                              |
-| **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder, must be changed) |
-
-The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an
-attacker can forge sessions.
-
-The application **refuses to start** if:
-
-- The key is still set to the default placeholder value
-- The key is shorter than 32 characters
-
-See [Flask Session Key](flask-session-key.md) for generation instructions.
-
 ### `app.max_upload_size_mb`
 
 | Property    | Value   |
@@ -176,26 +159,6 @@ under that subfolder. See [Subfolder Deployment](subfolder-deployment.md).
 
 Must **not** have a trailing slash.
 
-### `app.session_cookie_secure`
-
-| Property    | Value                                             |
-|-------------|---------------------------------------------------|
-| **Type**    | Boolean or `null`                                 |
-| **Default** | `null` (auto-detected from `app.public_base_url`) |
-
-Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs browsers to transmit
-the cookie only over HTTPS connections.
-
-| Value   | Behaviour                                                                                                         |
-|---------|-------------------------------------------------------------------------------------------------------------------|
-| `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
-| `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
-| `false` | Never set `Secure` — only use this for plain-HTTP development environments                                        |
-
-**You should not need to set this manually.** The auto-detection is correct for all standard deployments, including
-reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The
-`Secure` flag is enforced by the browser, not by the Flask-to-proxy link.
-
 ### `app.public_avatar_url`
 
 | Property    | Value                                                         |
@@ -208,52 +171,6 @@ Authentik and LDAP. It must point to the location where the files from `avatar_s
 application itself or by a reverse proxy serving them directly).
 
 Must **not** have a trailing slash.
-
-### `app.web_session_lifetime_seconds`
-
-| Property    | Value               |
-|-------------|---------------------|
-| **Type**    | Integer             |
-| **Default** | `1800` (30 minutes) |
-
-How long a login session lasts, in seconds. After this period the session cookie expires and the user must authenticate
-again via Authentik. The timer starts from the moment of login and is not extended by activity.
-
-### `app.metadata_access`
-
-| Property         | Value                         |
-|------------------|-------------------------------|
-| **Type**         | String (enum)                 |
-| **Default**      | `"owner_only"`                |
-| **Valid values** | `owner_only`, `public`        |
-
-Controls who may read avatar metadata JSON files served at `/user-avatars/_metadata/<file>`. Metadata files contain the
-user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and formats. Exposing them to other users or the
-public could allow someone to enumerate user PKs if they can observe or predict filenames.
-
-| Value        | Behaviour                                                                                                                                                         |
-|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user — or a request for a file belonging to a different user — receives a `404` so the caller cannot distinguish "not found" from "not yours". |
-| `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
-
-The default (`owner_only`) is recommended for all standard deployments.
-
-### `app.csp_enabled`
-
-| Property    | Value   |
-|-------------|---------|
-| **Type**    | Boolean |
-| **Default** | `true`  |
-
-Controls whether a `Content-Security-Policy` header is included on every HTML response.
-
-When enabled, the policy:
-
-- Allows scripts only from `'self'` and inline `<script>` tags that carry the per-request cryptographic nonce, blocking any injected scripts even if XSS is somehow achieved.
-- Allows images from `'self'`, `data:` URIs (Cropper.js previews), `blob:` object URLs (Cropper.js canvas), and the origin extracted from `app.public_avatar_url`. This means avatar images served from a different domain or CDN are automatically permitted without manual configuration.
-- Denies everything else by default (`default-src 'none'`), including frames (`frame-ancestors 'none'`).
-
-Set to `false` only when a reverse proxy or WAF upstream of this application is responsible for injecting its own CSP header and the two competing policies cause compatibility problems. **Do not disable CSP without replacing it elsewhere.**
 
 ### `app.log_level`
 
@@ -287,6 +204,93 @@ Enables full debug mode. When active:
 - Template auto-reload is enabled (templates are re-read from disk on every request)
 
 **Never enable in production.** A warning is logged at startup when this is active.
+
+---
+
+## Security
+
+### `security.secret_key`
+
+| Property    | Value                                                               |
+|-------------|---------------------------------------------------------------------|
+| **Type**    | String                                                              |
+| **Default** | `"CHANGE-ME-to-a-random-secret-key"` (placeholder, must be changed) |
+
+The secret key used by Flask to cryptographically sign session cookies. If this key is predictable or too short, an
+attacker can forge sessions.
+
+The application **refuses to start** if:
+
+- The key is still set to the default placeholder value
+- The key is shorter than 32 characters
+
+See [Flask Session Key](flask-session-key.md) for generation instructions.
+
+### `security.session_cookie_secure`
+
+| Property    | Value                                             |
+|-------------|---------------------------------------------------|
+| **Type**    | Boolean or `null`                                 |
+| **Default** | `null` (auto-detected from `app.public_base_url`) |
+
+Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs browsers to transmit
+the cookie only over HTTPS connections.
+
+| Value   | Behaviour                                                                                                         |
+|---------|-------------------------------------------------------------------------------------------------------------------|
+| `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
+| `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
+| `false` | Never set `Secure` — only use this for plain-HTTP development environments                                        |
+
+**You should not need to set this manually.** The auto-detection is correct for all standard deployments, including
+reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The
+`Secure` flag is enforced by the browser, not by the Flask-to-proxy link.
+
+### `security.web_session_lifetime_seconds`
+
+| Property    | Value               |
+|-------------|---------------------|
+| **Type**    | Integer             |
+| **Default** | `1800` (30 minutes) |
+
+How long a login session lasts, in seconds. After this period the session cookie expires and the user must authenticate
+again via Authentik. The timer starts from the moment of login and is not extended by activity.
+
+### `security.metadata_access`
+
+| Property         | Value                         |
+|------------------|-------------------------------|
+| **Type**         | String (enum)                 |
+| **Default**      | `"owner_only"`                |
+| **Valid values** | `owner_only`, `public`        |
+
+Controls who may read avatar metadata JSON files served at `/user-avatars/_metadata/<file>`. Metadata files contain the
+user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and formats. Exposing them to other users or the
+public could allow someone to enumerate user PKs if they can observe or predict filenames.
+
+| Value        | Behaviour                                                                                                                                                         |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user — or a request for a file belonging to a different user — receives a `404` so the caller cannot distinguish "not found" from "not yours". |
+| `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
+
+The default (`owner_only`) is recommended for all standard deployments.
+
+### `security.csp_enabled`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+Controls whether a `Content-Security-Policy` header is included on every HTML response.
+
+When enabled, the policy:
+
+- Allows scripts only from `'self'` and inline `<script>` tags that carry the per-request cryptographic nonce, blocking any injected scripts even if XSS is somehow achieved.
+- Allows images from `'self'`, `data:` URIs (Cropper.js previews), `blob:` object URLs (Cropper.js canvas), and the origin extracted from `app.public_avatar_url`. This means avatar images served from a different domain or CDN are automatically permitted without manual configuration.
+- Denies everything else by default (`default-src 'none'`), including frames (`frame-ancestors 'none'`).
+
+Set to `false` only when a reverse proxy or WAF upstream of this application is responsible for injecting its own CSP header and the two competing policies cause compatibility problems. **Do not disable CSP without replacing it elsewhere.**
 
 ---
 

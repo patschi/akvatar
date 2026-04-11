@@ -11,7 +11,7 @@ The img-src directive is extended at startup to include the origin derived
 from ``app.public_avatar_url`` so that avatar images served from a separate
 host (e.g. a CDN or a dedicated media server) are not blocked.
 
-CSP can be disabled entirely via ``app.csp_enabled: false`` in config.yml.
+CSP can be disabled entirely via ``security.csp_enabled: false`` in config.yml.
 This is useful when a reverse proxy or WAF is responsible for injecting
 CSP headers and two competing policies would cause problems.
 
@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 
 from flask import g
 
-from src.config import app_cfg
+from src.config import security_cfg
 
 log = logging.getLogger("csp")
 
@@ -40,9 +40,9 @@ _NONCE_BYTES = 16
 # Flask `g` key used to store the nonce for the duration of one request
 _G_KEY = "csp_nonce"
 
-# Master switch – set app.csp_enabled to false to suppress the CSP header entirely.
+# Master switch – set security.csp_enabled to false to suppress the CSP header entirely.
 # Defaults to true; only disable when a reverse proxy or WAF owns the CSP header.
-_CSP_ENABLED = bool(app_cfg.get("csp_enabled", True))
+_CSP_ENABLED = bool(security_cfg.get("csp_enabled", True))
 
 # Extract the origin from public_avatar_url and add it to img-src so that
 # avatars hosted on a separate origin are not blocked by the policy.
@@ -89,7 +89,7 @@ _CSP_TEMPLATE = (
 if _CSP_ENABLED:
     log.debug("CSP enabled. img-src: %s", _IMG_SRC)
 else:
-    log.debug("CSP disabled via app.csp_enabled=false.")
+    log.debug("CSP disabled via security.csp_enabled=false.")
 
 
 def generate_csp_nonce() -> str:
@@ -102,7 +102,7 @@ def generate_csp_nonce() -> str:
 def build_csp_header(nonce: str) -> str | None:
     """Return the full Content-Security-Policy header value for the current nonce.
 
-    Returns ``None`` when CSP is disabled via ``app.csp_enabled: false``,
+    Returns ``None`` when CSP is disabled via ``security.csp_enabled: false``,
     in which case the caller should omit the header entirely.
     """
     if not _CSP_ENABLED:

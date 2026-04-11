@@ -6,7 +6,7 @@ Contains:
   - GET  /login                         -> public login page (unauthenticated)
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
-  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by app.metadata_access)
+  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by security.metadata_access)
   - GET  /api/session                   -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
 """
@@ -31,7 +31,7 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
-from src.config import app_cfg
+from src.config import security_cfg
 from src.i18n import t
 from src.sec_csrf import validate_csrf_token
 from src.image_import import GRAVATAR_ENABLED, URL_ENABLED
@@ -136,7 +136,7 @@ def serve_avatar(dimensions, filename):
 
 
 # Serve avatar metadata JSON files
-# Access control is governed by app.metadata_access in config.yml:
+# Access control is governed by security.metadata_access in config.yml:
 #   "owner_only" (default) – only the authenticated user who owns the file may access it
 #   "public"               – no authentication required
 _METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
@@ -150,11 +150,11 @@ def serve_avatar_metadata(filename):
     inside the metadata file.  A 404 is returned for both missing files and
     ownership mismatches so callers cannot distinguish the two cases.
     """
-    metadata_access = app_cfg.get("metadata_access", None)
+    metadata_access = security_cfg.get("metadata_access", None)
     if metadata_access not in _METADATA_ACCESS_MODES:
         if metadata_access is not None:
             log.warning(
-                "Unknown app.metadata_access value %r – falling back to owner_only.",
+                "Unknown security.metadata_access value %r – falling back to owner_only.",
                 metadata_access,
             )
         metadata_access = "owner_only"

@@ -15,9 +15,6 @@ branding:
 
 # --- Application ---
 app:
-  # Secret key for Flask session management (change to a long random value!)
-  # Generate one with:  python3 -c "import secrets; print(secrets.token_hex(32))"
-  secret_key: "CHANGE-ME-to-a-random-secret-key"
   # Maximum upload size in megabytes
   max_upload_size_mb: 10
   # Where processed avatars are stored on disk (relative or absolute path)
@@ -29,18 +26,29 @@ app:
   # When this URL starts with "https://", the session cookie is automatically
   # marked Secure so browsers only transmit it over HTTPS connections.
   public_base_url: "https://avatar.example.com"
+  # Public base URL where avatar files are accessible (used to build avatar URLs
+  # pushed to Authentik/LDAP). Must NOT have a trailing slash.
+  public_avatar_url: "https://avatar.example.com/user-avatars"
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_level: "INFO"
+  # Enable full debug mode: activates Flask debugger, forces log level to
+  # DEBUG, and enables template auto-reload.  NEVER enable in production.
+  debug_full: false
+
+# --- Security ---
+security:
+  # Secret key for Flask session management (change to a long random value!)
+  # Generate one with:  python3 -c "import secrets; print(secrets.token_hex(32))"
+  secret_key: "CHANGE-ME-to-a-random-secret-key"
   # Whether to set the Secure flag on the session cookie.
-  # null (default): auto-detected from public_base_url — Secure is set when the
-  #   URL starts with "https://", which is correct for the vast majority of setups.
+  # null (default): auto-detected from app.public_base_url — Secure is set when
+  #   the URL starts with "https://", which is correct for the vast majority of setups.
   # true / false: explicit override for edge cases where auto-detection is wrong
   #   (e.g. an HTTP-only internal deployment behind a TLS-terminating proxy that
   #   does not forward X-Forwarded-Proto correctly).
   # Do not change this unless you have a specific reason to — auto-detection is
   # correct for all standard deployments.
   session_cookie_secure: null
-  # Public base URL where avatar files are accessible (used to build avatar URLs
-  # pushed to Authentik/LDAP). Must NOT have a trailing slash.
-  public_avatar_url: "https://avatar.example.com/user-avatars"
   # Web session lifetime in seconds.  After this period the session cookie
   # expires and the user must log in again.  Default: 1800 (30 minutes).
   web_session_lifetime_seconds: 1800
@@ -59,16 +67,11 @@ app:
   # When enabled (default), every HTML response includes a nonce-based CSP
   # header that restricts the origins from which the browser may load scripts,
   # styles, images, and other resources.  The img-src directive automatically
-  # includes the origin derived from public_avatar_url above, so avatars hosted
+  # includes the origin derived from app.public_avatar_url, so avatars hosted
   # on a separate domain or CDN are not blocked.
   # Set to false only when a reverse proxy or WAF injects its own CSP header
   # and two competing policies cause compatibility problems.
   csp_enabled: true
-  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
-  log_level: "INFO"
-  # Enable full debug mode: activates Flask debugger, forces log level to
-  # DEBUG, and enables template auto-reload.  NEVER enable in production.
-  debug_full: false
 
 # --- Cleanup ---
 cleanup:

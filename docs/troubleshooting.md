@@ -103,7 +103,7 @@ inactivity). The dashboard's background session-liveness check (`/api/session`, 
 expiry and redirected to the login page with `?error=session_expired`.
 
 **Fix:** This is expected behaviour — simply sign in again. If sessions expire faster than expected, check
-[`app.session_lifetime`](configuration.md#appweb_session_lifetime_seconds) in `config.yml`.
+[`security.web_session_lifetime_seconds`](configuration.md#securityweb_session_lifetime_seconds) in `config.yml`.
 
 ---
 

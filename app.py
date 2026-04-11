@@ -20,7 +20,7 @@ from src.auth import auth_bp, init_oauth
 from src.sec_csp import generate_csp_nonce, build_csp_header
 from src.sec_csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
-from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
+from src.config import app_cfg, security_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations, AVAILABLE_LANGUAGES
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.image_import import import_bp
@@ -50,7 +50,7 @@ def create_app() -> Flask:
 
     # Initialize flask app
     app = Flask(__name__, template_folder="src/templates", static_folder=None)
-    app.secret_key = app_cfg["secret_key"]
+    app.secret_key = security_cfg["secret_key"]
     app.config["MAX_CONTENT_LENGTH"] = (
         app_cfg["max_upload_size_mb"] * 1024 * 1024
     )  # MB -> bytes
@@ -77,9 +77,9 @@ def create_app() -> Flask:
     #   so it will honour the flag; the internal proxy→Flask link being plain HTTP is
     #   irrelevant.  We therefore set Secure whenever the public URL uses https://, not
     #   only when Flask's own built-in server has TLS configured.
-    #   app.session_cookie_secure overrides this auto-detection when set explicitly.
+    #   security.session_cookie_secure overrides this auto-detection when set explicitly.
     # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
-    _secure_override = app_cfg.get("session_cookie_secure", None)
+    _secure_override = security_cfg.get("session_cookie_secure", None)
     _tls_active = (
         _secure_override
         if _secure_override is not None
@@ -89,7 +89,7 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = _tls_active
-    app.config["PERMANENT_SESSION_LIFETIME"] = app_cfg.get(
+    app.config["PERMANENT_SESSION_LIFETIME"] = security_cfg.get(
         "web_session_lifetime_seconds", 1800
     )
 
@@ -188,7 +188,7 @@ def create_app() -> Flask:
             response.headers["X-Frame-Options"] = "DENY"
 
             # Content Security Policy – policy is built in sec_csp.py.
-            # build_csp_header() returns None when disabled via app.csp_enabled=false,
+            # build_csp_header() returns None when disabled via security.csp_enabled=false,
             # in which case the header is omitted entirely.
             nonce = generate_csp_nonce()
             csp = build_csp_header(nonce)

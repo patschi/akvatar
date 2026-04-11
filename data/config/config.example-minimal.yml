@@ -9,9 +9,11 @@
 #   docs/configuration.md                (complete reference)
 # ============================================================================
 
-app:
+security:
   # Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
   secret_key: "CHANGE-ME-to-a-random-secret-key"
+
+app:
   # Public URL where the app is reachable (no trailing slash)
   public_base_url: "https://avatar.example.com"
   # Public URL where avatar files are served (no trailing slash)

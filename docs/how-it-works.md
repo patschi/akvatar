@@ -495,7 +495,7 @@ max-age=86400` header instructs browsers to cache assets locally.
 | Rate limiting                     | Login and upload endpoints are rate-limited per IP to prevent brute-force and abuse |
 | Client-side session liveness      | Dashboard polls `/api/session` every 60 s; redirects to login page before form submission if session expired |
 | LDAP filter escaping              | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection |
-| Flask session signing             | Session cookies are cryptographically signed with `app.secret_key`                 |
+| Flask session signing             | Session cookies are cryptographically signed with `security.secret_key`            |
 | Session cookie hardening          | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set   |
 | Security response headers         | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and             |
 |                                   | `Referrer-Policy: strict-origin-when-cross-origin` on every response               |

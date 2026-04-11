@@ -1,6 +1,6 @@
 # Flask Session Key
 
-The `app.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is predictable, too
+The `security.secret_key` setting is used by Flask to cryptographically sign session cookies. If this key is predictable, too
 short, or shared between environments, an attacker can forge session cookies and impersonate any user, including
 administrators.
 
@@ -33,7 +33,7 @@ openssl rand -hex 32
 Paste the generated value into `data/config/config.yml`:
 
 ```yaml
-app:
+security:
   secret_key: "your-generated-key-here"
 ```
 
@@ -56,4 +56,4 @@ Both cases log a `FATAL` error with instructions on how to generate a proper key
   forcing users to log in again.
 - A minimum length of 32 characters (hex) is recommended. The generator commands above produce 64 characters by default.
 
-See also: [Configuration Reference](configuration.md#appsecret_key)
+See also: [Configuration Reference](configuration.md#securitysecret_key)

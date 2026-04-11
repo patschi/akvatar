@@ -42,6 +42,7 @@ except yaml.YAMLError as exc:
 dry_run = cfg.get("dry_run", False)
 branding_cfg = cfg.get("branding", {})
 app_cfg = cfg.get("app", {})
+security_cfg = cfg.get("security", {})
 web_cfg = cfg.get("webserver", {})
 oidc_cfg = cfg.get("oidc", {})
 ak_cfg = cfg.get("authentik", {})
@@ -189,7 +190,7 @@ if ldap_cfg.get("enabled", False):
     log.info("LDAP configured with %d photo attribute(s).", len(_ldap_photos))
 
 # Validate Flask secret key
-_secret_key = app_cfg.get("secret_key", "")
+_secret_key = security_cfg.get("secret_key", "")
 _SECRET_KEY_MIN_LENGTH = 32
 _SECRET_KEY_HINT = (
     'Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"'
@@ -197,11 +198,11 @@ _SECRET_KEY_HINT = (
 
 _fatal_unless(
     _secret_key != "CHANGE-ME-to-a-random-secret-key",
-    f"app.secret_key is still set to the default placeholder value. {_SECRET_KEY_HINT}",
+    f"security.secret_key is still set to the default placeholder value. {_SECRET_KEY_HINT}",
 )
 _fatal_unless(
     len(_secret_key) >= _SECRET_KEY_MIN_LENGTH,
-    f"app.secret_key is too short ({len(_secret_key)} chars, minimum {_SECRET_KEY_MIN_LENGTH}). {_SECRET_KEY_HINT}",
+    f"security.secret_key is too short ({len(_secret_key)} chars, minimum {_SECRET_KEY_MIN_LENGTH}). {_SECRET_KEY_HINT}",
 )
 
 log.debug("Secret key validation passed (length=%d).", len(_secret_key))
