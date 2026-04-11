@@ -16,6 +16,9 @@ variables:
   GITHUB_PROJECT_URL: "https://github.com/patschi/akvatar"
   # Exclude non-Python paths from SAST to reduce noise and scan time
   SAST_EXCLUDED_PATHS: "static, data, docs"
+  # uv version used in all lint jobs. Renovate tracks this via PyPI and updates
+  # it in the same PR as the matching COPY --from=ghcr.io/astral-sh/uv in Dockerfile.
+  UV_VERSION: "0.11.6"
 
 include:
   - template: Security/SAST.gitlab-ci.yml
@@ -78,8 +81,7 @@ stages:
     paths:
       - .uv-cache/
   before_script:
-    # Bootstrap uv via pip. Pin the version (e.g. uv==0.7.2) for reproducibility.
-    - pip install --quiet --root-user-action=ignore uv --cache-dir .uv-cache
+    - pip install --quiet --root-user-action=ignore uv==${UV_VERSION} --cache-dir .uv-cache
 
 # Shared base for ruff lint jobs: extends uv-base and declares the shared trigger
 # rules so check and format stay in sync without repetition.

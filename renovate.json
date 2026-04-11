@@ -9,7 +9,23 @@
         "labels": ["security"],
         "automerge": true
     },
+    "customManagers": [
+        {
+            "description": "Track uv version in UV_VERSION CI variable via PyPI. Groups with the Dockerfile COPY --from=ghcr.io/astral-sh/uv docker ref so both update in one PR.",
+            "customType": "regex",
+            "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+            "matchStrings": ["UV_VERSION: \"(?<currentValue>[^\"]+)\""],
+            "depNameTemplate": "uv",
+            "datasourceTemplate": "pypi"
+        }
+    ],
     "packageRules": [
+        {
+            "description": "Group Dockerfile uv image and CI uv PyPI pin into one PR so they always stay in sync.",
+            "matchDepNames": ["ghcr.io/astral-sh/uv", "uv"],
+            "groupName": "uv",
+            "automerge": true
+        },
         {
             "matchFileNames": [".gitlab-ci.yml"],
             "matchDatasources": ["docker"],
