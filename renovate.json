@@ -1,6 +1,6 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": [ "config:best-practices", "mergeConfidence:all-badges" ],
+    "extends": ["config:best-practices", "mergeConfidence:all-badges"],
     "labels": ["renovate"],
     "assignees": ["pkernstock"],
     "automergeType": "branch",
@@ -17,40 +17,61 @@
             "matchStrings": ["UV_VERSION: \"(?<currentValue>[^\"]+)\""],
             "depNameTemplate": "uv",
             "datasourceTemplate": "pypi"
+        },
+        {
+            "description": "Track ruff version in RUFF_VERSION CI variable via PyPI.",
+            "customType": "regex",
+            "fileMatch": ["^\\.gitlab-ci\\.yml$"],
+            "matchStrings": ["RUFF_VERSION: \"(?<currentValue>[^\"]+)\""],
+            "depNameTemplate": "ruff",
+            "datasourceTemplate": "pypi"
         }
     ],
     "packageRules": [
         {
-            "description": "Group Dockerfile uv image and CI uv PyPI pin into one PR so they always stay in sync.",
+            "description": "Group Dockerfile uv image and CI uv PyPI pin into one PR so they always stay in sync. Minor and patch only - major changes need manual review.",
             "matchDepNames": ["ghcr.io/astral-sh/uv", "uv"],
             "groupName": "uv",
+            "matchUpdateTypes": ["minor", "patch"],
             "automerge": true
         },
         {
+            "description": "Automerge ruff updates - linting tool with no runtime impact.",
+            "matchDepNames": ["ruff"],
+            "automerge": true
+        },
+        {
+            "description": "Group Python image updates across Dockerfile and CI into one PR. allowedVersions below constrains these to 3.13.x patch updates only.",
+            "matchDepNames": ["python"],
+            "groupName": "python",
+            "automerge": true
+        },
+        {
+            "description": "Pin Python to 3.13.x across Dockerfile and CI to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump intentionally when moving to a new distroless base.",
+            "matchManagers": ["dockerfile", "gitlabci"],
+            "matchDepNames": ["python"],
+            "allowedVersions": "/^3\\.13/"
+        },
+        {
+            "description": "Automerge Docker patch updates in GitLab CI (e.g. Kaniko).",
             "matchFileNames": [".gitlab-ci.yml"],
             "matchDatasources": ["docker"],
             "matchUpdateTypes": ["patch"],
-            "automerge": true,
-            "enabled": true
+            "automerge": true
         },
         {
+            "description": "Automerge Docker patch updates in Dockerfile and Compose files.",
             "matchManagers": ["dockerfile", "docker-compose"],
             "matchDatasources": ["docker"],
             "matchUpdateTypes": ["patch"],
             "automerge": true
         },
         {
-            "matchManagers": ["dockerfile", "gitlabci"],
-            "matchDepNames": ["python"],
-            "allowedVersions": "/^3\\.13/",
-            "description": "Pin Python to 3.13.x across Dockerfile and CI to stay in sync with distroless/python3-debian13 (Debian Trixie). Bump this rule intentionally when moving to a new distroless base."
-        },
-        {
+            "description": "Automerge distroless base image updates - no shell or userland, minimal risk.",
             "matchDatasources": ["docker"],
             "matchDepNames": ["gcr.io/distroless/python3-debian13"],
             "matchFileNames": ["Dockerfile"],
-            "automerge": true,
-            "enabled": true
+            "automerge": true
         }
     ]
 }
