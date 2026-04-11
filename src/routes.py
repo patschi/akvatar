@@ -30,7 +30,8 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
-from src.csrf import validate_csrf_token
+from src.i18n import t
+from src.sec_csrf import validate_csrf_token
 from src.image_import import GRAVATAR_ENABLED, URL_ENABLED
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
 from src.ldap_client import is_enabled as ldap_is_enabled
@@ -132,8 +133,9 @@ def serve_avatar(dimensions, filename):
     return resp
 
 
-# Serve avatar metadata JSON files
+# Serve avatar metadata JSON files (authenticated – metadata contains user_pk)
 @routes_bp.route("/user-avatars/_metadata/<filename>")
+@login_required
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory."""
     log.debug("Serving metadata file: %s", filename)
@@ -180,7 +182,7 @@ def api_upload():
     # Synchronous validation (returns JSON 400 on failure)
     if "file" not in request.files:
         log.warning("Upload rejected – no file part in request.")
-        return jsonify({"error": "No file part in the request."}), 400
+        return jsonify({"error": t("error.no_file")}), 400
 
     try:
         image = validate_upload(request.files["file"])

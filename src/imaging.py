@@ -23,8 +23,9 @@ log = logging.getLogger("imaging")
 # A "decompression bomb" is a small file on disk (e.g. 1 MB) that expands to
 # an enormous bitmap in memory (e.g. 20 GB) when decoded.  Pillow's default
 # limit is ~178 megapixels, which is far too generous for an avatar uploader.
-# 50 MP at 4 bytes/pixel = ~200 MB of RAM – a reasonable ceiling.
-Image.MAX_IMAGE_PIXELS = 50_000_000
+# 25 MP at 4 bytes/pixel = ~100 MB of RAM – a practical ceiling that still
+# accepts very high-resolution source photos while blocking crafted inputs.
+Image.MAX_IMAGE_PIXELS = 25_000_000
 
 # Resolve the avatar storage root from config
 AVATAR_ROOT = Path(app_cfg.get("avatar_storage_path", "data/avatars"))
@@ -53,9 +54,16 @@ MAGIC_SIGNATURES = {
     "WEBP_SIG": (8, b"WEBP"),  # … with WEBP fourcc at offset 8
 }
 
-# Dimension guardrails
-MIN_DIMENSION = 64  # Smaller than our smallest output is pointless
-MAX_DIMENSION = 10000  # Sanity cap to avoid excessive memory/CPU use
+# Dimension guardrails.
+# MIN_DIMENSION is derived from the configured output sizes: uploading an image
+# smaller than the smallest output size is pointless and is rejected early.
+# If images.sizes changes, the floor moves with it automatically.
+# MAX_DIMENSION caps each side independently at 8192 px (8 K).  For square
+# images this limit fires first only when the side exceeds sqrt(MAX_IMAGE_PIXELS)
+# ≈ 5000 px; above that Pillow's DecompressionBombError fires during decode
+# instead.  Both paths are caught by the same except block in validate_upload.
+MIN_DIMENSION = min(img_cfg["sizes"])
+MAX_DIMENSION = 8192  # Each axis capped independently; Pillow caps total pixel area
 
 
 def normalize_image(image: Image.Image) -> Image.Image:

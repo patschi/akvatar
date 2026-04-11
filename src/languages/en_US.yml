@@ -100,6 +100,30 @@ step:
   processing_failed: "Processing the image failed"
   save_failed: "Could not save your avatar."
 
+# Server-side validation and API error messages.
+# Non-English locales that do not define these keys are auto-backfilled from
+# English by the i18n loader at startup.
+error:
+  # File upload validation (returned in JSON, displayed by the upload JS)
+  empty_filename: "No filename was provided."
+  empty_file: "The uploaded file is empty."
+  invalid_type: "File type .{ext} is not accepted. Allowed types: {accepted}."
+  invalid_signature: "The file does not appear to be a valid image. Please check the file and try again."
+  decode_failed: "The image could not be opened. Please try a different file."
+  format_not_allowed: "This image format is not supported. Please upload a JPEG, PNG, or WebP file."
+  too_small: "Image is too small ({w}×{h} px). The minimum is {min_dim}×{min_dim} px."
+  too_large: "Image is too large ({w}×{h} px). The maximum is {max_dim}×{max_dim} px."
+  no_file: "No image was received. Please select a file and try again."
+  # Import-specific errors (Gravatar / URL proxy endpoints)
+  import:
+    gravatar_disabled: "Gravatar import is not enabled."
+    url_disabled: "URL import is not enabled."
+    no_email: "Please enter an email address."
+    no_url: "Please enter a URL."
+    https_only: "Only http:// and https:// URLs are accepted."
+    invalid_url: "The URL you entered is not valid. Please check it and try again."
+    unsupported_type: "The image at this URL is not supported. Please use a JPEG, PNG, or WebP image."
+
 # Result messages
 result:
   success: "Avatar updated successfully!"

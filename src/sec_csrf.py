@@ -49,13 +49,16 @@ def validate_csrf_token():
     """
     expected = session.get(_SESSION_KEY, None)
     provided = request.headers.get(_HEADER_NAME, "")
-    if expected and provided and secrets.compare_digest(expected, provided):
-        return None
-    log.warning(
-        "CSRF validation failed on %s %s from %s (token present: %s).",
-        request.method,
-        request.path,
-        request.remote_addr,
-        bool(provided),
-    )
-    return jsonify({"error": "csrf_failed"}), 403
+    # Explicitly reject when either value is absent — a falsy `expected` (e.g.
+    # empty string or None) must never be treated as "validation passed".
+    # secrets.compare_digest is only reached when both values are non-empty.
+    if not expected or not provided or not secrets.compare_digest(expected, provided):
+        log.warning(
+            "CSRF validation failed on %s %s from %s (token present: %s).",
+            request.method,
+            request.path,
+            request.remote_addr,
+            bool(provided),
+        )
+        return jsonify({"error": "csrf_failed"}), 403
+    return None

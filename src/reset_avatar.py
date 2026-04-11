@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, session
 
 from src.auth import login_required
 from src.authentik import remove_avatar_url
-from src.csrf import validate_csrf_token
+from src.sec_csrf import validate_csrf_token
 
 log = logging.getLogger("reset_avatar")
 

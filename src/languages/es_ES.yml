@@ -100,6 +100,28 @@ step:
   processing_failed: "Error al procesar la imagen"
   save_failed: "No se pudo guardar tu avatar."
 
+# Mensajes de error de validación y de API del servidor
+error:
+  # Validación de subida de archivo
+  empty_filename: "No se proporcionó ningún nombre de archivo."
+  empty_file: "El archivo subido está vacío."
+  invalid_type: "El tipo de archivo .{ext} no está aceptado. Tipos permitidos: {accepted}."
+  invalid_signature: "El archivo no parece ser una imagen válida. Comprueba el archivo e inténtalo de nuevo."
+  decode_failed: "No se pudo abrir la imagen. Por favor, prueba con otro archivo."
+  format_not_allowed: "Este formato de imagen no está admitido. Por favor, sube un archivo JPEG, PNG o WebP."
+  too_small: "La imagen es demasiado pequeña ({w}×{h} px). El mínimo es {min_dim}×{min_dim} px."
+  too_large: "La imagen es demasiado grande ({w}×{h} px). El máximo es {max_dim}×{max_dim} px."
+  no_file: "No se recibió ninguna imagen. Por favor, selecciona un archivo e inténtalo de nuevo."
+  # Errores específicos de importación
+  import:
+    gravatar_disabled: "La importación de Gravatar no está habilitada."
+    url_disabled: "La importación por URL no está habilitada."
+    no_email: "Por favor, introduce una dirección de correo electrónico."
+    no_url: "Por favor, introduce una URL."
+    https_only: "Solo se aceptan URLs con http:// o https://."
+    invalid_url: "La URL introducida no es válida. Por favor, compruébala e inténtalo de nuevo."
+    unsupported_type: "La imagen en esta URL no está admitida. Por favor, utiliza una imagen JPEG, PNG o WebP."
+
 # Mensajes de resultado
 result:
   success: "¡Avatar actualizado correctamente!"

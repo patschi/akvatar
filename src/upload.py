@@ -79,24 +79,26 @@ def validate_upload(file) -> Image.Image:
     """
     # Filename & extension check
     if not file.filename:
-        raise ValidationError("Empty filename.")
+        raise ValidationError(t("error.empty_filename"))
 
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
-            f"File type .{ext} not allowed. Accepted: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            t("error.invalid_type", ext=ext, accepted=", ".join(sorted(ALLOWED_EXTENSIONS)))
         )
 
     # Read raw bytes and verify magic signature
     raw_bytes = file.read()
     if not raw_bytes:
-        raise ValidationError("Uploaded file is empty.")
+        raise ValidationError(t("error.empty_file"))
 
     # Check magic bytes to prevent fake extensions (e.g. .jpg that is actually a .exe).
+    # magic_err holds a technical description kept for the log — the user sees a
+    # generic translated message that does not expose internal format details.
     magic_err = check_magic_bytes(raw_bytes)
     if magic_err:
         log.warning("Magic byte check failed: %s", magic_err)
-        raise ValidationError(magic_err)
+        raise ValidationError(t("error.invalid_signature"))
     log.debug("Magic-byte signature check passed.")
 
     # Decode with Pillow and verify format
@@ -107,23 +109,24 @@ def validate_upload(file) -> Image.Image:
         image.load()
     except Exception as exc:
         log.warning("Pillow could not decode image: %s", exc)
-        raise ValidationError(f"Cannot decode image: {exc}") from exc
+        raise ValidationError(t("error.decode_failed")) from exc
 
     # Only allow formats we explicitly intend to handle (a .png could decode
     # as TIFF if Pillow recognises the actual content).
     if image.format not in ALLOWED_FORMATS:
-        raise ValidationError(f"Image format {image.format!r} is not allowed.")
+        log.warning("Decoded image format %r is not in the allow-list.", image.format)
+        raise ValidationError(t("error.format_not_allowed"))
     log.debug("Decoded format %s is in the allow-list.", image.format)
 
     # Dimension checks
     w, h = image.size
     if w < MIN_DIMENSION or h < MIN_DIMENSION:
         raise ValidationError(
-            f"Image is too small ({w}x{h}). Minimum dimension is {MIN_DIMENSION}px."
+            t("error.too_small", w=w, h=h, min_dim=MIN_DIMENSION)
         )
     if w > MAX_DIMENSION or h > MAX_DIMENSION:
         raise ValidationError(
-            f"Image is too large ({w}x{h}). Maximum dimension is {MAX_DIMENSION}px."
+            t("error.too_large", w=w, h=h, max_dim=MAX_DIMENSION)
         )
 
     log.info(

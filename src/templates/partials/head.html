@@ -12,7 +12,7 @@
     wrong colours. Reads the "theme" cookie and applies the correct
     data-theme attribute immediately.
   -->
-  <script>
+  <script nonce="{{ csp_nonce() }}">
     (function () {
       // Read the saved theme preference from cookie
       var cookieMatch    = document.cookie.match(/(?:^|; )theme=([^;]*)/);

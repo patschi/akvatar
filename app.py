@@ -17,7 +17,8 @@ from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
 from src.app_static import serve_static_file
 from src.auth import auth_bp, init_oauth
-from src.csrf import generate_csrf_token
+from src.sec_csp import generate_csp_nonce
+from src.sec_csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
 from src.i18n import t, get_locale, get_js_translations, AVAILABLE_LANGUAGES
@@ -168,6 +169,11 @@ def create_app() -> Flask:
             "i18n": get_js_translations(locale),
             "languages": AVAILABLE_LANGUAGES,
             "csrf_token": generate_csrf_token,
+            # Per-request CSP nonce – called as {{ csp_nonce() }} in templates.
+            # Generates once per request and is stored on Flask `g` so the
+            # same value appears in both inline <script nonce="…"> tags and
+            # the Content-Security-Policy response header.
+            "csp_nonce": generate_csp_nonce,
         }
 
     # Security response headers – applied to every response
@@ -175,13 +181,50 @@ def create_app() -> Flask:
     def _set_security_headers(response):
         # Prevent MIME-type sniffing (e.g. serving a JPEG as text/html)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        # Clickjacking protection only applies to HTML documents that a browser
-        # could render inside an <iframe>.  Setting it on images or JSON would
-        # be meaningless and clutters responses unnecessarily.
+
+        # HTML-only headers
         if response.content_type.startswith("text/html"):
+            # Clickjacking protection – deny framing of HTML pages entirely
             response.headers["X-Frame-Options"] = "DENY"
+
+            # Content Security Policy – restricts what the browser will load/execute.
+            #
+            # nonce-based script-src: only <script> tags carrying the per-request
+            # nonce (injected via {{ csp_nonce() }} in templates) are executed.
+            # This blocks injected inline scripts even if XSS is somehow achieved.
+            #
+            # default-src 'none' denies everything not explicitly allowed below.
+            # frame-ancestors 'none' is the CSP equivalent of X-Frame-Options: DENY
+            # and is respected by modern browsers that ignore the legacy header.
+            nonce = generate_csp_nonce()
+            response.headers["Content-Security-Policy"] = (
+                f"default-src 'none'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
+                f"style-src 'self'; "
+                f"img-src 'self' data: blob:; "
+                f"font-src 'self'; "
+                f"connect-src 'self'; "
+                f"frame-ancestors 'none'; "
+                f"base-uri 'self'; "
+                f"form-action 'self'"
+            )
+
         # Limit referrer information sent to cross-origin destinations
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        # HSTS – instruct browsers to always use HTTPS for this origin.
+        # Only set when TLS is active so plain-HTTP deployments are not broken.
+        # 63072000 s = 2 years (recommended minimum for preload eligibility).
+        if _tls_active:
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains"
+            )
+
+        # Permissions Policy – disable browser APIs this app never uses
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), payment=()"
+        )
+
         return response
 
     # HTTP request logging (non-static requests only)
