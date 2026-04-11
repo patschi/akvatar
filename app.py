@@ -138,6 +138,24 @@ def create_app() -> Flask:
     else:
         log.info("Proxy mode disabled - ProxyFix middleware not applied.")
 
+    # wsgi.url_scheme - force the correct transport scheme for this deployment.
+    # _set_url_scheme is the outermost WSGI wrapper so it runs first on every
+    # request.  It seeds wsgi.url_scheme from the startup configuration so that
+    # url_for() produces correctly-schemed URLs even before any X-Forwarded-Proto
+    # header is consulted.  ProxyFix (when enabled) runs inside this wrapper and
+    # overwrites wsgi.url_scheme on a per-request basis from X-Forwarded-Proto,
+    # so proxy-terminated HTTPS is handled correctly without relying on the seed.
+    _url_scheme = "https" if _tls_active else "http"
+    _inner_wsgi = app.wsgi_app
+
+    def _set_url_scheme(environ, start_response):
+        # Seed wsgi.url_scheme so Flask generates the correct scheme in url_for() calls
+        environ["wsgi.url_scheme"] = _url_scheme
+        return _inner_wsgi(environ, start_response)
+
+    app.wsgi_app = _set_url_scheme
+    log.info("Transport scheme: %s (wsgi.url_scheme=%r).", _url_scheme.upper(), _url_scheme)
+
     # Initialise OIDC / OAuth
     init_oauth(app)
 
