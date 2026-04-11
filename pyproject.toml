@@ -1,10 +1,9 @@
 # pyproject.toml – project metadata, dependency declarations, and tool configuration.
 # Standalone application; not published to PyPI.
-# `pip install .` installs declared dependencies only (no importable package code).
 
 [build-system]
 requires = ["setuptools>=77"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "akvatar"
@@ -28,6 +27,10 @@ dependencies = [
 [tool.setuptools]
 # Standalone app — no importable Python package to install; pip install only resolves deps.
 packages = []
+py-modules = []
+
+[tool.setuptools.package-data]
+"*" = []
 
 # ---------------------------------------------------------------------------
 # Ruff – linting and formatting
