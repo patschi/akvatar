@@ -24,6 +24,7 @@ from src.config import (
     branding_cfg,
     debug_full,
     security_cfg,
+    tls_minimum_version,
     web_cfg,
 )
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
@@ -300,10 +301,19 @@ if __name__ == "__main__":
     start_cleanup_thread()
 
     # TLS support
+    import ssl as _ssl
+
     _tls_cfg = web_cfg.get("tls", {})
     tls_cert = _tls_cfg.get("cert", "")
     tls_key = _tls_cfg.get("key", "")
-    ssl_context = (tls_cert, tls_key) if tls_cert and tls_key else None
+    if tls_cert and tls_key:
+        # What: build a full SSLContext so minimum_version can be enforced;
+        # Werkzeug accepts either a (cert, key) tuple or an SSLContext instance.
+        ssl_context = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.minimum_version = tls_minimum_version
+        ssl_context.load_cert_chain(tls_cert, tls_key)
+    else:
+        ssl_context = None
     scheme = "https" if ssl_context else "http"
     host = web_cfg.get("host", "0.0.0.0")
     port = web_cfg.get("port", 5000)

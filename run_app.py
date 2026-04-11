@@ -35,7 +35,7 @@ os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ["HOME"] = "/tmp"
 
 from src.cleanup import start_cleanup_thread  # noqa: E402
-from src.config import http2_cfg, web_cfg  # noqa: E402
+from src.config import http2_cfg, tls_minimum_version, web_cfg  # noqa: E402
 
 log = logging.getLogger("run_app")
 
@@ -118,6 +118,20 @@ def _when_ready(server):
 
 gunicorn_app = WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]")
 gunicorn_app.cfg.set("when_ready", _when_ready)
+
+if _tls_active:
+    # What: enforce the configured minimum TLS version on the server SSL context.
+    # The default factory is called first (it loads cert/key and applies gunicorn's
+    # standard options), then minimum_version is set before returning.
+    _min_ver = tls_minimum_version
+
+    def _ssl_context(conf, default_ssl_context_factory):
+        ctx = default_ssl_context_factory()
+        ctx.minimum_version = _min_ver
+        return ctx
+
+    gunicorn_app.cfg.set("ssl_context", _ssl_context)
+    log.info("TLS minimum version enforced: %s.", tls_minimum_version.name)
 
 if http2_active:
     log.info("HTTP/2 active: gunicorn will advertise h2 via ALPN (TLS + h2 package).")

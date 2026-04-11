@@ -69,6 +69,7 @@ effect.
 | [`webserver.timeout`](#webservertimeout)                                          | Integer | Worker timeout in seconds                           |
 | [`webserver.tls.cert`](#webservertlscert--tlskey)                                 | String  | Path to TLS certificate file                        |
 | [`webserver.tls.key`](#webservertlscert--tlskey)                                  | String  | Path to TLS private key file                        |
+| [`webserver.tls.min_version`](#webservertlsmin_version)                           | String  | Minimum TLS protocol version accepted by the server |
 | [`webserver.http2.enabled`](#webserverhttp2enabled)                               | Boolean | Enable HTTP/2 via ALPN (requires TLS)               |
 | [`oidc.issuer_url`](#oidcissuer_url)                                              | URL     | Authentik OIDC provider URL                         |
 | [`oidc.client_id`](#oidcclient_id)                                                | String  | OAuth2 client ID                                    |
@@ -704,6 +705,29 @@ HTTPS on the same port. When empty, the server runs over plain HTTP and a warnin
 startup.
 
 For production, terminate TLS at a reverse proxy instead. See [App TLS Configuration](app-tls.md).
+
+### `webserver.tls.min_version`
+
+| Property    | Value        |
+|-------------|--------------|
+| **Type**    | String       |
+| **Default** | `TLSv1_2`    |
+
+Minimum TLS protocol version the server will accept from clients. The value must match a member name
+of Python's `ssl.TLSVersion` enum. Supported values as of Python 3.7+:
+
+| Value      | Protocol  | Notes                                                   |
+|------------|-----------|----------------------------------------------------------|
+| `TLSv1_3`  | TLS 1.3   | Most secure. Drops support for older clients.            |
+| `TLSv1_2`  | TLS 1.2   | Default. Broadly compatible and secure.                  |
+| `TLSv1_1`  | TLS 1.1   | Deprecated and disabled in most Python builds. Insecure. |
+| `TLSv1`    | TLS 1.0   | Deprecated and disabled in most Python builds. Insecure. |
+
+New TLS versions added to Python's `ssl` module are automatically recognised without requiring
+application updates. If an unrecognised value is configured, the application refuses to start with
+a FATAL error listing all valid values.
+
+**Note:** Has no effect when `webserver.tls.cert` and `webserver.tls.key` are not set.
 
 ### `webserver.http2.enabled`
 

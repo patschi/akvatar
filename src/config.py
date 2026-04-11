@@ -7,6 +7,7 @@ Reads config.yml once at import time so every other module can simply
 
 import logging
 import os
+import ssl
 import sys
 from urllib.parse import urlparse
 
@@ -101,10 +102,24 @@ _tls_cfg = web_cfg.get("tls", {})
 _tls_cert = _tls_cfg.get("cert", "")
 _tls_key = _tls_cfg.get("key", "")
 _tls_configured = bool(_tls_cert and _tls_key)
+
+# Minimum TLS version: dynamically resolved against ssl.TLSVersion by name so
+# any TLS version added to Python's ssl module in the future is valid without
+# requiring code changes.
+_tls_min_ver_str = _tls_cfg.get("min_version", "TLSv1_2")
+_valid_tls_versions = [v.name for v in ssl.TLSVersion]
+_fatal_unless(
+    _tls_min_ver_str in _valid_tls_versions,
+    f"webserver.tls.min_version={_tls_min_ver_str!r} is not a valid TLS version. "
+    f"Valid values: {', '.join(_valid_tls_versions)}.",
+)
+tls_minimum_version: ssl.TLSVersion = ssl.TLSVersion[_tls_min_ver_str]
+
 if not _tls_configured:
     log.warning(
         "Server TLS is NOT configured - the built-in server will run over plain HTTP."
     )
+log.debug("TLS minimum version: %s.", tls_minimum_version.name)
 
 # HTTP/2 startup status
 _http2_enabled = bool(http2_cfg.get("enabled", True))

@@ -163,6 +163,14 @@ webserver:
   tls:
     cert: ""
     key: ""
+    # Minimum TLS protocol version the server will accept.
+    # The value must match a member name of Python's ssl.TLSVersion enum.
+    # Supported values (as of Python 3.7+): TLSv1_2, TLSv1_3
+    # (TLSv1 and TLSv1_1 are deprecated and disabled in most Python builds.)
+    # Future TLS versions are supported automatically as Python adds them.
+    # Application refuses to start if an unrecognised value is provided.
+    # Has no effect when cert and key are not set.
+    min_version: TLSv1_2
   # HTTP/2 support.  Requires tls.cert and tls.key to be configured.
   # Has no effect when running over plain HTTP.
   http2:
