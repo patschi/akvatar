@@ -88,7 +88,7 @@ def create_app() -> Flask:
     #   security.session_cookie_secure overrides this auto-detection when set explicitly.
     # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
     _secure_override = security_cfg.get("session_cookie_secure", None)
-    _tls_active = (
+    _secure_cookie_option = (
         _secure_override
         if _secure_override is not None
         else app_cfg.get("public_base_url", "").startswith("https://")
@@ -96,7 +96,7 @@ def create_app() -> Flask:
     app.config["SESSION_COOKIE_NAME"] = "akvatar_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-    app.config["SESSION_COOKIE_SECURE"] = _tls_active
+    app.config["SESSION_COOKIE_SECURE"] = _secure_cookie_option
     app.config["PERMANENT_SESSION_LIFETIME"] = security_cfg.get(
         "web_session_lifetime_seconds", 1800
     )
@@ -145,6 +145,9 @@ def create_app() -> Flask:
     # header is consulted.  ProxyFix (when enabled) runs inside this wrapper and
     # overwrites wsgi.url_scheme on a per-request basis from X-Forwarded-Proto,
     # so proxy-terminated HTTPS is handled correctly without relying on the seed.
+    _tls_active = bool(
+        web_cfg.get("tls", {}).get("cert", "") and web_cfg.get("tls", {}).get("key", "")
+    )
     _url_scheme = "https" if _tls_active else "http"
     _inner_wsgi = app.wsgi_app
 
