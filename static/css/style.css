@@ -719,6 +719,23 @@ body {
   opacity: 0.6;
 }
 
+.import-email-locked {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  user-select: text;
+}
+
 .import-field-row {
   display: flex;
   gap: 0.4rem;

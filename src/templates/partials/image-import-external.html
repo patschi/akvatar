@@ -40,10 +40,17 @@
     {% endif %}
 
     {% if import_gravatar_enabled %}
-      <!-- Gravatar tab: email input + load button -->
+      <!-- Gravatar tab: email input (or locked session-email display) + load button -->
       <div class="import-tab" id="importTabGravatar">
         <div class="import-field-row">
-          <input id="gravatarEmail" type="email" class="import-input" value="{{ user.email }}" placeholder="{{ t('import.gravatar_placeholder') }}" />
+          {% if import_gravatar_restrict_email %}
+            <!-- Locked mode: show the session email as static text; hidden input carries
+                 the value so the JS load handler reads gravatarEmail.value unchanged. -->
+            <span class="import-email-locked">{{ user.email }}</span>
+            <input id="gravatarEmail" type="hidden" value="{{ user.email }}" />
+          {% else %}
+            <input id="gravatarEmail" type="email" class="import-input" value="{{ user.email }}" placeholder="{{ t('import.gravatar_placeholder') }}" />
+          {% endif %}
           <button id="gravatarLoadBtn" class="btn btn-import" type="button">{{ t('import.load') }}</button>
         </div>
       </div>

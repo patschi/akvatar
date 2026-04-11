@@ -249,6 +249,12 @@ image_import:
   gravatar:
     # Set to false to hide the Gravatar import option from the UI
     enabled: true
+    # When true, the email input is replaced by a read-only display of the
+    # session user's registered email.  Users cannot enter a different address.
+    # The server also enforces this: requests with a mismatching email are
+    # rejected with HTTP 403.  Prevents the Gravatar endpoint from being used
+    # as an existence oracle for arbitrary email addresses.
+    restrict_email: true
   # URL import: fetch an image from any user-provided URL
   url:
     # Set to false to hide the URL import option from the UI

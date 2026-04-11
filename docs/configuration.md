@@ -46,6 +46,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`rate_limiting.avatars`](#rate_limitingavatars)                                  | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limitingmetadata)                                | Object  | Rate limit settings for metadata JSON requests      |
 | [`image_import.gravatar.enabled`](#image_importgravatarenabled)                   | Boolean | Enable Gravatar import in the UI                    |
+| [`image_import.gravatar.restrict_email`](#image_importgravatarrestrict_email)     | Boolean | Lock Gravatar email to the session user's address   |
 | [`image_import.url.enabled`](#image_importurlenabled)                             | Boolean | Enable URL import in the UI                         |
 | [`image_import.url.restrict_private_ips`](#image_importurlrestrict_private_ips)   | Boolean | Block URLs resolving to private IP addresses        |
 | [`image_import.webcam.enabled`](#image_importwebcamenabled)                       | Boolean | Enable browser webcam capture in the UI             |
@@ -934,6 +935,23 @@ trigger button is hidden from the dashboard and the corresponding server endpoin
 When enabled (default), users can import their avatar from [Gravatar](https://gravatar.com) by entering an email address.
 The server fetches the image from Gravatar's API and proxies it back to the browser. Set to `false` to hide the Gravatar
 import option from the UI entirely.
+
+### `image_import.gravatar.restrict_email`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When set to `true`, the Gravatar email input is replaced by a read-only display of the authenticated user's registered
+email address. Users cannot enter a different address - the dialog simply shows their account email as static text.
+
+The server enforces the same restriction on every request: the submitted email must exactly match the session user's
+email, and any mismatch is rejected with HTTP 403. This dual enforcement (UI lock + server validation) prevents the
+Gravatar proxy endpoint from being used as an account-existence oracle for arbitrary email addresses.
+
+Enable this option when you want to ensure users can only import their own Gravatar and cannot probe whether other email
+addresses have a Gravatar registered.
 
 ### `image_import.url.enabled`
 

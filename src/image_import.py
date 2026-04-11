@@ -55,6 +55,9 @@ _ALLOWED_PROXY_MIMETYPES = frozenset(_MIME_TO_EXT.keys())
 
 # Config: per-source enable flags and URL security settings
 GRAVATAR_ENABLED = import_cfg.get("gravatar", {}).get("enabled", True)
+# When True, the Gravatar email input is locked to the session user's email and
+# the backend enforces a strict match - preventing oracle lookups for arbitrary emails.
+GRAVATAR_RESTRICT_EMAIL = import_cfg.get("gravatar", {}).get("restrict_email", True)
 URL_ENABLED = import_cfg.get("url", {}).get("enabled", True)
 # Webcam capture is handled entirely client-side via MediaDevices.getUserMedia,
 # so no proxy endpoint is needed - this flag only controls UI visibility and
@@ -221,10 +224,31 @@ def api_fetch_gravatar():
     if not email:
         return jsonify({"error": t("error.import.no_email")}), 400
 
-    # Restrict to the session user's own email to prevent using this endpoint
-    # as a Gravatar account-existence oracle for arbitrary email addresses.
+    # Validate the submitted email against the session user's email.
+    # Two modes depending on the restrict_email config flag:
+    #
+    # restrict_email=True (strict): session email is required and must match exactly.
+    #   Enforces that the UI-locked email was not tampered with client-side.
+    #   Also covers the edge case where the OIDC token provided no email.
+    #
+    # restrict_email=False (default): best-effort oracle prevention - only enforce
+    #   when the session happens to carry an email (covers most deployments without
+    #   breaking setups where OIDC tokens omit the email claim).
     session_email = (session.get("user", {}).get("email", None) or "").strip().lower()
-    if session_email and email != session_email:
+    if GRAVATAR_RESTRICT_EMAIL:
+        if not session_email:
+            log.warning(
+                "Gravatar fetch rejected: restrict_email is enabled but session has no email for user %r.",
+                session.get("user", {}).get("username", "unknown"),
+            )
+            return jsonify({"error": "email_mismatch"}), 403
+        if email != session_email:
+            log.warning(
+                "Gravatar fetch rejected: provided email does not match session email for user %r.",
+                session.get("user", {}).get("username", "unknown"),
+            )
+            return jsonify({"error": "email_mismatch"}), 403
+    elif session_email and email != session_email:
         log.warning(
             "Gravatar fetch rejected: provided email does not match session email for user %r.",
             session.get("user", {}).get("username", "unknown"),
