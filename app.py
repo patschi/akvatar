@@ -300,8 +300,9 @@ if __name__ == "__main__":
     start_cleanup_thread()
 
     # TLS support
-    tls_cert = web_cfg.get("tls_cert", "")
-    tls_key = web_cfg.get("tls_key", "")
+    _tls_cfg = web_cfg.get("tls", {})
+    tls_cert = _tls_cfg.get("cert", "")
+    tls_key = _tls_cfg.get("key", "")
     ssl_context = (tls_cert, tls_key) if tls_cert and tls_key else None
     scheme = "https" if ssl_context else "http"
     host = web_cfg.get("host", "0.0.0.0")

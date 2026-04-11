@@ -1,4 +1,4 @@
-# TLS Configuration
+# App TLS Configuration
 
 This guide covers how to configure TLS (HTTPS) for Akvatar.
 
@@ -30,13 +30,14 @@ Set the certificate and key paths in `data/config/config.yml`:
 
 ```yaml
 webserver:
-  tls_cert: "/app/data/config/cert.pem"
-  tls_key: "/app/data/config/key.pem"
+  tls:
+    cert: "/data/config/cert.pem"
+    key: "/data/config/key.pem"
 ```
 
 The server uses the same port for HTTPS. When TLS is not configured, a warning is logged at startup.
 
-See [Configuration Reference](configuration.md#webservertls_cert--tls_key) for details.
+See [Configuration Reference](configuration.md#webservertlscert--tlskey) for details.
 
 ## HTTP/2
 
@@ -79,6 +80,6 @@ development.
 
 ## Why not both?
 
-If a reverse proxy terminates TLS, there is no need to also configure TLS on the application. Leave `webserver.tls_cert`
-and `webserver.tls_key` empty. Running TLS on both layers adds unnecessary overhead and complexity without improving
+If a reverse proxy terminates TLS, there is no need to also configure TLS on the application. Leave `webserver.tls.cert`
+and `webserver.tls.key` empty. Running TLS on both layers adds unnecessary overhead and complexity without improving
 security (the connection between the reverse proxy and the app is typically on the same host or a trusted network).

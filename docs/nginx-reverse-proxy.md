@@ -83,9 +83,9 @@ location = /healthz {
 
 ## TLS termination
 
-When nginx terminates TLS, there is no need to configure TLS in the Avatar Updater itself. Leave `webserver.tls_cert`
-and `webserver.tls_key` empty in `config.yml` and let nginx handle certificates. See [TLS Configuration](tls.md) for
-more details.
+When nginx terminates TLS, there is no need to configure TLS in the Avatar Updater itself. Leave `webserver.tls.cert`
+and `webserver.tls.key` empty in `config.yml` and let nginx handle certificates. See
+[App TLS Configuration](app-tls.md) for more details.
 
 The `X-Forwarded-Proto` header tells the app that the original request was HTTPS, ensuring all generated URLs 
 (redirects, OIDC callbacks) use the correct scheme.

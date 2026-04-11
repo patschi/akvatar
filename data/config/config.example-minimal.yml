@@ -21,7 +21,7 @@ app:
 
 # All webserver settings are optional.
 # Defaults: proxy_mode=true, workers=2, threads=4, timeout=120, host=0.0.0.0, port=5000
-# HTTP/2 default: http2.enabled=true (requires tls_cert+tls_key)
+# HTTP/2 default: http2.enabled=true (requires tls.cert+tls.key)
 # Set proxy_mode: false if running without a reverse proxy.
 webserver: {}
 

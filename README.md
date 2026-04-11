@@ -36,7 +36,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Configurable branding**: customize the application name in the UI
 - **Reverse proxy / subfolder support**: honours `X-Forwarded-For`, `X-Forwarded-Proto`,
   `X-Forwarded-Host`, `X-Forwarded-Prefix`
-- **Optional built-in TLS**: serve HTTPS directly without a reverse proxy
+- **Optional built-in TLS**: serve HTTPS directly without a reverse proxy; HTTP/2 is supported when
+  TLS is configured (ALPN negotiation, enabled by default)
 - **Dry-run mode**: processes and saves images but skips all Authentik and LDAP writes;
   logs what would have happened instead
 - **CSRF protection**: per-session token validated server-side via `X-CSRF-Token` header
@@ -123,14 +124,14 @@ docker run -d \
   --security-opt no-new-privileges \
   --tmpfs /tmp \
   -p 5000:5000 \
-  -v akvatar-conf:/app/data/config:ro \
+  -v akvatar-conf:/data/config:ro \
   -v akvatar-data:/app/data/user-avatars \
   ghcr.io/patschi/akvatar:latest
 ```
 
 - Runs as non-root (UID 65532) with a read-only root filesystem
 - `/tmp` is a tmpfs mount — required for gunicorn worker temp files
-- `/app/data/config` — read-only volume containing `config.yml`
+- `/data/config` — read-only volume containing `config.yml`
 - `/app/data/user-avatars` — writable volume for persistent avatar storage
 
 #### Bind-mount directories instead of named volumes
@@ -146,7 +147,7 @@ chown -R 65532:65532 ./data/user-avatars
 Then replace the volume flags:
 
 ```bash
--v ./data/config:/app/data/config:ro \
+-v ./data/config:/data/config:ro \
 -v ./data/user-avatars:/app/data/user-avatars \
 ```
 
@@ -216,7 +217,7 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 | [Flask Session Key](docs/flask-session-key.md)         | Generating and setting the Flask session secret key                                     |
 | [Authentik OIDC Setup](docs/authentik-oidc-setup.md)   | Creating the OIDC provider and application in Authentik                                 |
 | [Authentik API Token](docs/authentik-api-token.md)     | Creating an API token for the Authentik Admin API                                       |
-| [TLS](docs/tls.md)                                     | TLS certificate configuration and reverse proxy recommendation                          |
+| [Application TLS](docs/app-tls.md)                     | TLS and HTTP/2 configuration, certificate setup, and reverse proxy recommendation       |
 | [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)     | Full nginx config with TLS termination, SSE support, and optional static avatar serving |
 | [Subfolder Deployment](docs/subfolder-deployment.md)   | Hosting the app under a URL path prefix (e.g. `/avatar/`)                               |
 | [MS AD Service Account](docs/ms-ad-service-account.md) | Least-privilege Active Directory service account setup with PowerShell automation       |

@@ -41,8 +41,9 @@ log = logging.getLogger("run_app")
 
 host = web_cfg.get("host", "0.0.0.0")
 port = web_cfg.get("port", 5000)
-tls_cert = web_cfg.get("tls_cert", "")
-tls_key = web_cfg.get("tls_key", "")
+_tls_cfg = web_cfg.get("tls", {})
+tls_cert = _tls_cfg.get("cert", "")
+tls_key = _tls_cfg.get("key", "")
 scheme = "https" if tls_cert and tls_key else "http"
 
 # HTTP/2 is active when both the config option is enabled and TLS is configured.

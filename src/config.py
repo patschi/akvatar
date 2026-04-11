@@ -27,7 +27,7 @@ def _fatal_unless(condition: bool, msg: str) -> None:
         _fatal(msg)
 
 
-CONFIG_PATH = "data/config/config.yml"
+CONFIG_PATH = os.environ.get("CONFIG_PATH", "data/config/config.yml")
 
 # Load configuration from YAML file
 try:
@@ -97,8 +97,9 @@ if dry_run:
     )
 
 # Startup SSL warnings (logged once at import time)
-_tls_cert = web_cfg.get("tls_cert", "")
-_tls_key = web_cfg.get("tls_key", "")
+_tls_cfg = web_cfg.get("tls", {})
+_tls_cert = _tls_cfg.get("cert", "")
+_tls_key = _tls_cfg.get("key", "")
 _tls_configured = bool(_tls_cert and _tls_key)
 if not _tls_configured:
     log.warning(

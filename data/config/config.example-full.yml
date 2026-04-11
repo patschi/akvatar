@@ -160,9 +160,10 @@ webserver:
   # TLS certificate and private key paths for HTTPS.
   # When set, the server uses HTTPS on the same port.
   # Leave empty to run plain HTTP (a warning will be logged at startup).
-  tls_cert: ""
-  tls_key: ""
-  # HTTP/2 support.  Requires tls_cert and tls_key to be configured.
+  tls:
+    cert: ""
+    key: ""
+  # HTTP/2 support.  Requires tls.cert and tls.key to be configured.
   # Has no effect when running over plain HTTP.
   http2:
     # Enable HTTP/2 (h2) via on TLS connections.

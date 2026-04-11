@@ -15,5 +15,5 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./data/config:/app/data/config:ro
+      - ./data/config:/data/config:ro
       - ./data/user-avatars:/app/data/user-avatars

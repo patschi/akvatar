@@ -59,10 +59,11 @@ RUN mkdir -p /lib-staging && \
         /usr/lib/x86_64-linux-gnu/libz*.so* \
         /lib-staging/
 
-# Create data directory skeleton owned by nonroot (UID 65532) so Docker
+# Create directory skeletons owned by nonroot (UID 65532) so Docker
 # initialises named volumes with correct ownership on first run.
-RUN mkdir -p /data-skel/user-avatars /data-skel/config && \
-    chown -R 65532:65532 /data-skel
+RUN mkdir -p /data-skel/user-avatars && \
+    mkdir -p /config-skel && \
+    chown -R 65532:65532 /data-skel /config-skel
 
 # ---------- Stage 2: distroless runtime image ----------
 # gcr.io/distroless/python3 contains only the Python interpreter and its
@@ -80,7 +81,8 @@ COPY --from=builder /opt/site-packages /usr/lib/python3/dist-packages
 COPY --from=builder /lib-staging/ /usr/lib/x86_64-linux-gnu/
 
 ENV PYTHONDONTWRITEBYTECODE="1" \
-    PYTHONUNBUFFERED="1"
+    PYTHONUNBUFFERED="1" \
+    CONFIG_PATH="/data/config/config.yml"
 
 # Copy application code and healthcheck binary (explicit files only)
 COPY app.py run_app.py run_cleanup.py ./
@@ -88,11 +90,12 @@ COPY src/ src/
 COPY static/ static/
 COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
 
-# Data directories - ownership inherited from builder skeleton so the
+# Data directories - ownership inherited from builder skeletons so the
 # nonroot user can write when Docker initialises the volumes.
 COPY --from=builder --chown=65532:65532 /data-skel/ /app/data/
+COPY --from=builder --chown=65532:65532 /config-skel/ /data/config/
 
-VOLUME ["/app/data/user-avatars", "/app/data/config"]
+VOLUME ["/app/data/user-avatars", "/data/config"]
 HEALTHCHECK --interval=60s --timeout=3s --start-period=10s CMD ["/bin/httpscheck", "127.0.0.1:5000/healthz"]
 EXPOSE 5000
 
