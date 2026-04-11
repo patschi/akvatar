@@ -17,15 +17,22 @@ from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
 from src.app_static import serve_static_file
 from src.auth import auth_bp, init_oauth
-from src.sec_csp import generate_csp_nonce, build_csp_header
-from src.sec_csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
-from src.config import app_cfg, security_cfg, web_cfg, branding_cfg, debug_full, access_log
-from src.i18n import t, get_locale, get_js_translations, AVAILABLE_LANGUAGES
-from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
+from src.config import (
+    access_log,
+    app_cfg,
+    branding_cfg,
+    debug_full,
+    security_cfg,
+    web_cfg,
+)
+from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
 from src.image_import import import_bp
+from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.reset_avatar import reset_avatar_bp
 from src.routes import routes_bp
+from src.sec_csp import build_csp_header, generate_csp_nonce
+from src.sec_csrf import generate_csrf_token
 
 log = logging.getLogger("app")
 

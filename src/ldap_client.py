@@ -19,14 +19,14 @@ attributes are fully configurable for other directories.
 The entire module is a no-op when ``ldap.enabled`` is ``false`` in config.yml.
 """
 
-import ssl
 import logging
+import ssl
 from urllib.parse import urlparse
 
 import ldap3
 import ldap3.utils.conv
 
-from src.config import ldap_cfg, dry_run
+from src.config import dry_run, ldap_cfg
 
 log = logging.getLogger("ldap")
 
@@ -106,7 +106,7 @@ def _connect() -> ldap3.Connection:
     Raises ConnectionError if all servers fail.
     """
     last_exc: Exception | None = None
-    for url, server in zip(_server_urls, _servers):
+    for url, server in zip(_server_urls, _servers, strict=True):
         log.debug(
             "Connecting to LDAP server %s (SSL=%s, skip_cert_verify=%s).",
             url,

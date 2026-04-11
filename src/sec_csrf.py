@@ -15,7 +15,7 @@ Usage:
 import logging
 import secrets
 
-from flask import session, request, jsonify
+from flask import jsonify, request, session
 
 log = logging.getLogger("csrf")
 

@@ -11,7 +11,7 @@ import logging
 from pathlib import Path
 
 import yaml
-from flask import g, session, request
+from flask import g, request, session
 
 log = logging.getLogger("i18n")
 

@@ -19,25 +19,25 @@ from flask import (
     Blueprint,
     Response,
     abort,
-    redirect,
-    url_for,
-    session,
-    request,
     jsonify,
-    send_from_directory,
+    redirect,
     render_template,
+    request,
+    send_from_directory,
+    session,
     stream_with_context,
+    url_for,
 )
 
 from src.app_static import serve_static_file
 from src.auth import login_required
 from src.config import security_cfg
 from src.i18n import t
-from src.sec_csrf import validate_csrf_token
 from src.image_import import GRAVATAR_ENABLED, URL_ENABLED
-from src.imaging import AVATAR_ROOT, METADATA_ROOT, MAX_SIZE, ALLOWED_EXTENSIONS
+from src.imaging import ALLOWED_EXTENSIONS, AVATAR_ROOT, MAX_SIZE, METADATA_ROOT
 from src.ldap_client import is_enabled as ldap_is_enabled
-from src.upload import validate_upload, generate_sse, ValidationError
+from src.sec_csrf import validate_csrf_token
+from src.upload import ValidationError, generate_sse, validate_upload
 
 log = logging.getLogger("routes")
 
@@ -163,7 +163,8 @@ def serve_avatar_metadata(filename):
         # Must be authenticated first
         if "user" not in session:
             log.debug(
-                "Unauthenticated metadata request for %r – redirecting to login.", filename
+                "Unauthenticated metadata request for %r – redirecting to login.",
+                filename,
             )
             return redirect(url_for("routes.login_page"))
 

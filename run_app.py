@@ -13,9 +13,9 @@ A Python script is used instead of a shell script because the distroless
 container image has no shell.
 """
 
+import logging
 import os
 import sys
-import logging
 import tempfile
 
 # Prevent .pyc file clutter.
@@ -34,8 +34,8 @@ os.environ.setdefault("PYTHONUNBUFFERED", "1")
 # write its socket there without error.
 os.environ["HOME"] = "/tmp"
 
-from src.config import web_cfg  # noqa: E402
 from src.cleanup import start_cleanup_thread  # noqa: E402
+from src.config import web_cfg  # noqa: E402
 
 log = logging.getLogger("run_app")
 
@@ -92,6 +92,7 @@ log.info(
 # Patching the module-level variable here (before wsgiapp triggers the import)
 # replaces it with the app name instead.
 import gunicorn.http.wsgi  # noqa: E402
+
 from src import APP_NAME  # noqa: E402
 
 gunicorn.http.wsgi.SERVER = APP_NAME

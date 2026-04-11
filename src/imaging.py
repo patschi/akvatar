@@ -9,13 +9,13 @@ import io
 import json
 import logging
 from pathlib import Path
+from secrets import token_urlsafe
 from time import time_ns
 from uuid import uuid4
-from secrets import token_urlsafe
 
 from PIL import Image, ImageOps
 
-from src.config import img_cfg, app_cfg
+from src.config import app_cfg, img_cfg
 
 log = logging.getLogger("imaging")
 

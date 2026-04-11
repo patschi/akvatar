@@ -43,19 +43,19 @@ import shutil
 import threading
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from croniter import croniter
 
-from src.config import cleanup_cfg, img_cfg, dry_run
+from src.authentik import list_active_user_pks, list_all_user_pks
+from src.config import cleanup_cfg, dry_run, img_cfg
 from src.imaging import (
     AVATAR_ROOT,
-    METADATA_ROOT,
     FORMAT_MAP,
-    get_all_avatar_metadata,
+    METADATA_ROOT,
     cleanup_avatar_files,
+    get_all_avatar_metadata,
 )
-from src.authentik import list_all_user_pks, list_active_user_pks
 
 log = logging.getLogger("cleanup")
 
@@ -435,11 +435,11 @@ def _cleanup_loop() -> None:
         except Exception:
             log.exception("Startup cleanup failed.")
 
-    cron = croniter(_cron_expr, datetime.now(timezone.utc))
+    cron = croniter(_cron_expr, datetime.now(UTC))
 
     while True:
         next_run = cron.get_next(datetime)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         delay = max((next_run - now).total_seconds(), 0)
         log.debug(
             "Next cleanup scheduled at %s (in %.0f seconds).",

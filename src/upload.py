@@ -20,32 +20,30 @@ The orchestrator collects results via ``yield from``.
 import io
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from PIL import Image
 
-from src.config import img_cfg, ak_cfg, dry_run
+from src.authentik import revert_avatar_url, update_avatar_url
+from src.config import ak_cfg, dry_run, img_cfg
 from src.i18n import t
 from src.imaging import (
-    METADATA_ROOT,
     ALLOWED_EXTENSIONS,
     ALLOWED_FORMATS,
-    MIN_DIMENSION,
-    MAX_DIMENSION,
     FORMAT_MAP,
-    normalize_image,
+    MAX_DIMENSION,
+    METADATA_ROOT,
+    MIN_DIMENSION,
     check_magic_bytes,
-    generate_filename,
-    process_image,
     cleanup_avatar_files,
+    generate_filename,
+    normalize_image,
     prepare_ldap_image,
+    process_image,
 )
-from src.authentik import update_avatar_url, revert_avatar_url
-from src.ldap_client import (
-    update_photos as update_ldap_photos,
-    is_enabled as ldap_is_enabled,
-    get_photos_config as ldap_photos_config,
-)
+from src.ldap_client import get_photos_config as ldap_photos_config
+from src.ldap_client import is_enabled as ldap_is_enabled
+from src.ldap_client import update_photos as update_ldap_photos
 
 log = logging.getLogger("upload")
 
@@ -84,7 +82,11 @@ def validate_upload(file) -> Image.Image:
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
-            t("error.invalid_type", ext=ext, accepted=", ".join(sorted(ALLOWED_EXTENSIONS)))
+            t(
+                "error.invalid_type",
+                ext=ext,
+                accepted=", ".join(sorted(ALLOWED_EXTENSIONS)),
+            )
         )
 
     # Read raw bytes and verify magic signature
@@ -121,13 +123,9 @@ def validate_upload(file) -> Image.Image:
     # Dimension checks
     w, h = image.size
     if w < MIN_DIMENSION or h < MIN_DIMENSION:
-        raise ValidationError(
-            t("error.too_small", w=w, h=h, min_dim=MIN_DIMENSION)
-        )
+        raise ValidationError(t("error.too_small", w=w, h=h, min_dim=MIN_DIMENSION))
     if w > MAX_DIMENSION or h > MAX_DIMENSION:
-        raise ValidationError(
-            t("error.too_large", w=w, h=h, max_dim=MAX_DIMENSION)
-        )
+        raise ValidationError(t("error.too_large", w=w, h=h, max_dim=MAX_DIMENSION))
 
     log.info(
         "Upload accepted: content_type=%r, size=%d bytes, %dx%d, mode=%s, format=%s.",
@@ -324,7 +322,7 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
     metadata = {
         "filename": filename_base,
         "user_pk": user_pk,
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "uploaded_at": datetime.now(UTC).isoformat(),
         "sizes": img_cfg["sizes"],
         "formats": img_cfg["formats"],
         "total_bytes": total_bytes,

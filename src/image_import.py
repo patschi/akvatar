@@ -175,7 +175,9 @@ def _safe_fetch(url: str) -> http_requests.Response:
                 raise ValueError("Redirect response missing Location header.")
             resp.close()
             url = location
-            log.debug("Following redirect (hop %d/%d): %r", hop + 1, _MAX_REDIRECTS, url)
+            log.debug(
+                "Following redirect (hop %d/%d): %r", hop + 1, _MAX_REDIRECTS, url
+            )
             continue
 
         # Non-redirect response — return it to the caller
@@ -256,7 +258,8 @@ def api_fetch_gravatar():
         if content_type not in _ALLOWED_PROXY_MIMETYPES:
             resp.close()
             log.warning(
-                "Gravatar returned unexpected Content-Type %r – rejecting.", content_type
+                "Gravatar returned unexpected Content-Type %r – rejecting.",
+                content_type,
             )
             return jsonify({"error": t("error.import.unsupported_type")}), 400
 
@@ -335,7 +338,9 @@ def api_fetch_url():
         resp.raise_for_status()
 
         # Normalise content-type to the bare MIME type (strip parameters)
-        content_type = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        content_type = (
+            resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        )
 
         # Only proxy explicitly allowlisted MIME types.  image/svg+xml is
         # excluded because SVG can contain embedded JavaScript; accepting any

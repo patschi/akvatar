@@ -11,12 +11,12 @@ import logging
 from functools import wraps
 from urllib.parse import urlencode
 
-from flask import Blueprint, redirect, url_for, session, render_template
 from authlib.integrations.flask_client import OAuth
+from flask import Blueprint, redirect, render_template, session, url_for
 
-from src.config import oidc_cfg, app_cfg
-from src.i18n import resolve_oidc_locale
 from src.authentik import retrieve_user
+from src.config import app_cfg, oidc_cfg
+from src.i18n import resolve_oidc_locale
 
 log = logging.getLogger("auth")
 

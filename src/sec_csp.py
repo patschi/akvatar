@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 
 from flask import g
 
-from src.config import security_cfg
+from src.config import app_cfg, security_cfg
 
 log = logging.getLogger("csp")
 

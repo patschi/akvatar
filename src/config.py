@@ -5,9 +5,9 @@ Reads config.yml once at import time so every other module can simply
 `from src.config import cfg`.
 """
 
+import logging
 import os
 import sys
-import logging
 from urllib.parse import urlparse
 
 import yaml
