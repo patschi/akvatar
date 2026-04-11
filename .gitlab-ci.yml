@@ -1,3 +1,12 @@
+# Prevent duplicate pipelines when a branch push also has an open MR:
+# run the MR pipeline, skip the redundant branch pipeline.
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
+
 variables:
   SECRET_DETECTION_ENABLED: "true"
   GITLAB_ADVANCED_SAST_ENABLED: "true"
@@ -5,6 +14,8 @@ variables:
   CI_APPLICATION_TAG: "dev"
   GHCR_IMAGE: "ghcr.io/patschi/akvatar"
   GITHUB_PROJECT_URL: "https://github.com/patschi/akvatar"
+  # Exclude non-Python paths from SAST to reduce noise and scan time
+  SAST_EXCLUDED_PATHS: "static, data, docs"
 
 include:
   - template: Security/SAST.gitlab-ci.yml
@@ -12,11 +23,16 @@ include:
   - template: Security/Dependency-Scanning.gitlab-ci.yml
   - template: Jobs/Container-Scanning.gitlab-ci.yml
 
-# Ensure container scanning targets the image just built, not a potentially stale latest
+# Ensure container scanning targets the image just built, not a potentially stale latest.
+# optional: true allows the job to run on scheduled pipelines even when
+# push-container-gitlab is skipped (it will scan the existing :dev image).
 container_scanning:
   needs:
-    - push-container-gitlab
+    - job: push-container-gitlab
+      optional: true
   rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       changes:
         - "**/*.py"
@@ -28,13 +44,27 @@ container_scanning:
       when: always
     - when: never
 
+# Run dependency scanning on scheduled pipelines in addition to requirements.txt changes
+gemnasium-python-dependency_scanning:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+      changes:
+        - "requirements.txt"
+        - ".gitlab-ci.yml"
+      when: always
+    - when: never
+
 stages:
   - lint
   - build-container
   - test
 
-lint-ruff-check:
-  stage: lint
+# Shared base for all lint jobs: pinned Python image, pip cache, and pip self-upgrade.
+# Child jobs reference this before_script with !reference so they can append their
+# own tool installs without losing the upgrade step.
+.pip-base:
   image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
   cache:
     key: pip-$CI_COMMIT_REF_SLUG
@@ -42,9 +72,23 @@ lint-ruff-check:
       - .pip-cache/
   before_script:
     - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
+
+lint-ruff-check:
+  extends: .pip-base
+  stage: lint
+  interruptible: true
+  before_script:
+    - !reference [.pip-base, before_script]
     - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
   script:
+    # Generate GitLab Code Quality report (inline MR diff annotations)
+    - ruff check --output-format=gitlab *.py src/ > ruff-report.json || true
+    # This is the call that actually fails the job on lint errors
     - ruff check *.py src/
+  artifacts:
+    reports:
+      codequality: ruff-report.json
+    when: always
   rules:
     - changes:
         - "**/*.py"
@@ -54,14 +98,11 @@ lint-ruff-check:
     - when: never
 
 lint-ruff-format:
+  extends: .pip-base
   stage: lint
-  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
-  cache:
-    key: pip-$CI_COMMIT_REF_SLUG
-    paths:
-      - .pip-cache/
+  interruptible: true
   before_script:
-    - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
+    - !reference [.pip-base, before_script]
     - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
   script:
     - ruff format --check *.py src/
@@ -73,20 +114,29 @@ lint-ruff-format:
       when: always
     - when: never
 
+# Audits pinned deps against OSV/PyPI Advisory databases.
+# Runs on requirements.txt changes and on scheduled pipelines (nightly CVE discovery).
+# Configure the schedule in GitLab UI → CI/CD → Schedules.
 lint-pip-audit:
+  extends: .pip-base
   stage: lint
-  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
-  cache:
-    key: pip-$CI_COMMIT_REF_SLUG
-    paths:
-      - .pip-cache/
+  interruptible: true
   before_script:
-    - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
+    - !reference [.pip-base, before_script]
     - pip install --quiet --root-user-action=ignore pip-audit --cache-dir .pip-cache
     - pip install --quiet --root-user-action=ignore -r requirements.txt --cache-dir .pip-cache
   script:
     - pip-audit -r requirements.txt
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - unknown_failure
   rules:
+    # Always run on scheduled pipelines (e.g. nightly) for CVE discovery
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
     - changes:
         - "requirements.txt"
         - ".gitlab-ci.yml"
@@ -96,6 +146,7 @@ lint-pip-audit:
 # Push container to GitLab Container Registry
 push-container-gitlab:
   stage: build-container
+  interruptible: true
   image:
     name: martizih/kaniko:v1.27.2-debug@sha256:e6758dd08d8fa31707ace2cb72d3ba437667fe5c709101e48223f655b58b27bd
     entrypoint: [""]
@@ -122,6 +173,12 @@ push-container-gitlab:
       --context="$CI_PROJECT_DIR"
       --dockerfile="$CI_PROJECT_DIR/Dockerfile"
       --destination="$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - unknown_failure
   rules:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       changes:
