@@ -61,6 +61,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`app.log_level`](#applog_level)                                                  | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#appdebug_full)                                                | Boolean | Full debug mode - never enable in production        |
 | [`webserver.proxy_mode`](#webserverproxy_mode)                                    | Boolean | Enable reverse-proxy header support (ProxyFix)      |
+| [`webserver.trusted_hosts`](#webservertrusted_hosts)                              | List    | Restrict which Host header values are accepted      |
 | [`webserver.access_log`](#webserveraccess_log)                                    | Boolean | Log every HTTP request to the console               |
 | [`webserver.workers`](#webserverworkers)                                          | Integer | Number of gunicorn worker processes                 |
 | [`webserver.threads`](#webserverthreads)                                          | Integer | Threads per worker                                  |
@@ -581,6 +582,40 @@ external URLs and `remote_addr` reflects the real client IP.
 
 Set to `false` only when running without a reverse proxy (direct exposure to the internet or local access only). When
 disabled, any forwarded headers sent by clients are ignored.
+
+### `webserver.trusted_hosts`
+
+| Property    | Value                    |
+|-------------|--------------------------|
+| **Type**    | List of strings or null  |
+| **Default** | `null` (no restriction)  |
+
+A list of hostnames (and optional ports) that the application will accept in the HTTP `Host` header. Any request
+whose `Host` value is not in this list is rejected with `HTTP 400 Bad Request`.
+
+Protects against HTTP host-header injection attacks, where a malicious client or misconfigured proxy sends a
+forged `Host` header, potentially poisoning URL generation (e.g. password-reset links constructed with
+`url_for()`) or cache-poisoning downstream caches.
+
+When set to `null` or omitted entirely, no restriction is applied and any `Host` value is accepted (the default).
+An empty list (`[]`) is treated the same as `null` - no restriction.
+
+Each entry is a plain hostname. Port is always stripped before the check, so the port number in the `Host` header
+is never compared:
+
+- `"avatar.example.com"` - matches `avatar.example.com` regardless of port.
+- `".example.com"` - matches any subdomain of `example.com` (e.g. `avatar.example.com`, `api.example.com`).
+
+```yaml
+webserver:
+  trusted_hosts:
+    - "avatar.example.com"
+    # - ".example.com"  # Wildcard: allow any subdomain of example.com
+```
+
+When `proxy_mode` is enabled (the default), `ProxyFix` has already resolved `X-Forwarded-Host` into the request
+host before this check runs, so the list should contain the **public-facing** hostname(s) as seen by clients, not
+internal hostnames.
 
 ### `webserver.access_log`
 

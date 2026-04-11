@@ -183,6 +183,24 @@ def create_app() -> Flask:
             "csp_nonce": generate_csp_nonce,
         }
 
+    # Trusted host restriction
+    # Flask validates Request.host against this list and raises SecurityError
+    # (HTTP 400) automatically when it does not match.  Port is stripped before
+    # comparison; prefix an entry with "." to match all subdomains.
+    _trusted_hosts_raw = web_cfg.get("trusted_hosts", None)
+    _trusted_hosts = (
+        [h.lower().strip() for h in _trusted_hosts_raw if h]
+        if _trusted_hosts_raw
+        else None
+    )
+    if _trusted_hosts:
+        app.config["TRUSTED_HOSTS"] = _trusted_hosts
+        log.info("Trusted hosts restriction active: %s", _trusted_hosts)
+    else:
+        log.warning(
+            "No trusted_hosts restriction configured - any Host header is accepted."
+        )
+
     # Globally allowed HTTP methods - derived once from the URL map so the set
     # is always in sync with whatever routes the application actually handles.
     # Any verb absent from this set is rejected with 405 before Flask routing runs.

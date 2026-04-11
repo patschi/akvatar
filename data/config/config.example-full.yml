@@ -140,6 +140,13 @@ webserver:
   # correct external URLs and remote_addr reflects the real client IP.
   # Set to false only when running without a reverse proxy (e.g. direct exposure).
   proxy_mode: true
+  # Restrict which Host header values the application will accept.
+  # Requests with a Host header not in this list are rejected with HTTP 400.
+  # Protects against HTTP host-header injection attacks.
+  # Leave null (default) or omit to allow any Host header (no restriction).
+  # Each entry is a plain hostname (port is always ignored during the check).
+  # Prefix an entry with "." to match all subdomains (e.g. ".example.com").
+  trusted_hosts: null
   # Log every HTTP request to console (default: false).
   access_log: false
   # Number of gunicorn worker processes.
