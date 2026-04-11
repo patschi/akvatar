@@ -73,13 +73,25 @@ stages:
   before_script:
     - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
 
-lint-ruff-check:
+# Shared base for ruff lint jobs: extends pip-base, pins ruff, and declares the
+# shared trigger rules so check and format stay in sync without repetition.
+.ruff-base:
   extends: .pip-base
   stage: lint
   interruptible: true
   before_script:
     - !reference [.pip-base, before_script]
-    - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
+    - pip install --quiet --root-user-action=ignore ruff==0.15.10 --cache-dir .pip-cache
+  rules:
+    - changes:
+        - "**/*.py"
+        - "pyproject.toml"
+        - ".gitlab-ci.yml"
+      when: always
+    - when: never
+
+lint-ruff-check:
+  extends: .ruff-base
   script:
     # Generate GitLab Code Quality report (inline MR diff annotations)
     - ruff check --output-format=gitlab *.py src/ > ruff-report.json || true
@@ -89,30 +101,11 @@ lint-ruff-check:
     reports:
       codequality: ruff-report.json
     when: always
-  rules:
-    - changes:
-        - "**/*.py"
-        - "pyproject.toml"
-        - ".gitlab-ci.yml"
-      when: always
-    - when: never
 
 lint-ruff-format:
-  extends: .pip-base
-  stage: lint
-  interruptible: true
-  before_script:
-    - !reference [.pip-base, before_script]
-    - pip install --quiet --root-user-action=ignore ruff --cache-dir .pip-cache
+  extends: .ruff-base
   script:
     - ruff format --check *.py src/
-  rules:
-    - changes:
-        - "**/*.py"
-        - "pyproject.toml"
-        - ".gitlab-ci.yml"
-      when: always
-    - when: never
 
 # Audits pinned deps against OSV/PyPI Advisory databases.
 # Runs on pyproject.toml changes and on scheduled pipelines (nightly CVE discovery).
