@@ -295,14 +295,20 @@ def create_app() -> Flask:
 
         @app.after_request
         def _after_request(response):
-            if not request.path.startswith("/static/"):
-                http_log.debug(
-                    "%s %s %s (client=%s)",
-                    request.method,
-                    request.path,
-                    response.status_code,
-                    request.remote_addr,
-                )
+            # Skip static assets
+            if request.path.startswith("/static/"):
+                return response
+            # Skip health check calls from local to reduce noise
+            if request.path == "/healthz" and request.remote_addr == "127.0.0.1":
+                return response
+            # Otherwise, log.
+            http_log.debug(
+                "%s %s %s (client=%s)",
+                request.method,
+                request.path,
+                response.status_code,
+                request.remote_addr,
+            )
             return response
 
     # Template cache warm-up - pre-compile all templates so workers forked
