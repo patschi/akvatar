@@ -16,6 +16,9 @@ of least privilege, the service account should:
 - **Write** only the photo attributes configured in `ldap.photos` (e.g. `thumbnailPhoto`, `jpegPhoto`)
 - Have **no other permissions** (no password reset, no group membership changes, no account creation)
 
+**NOTE:** The service account is NOT able to modify any protected users (e.g. users with `adminCount`=1, or users in 
+group `Domain Admins`)! This is a restriction of Active Directory's permission model.
+
 ## What the application does with LDAP
 
 1. **Bind** as the service account using the configured `bind_dn` and `bind_password`
@@ -339,135 +342,6 @@ Write-Host "  Scope: user objects under $TargetUsersOU" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================================
-# Step 7: Delegate photo attributes on AdminSDHolder (for protected accounts)
-# ============================================================================
-# Users with adminCount=1 (members of Domain Admins, Account Operators, etc.)
-# have their ACLs overwritten by the SDProp process every ~60 minutes using
-# the ACL from the AdminSDHolder container.  OU-level delegation does NOT
-# reach these users.  To allow the service account to update photo attributes
-# on protected accounts, the same ACEs must be added to AdminSDHolder.
-#
-# NOTE: This grants the service account write access to photo attributes on
-# ALL protected accounts in the domain.  If this is not acceptable, the
-# alternative is to remove affected users from protected groups instead.
-
-# AdminSDHolder always lives under the domain root (DC= components only),
-# not under any OU.  Use RootDSE to get the correct domain root DN.
-$DomainRootDN = $RootDSE.Properties["defaultNamingContext"].Value
-$AdminSDHolderDN = "CN=AdminSDHolder,CN=System,$DomainRootDN"
-$AdminSDHolder_DE = [System.DirectoryServices.DirectoryEntry]::new("LDAP://$AdminSDHolderDN")
-$AdminSDHolder_ACL = $AdminSDHolder_DE.ObjectSecurity
-
-foreach ($Attr in $PhotoAttributes) {
-    $AttrGUID = $PhotoAttrGUIDs[$Attr]
-
-    # Write Property (no inheritance - AdminSDHolder ACEs apply directly)
-    $WriteACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-        [System.Security.Principal.IdentityReference]$ServiceAccountSID,
-        [System.DirectoryServices.ActiveDirectoryRights]::WriteProperty,
-        [System.Security.AccessControl.AccessControlType]::Allow,
-        $AttrGUID
-    )
-    $AdminSDHolder_ACL.AddAccessRule($WriteACE)
-
-    # Read Property
-    $ReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-        [System.Security.Principal.IdentityReference]$ServiceAccountSID,
-        [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
-        [System.Security.AccessControl.AccessControlType]::Allow,
-        $AttrGUID
-    )
-    $AdminSDHolder_ACL.AddAccessRule($ReadACE)
-
-    Write-Host "  [AdminSDHolder] Delegated Read/Write Property on '$Attr'" -ForegroundColor Green
-}
-
-# Read Property on objectSid
-$ReadSidACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-    [System.Security.Principal.IdentityReference]$ServiceAccountSID,
-    [System.DirectoryServices.ActiveDirectoryRights]::ReadProperty,
-    [System.Security.AccessControl.AccessControlType]::Allow,
-    $ObjectSidGUID
-)
-$AdminSDHolder_ACL.AddAccessRule($ReadSidACE)
-
-# GenericRead (for searching)
-$GenericReadACE = [System.DirectoryServices.ActiveDirectoryAccessRule]::new(
-    [System.Security.Principal.IdentityReference]$ServiceAccountSID,
-    [System.DirectoryServices.ActiveDirectoryRights]::GenericRead,
-    [System.Security.AccessControl.AccessControlType]::Allow
-)
-$AdminSDHolder_ACL.AddAccessRule($GenericReadACE)
-
-if ($DryRun) {
-    Write-Host "[DRY RUN] Would commit ACEs to AdminSDHolder" -ForegroundColor DarkYellow
-} else {
-    $AdminSDHolder_DE.ObjectSecurity = $AdminSDHolder_ACL
-    $AdminSDHolder_DE.CommitChanges()
-}
-$AdminSDHolder_DE.Dispose()
-
-Write-Host "Delegated permissions on AdminSDHolder for protected accounts" -ForegroundColor Green
-
-# ============================================================================
-# Step 8: Trigger SDProp to propagate permissions to protected accounts
-# ============================================================================
-# SDProp runs ONLY on the PDC Emulator (FSMO role holder).  The
-# runProtectAdminGroupsTask rootDSE operation must target that specific DC
-# or it will silently do nothing.  If this script is running on the PDCe we
-# trigger it directly; otherwise we instruct the user to do so manually.
-
-$PDCe = (Get-ADDomain).PDCEmulator
-$CurrentHost = "$env:COMPUTERNAME.$DomainFQDN"
-
-Write-Host "PDC Emulator: $PDCe" -ForegroundColor Cyan
-Write-Host "Current host: $CurrentHost" -ForegroundColor Cyan
-Write-Host ""
-
-if ($PDCe -eq $CurrentHost) {
-    Write-Host "This machine is the PDC Emulator - triggering SDProp locally..." -ForegroundColor Green
-
-    if ($DryRun) {
-        Write-Host "[DRY RUN] Would trigger SDProp via rootDSE" -ForegroundColor DarkYellow
-    } else {
-        $PDCeRootDSE = [System.DirectoryServices.DirectoryEntry]::new("LDAP://localhost/RootDSE")
-        $PDCeRootDSE.Put("runProtectAdminGroupsTask", 1)
-        $PDCeRootDSE.SetInfo()
-
-        Write-Host "SDProp triggered. Waiting 15 seconds for propagation..." -ForegroundColor Green
-        Start-Sleep -Seconds 15
-        Write-Host "SDProp propagation complete (verify with the commands below)." -ForegroundColor Green
-    }
-} else {
-    Write-Host "WARNING: This machine is NOT the PDC Emulator." -ForegroundColor Yellow
-    Write-Host "SDProp can only be triggered on the PDCe ($PDCe)." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "Run the following command ON the PDC Emulator to propagate" -ForegroundColor Yellow
-    Write-Host "AdminSDHolder permissions to all protected accounts:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  Invoke-Command -ComputerName $PDCe -ScriptBlock {" -ForegroundColor White
-    Write-Host "      `$RootDSE = [ADSI]'LDAP://localhost/RootDSE'" -ForegroundColor White
-    Write-Host "      `$RootDSE.Put('runProtectAdminGroupsTask', 1)" -ForegroundColor White
-    Write-Host "      `$RootDSE.SetInfo()" -ForegroundColor White
-    Write-Host "  }" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Or RDP into $PDCe and run:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  `$RootDSE = [ADSI]'LDAP://localhost/RootDSE'" -ForegroundColor White
-    Write-Host "  `$RootDSE.Put('runProtectAdminGroupsTask', 1)" -ForegroundColor White
-    Write-Host "  `$RootDSE.SetInfo()" -ForegroundColor White
-    Write-Host ""
-    Write-Host "Without this, SDProp will propagate automatically within ~60 minutes." -ForegroundColor Yellow
-}
-Write-Host ""
-
-# ALTERNATIVE: If the above does not work, you can also trigger SDProp by 
-# restarting the NTDS service. Note that this will cause a brief interruption 
-# in Active Directory services, so it should be done during a maintenance window.
-# Option 2: Restart the NTDS service (causes brief AD interruption)
-# Restart-Service NTDS -Force
-
-# ============================================================================
 # Summary
 # ============================================================================
 
@@ -631,24 +505,6 @@ $OU.CommitChanges()
 $OU.Dispose()
 
 Write-Host "Removed delegated permissions from target OU." -ForegroundColor Green
-
-# Remove delegated ACEs from AdminSDHolder
-$RootDSE = [System.DirectoryServices.DirectoryEntry]::new("LDAP://RootDSE")
-$DomainRootDN = $RootDSE.Properties["defaultNamingContext"].Value
-$AdminSDHolder = [System.DirectoryServices.DirectoryEntry]::new("LDAP://CN=AdminSDHolder,CN=System,$DomainRootDN")
-$AdminSDHolder_ACL = $AdminSDHolder.ObjectSecurity
-
-$AdminSDHolder_ACL.Access | Where-Object {
-    $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]) -eq $SID
-} | ForEach-Object {
-    $AdminSDHolder_ACL.RemoveAccessRule($_) | Out-Null
-}
-
-$AdminSDHolder.ObjectSecurity = $AdminSDHolder_ACL
-$AdminSDHolder.CommitChanges()
-$AdminSDHolder.Dispose()
-
-Write-Host "Removed delegated permissions from AdminSDHolder." -ForegroundColor Green
 
 # Delete the service account
 Remove-ADUser -Identity "sa-akvatar" -Confirm:$false
