@@ -42,7 +42,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   logs what would have happened instead
 - **CSRF protection**: per-session token validated server-side via `X-CSRF-Token` header
   with `secrets.compare_digest()` on all state-changing requests
-- **Client-side session liveness check**: dashboard polls `/api/session` every 60 s and
+- **Client-side session liveness check**: dashboard polls `/api/heartbeat` every 60 s and
   redirects to the login page with a clear "session expired" notice before form submission
 - **Rate limiting**: per-IP point budget on avatar and metadata endpoints, with CIDR
   whitelist support and a configurable 404 penalty

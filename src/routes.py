@@ -7,7 +7,7 @@ Contains:
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by security.metadata_access)
-  - GET  /api/session                   -> lightweight session liveness probe (JSON)
+  - GET  /api/heartbeat                 -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
 """
 
@@ -200,8 +200,8 @@ def serve_avatar_metadata(filename):
 
 
 # Session liveness probe (used by the dashboard for client-side expiry detection)
-@routes_bp.route("/api/session", methods=["GET"])
-def api_session_check():
+@routes_bp.route("/api/heartbeat", methods=["GET"])
+def api_heartbeat():
     """Return 200 {"alive": true} while the session is valid, 401 {"alive": false} when expired.
 
     Called periodically by the dashboard JS so the user is redirected to the login

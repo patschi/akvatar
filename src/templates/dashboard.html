@@ -154,7 +154,7 @@
     const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('reset_avatar.api_remove_avatar') }}";
     const GRAVATAR_ENDPOINT       = "{{ url_for('import.api_fetch_gravatar') }}";
     const URL_FETCH_ENDPOINT      = "{{ url_for('import.api_fetch_url') }}";
-    const SESSION_CHECK_ENDPOINT  = "{{ url_for('routes.api_session_check') }}";
+    const SESSION_CHECK_ENDPOINT  = "{{ url_for('routes.api_heartbeat') }}";
     const LOGIN_URL               = "{{ url_for('routes.login_page') }}";
     const MAX_AVATAR_SIZE         = {{ max_size }};
     const CSRF_TOKEN              = "{{ csrf_token() }}";

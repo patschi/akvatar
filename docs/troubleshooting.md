@@ -99,7 +99,7 @@ image or a default placeholder.
 ### Login page shows "Your session has expired"
 
 **What it means:** While the dashboard was open, the server-side session expired (default timeout is 30 minutes of
-inactivity). The dashboard's background session-liveness check (`/api/session`, polled every 60 s) detected the
+inactivity). The dashboard's background session-liveness check (`/api/heartbeat`, polled every 60 s) detected the
 expiry and redirected to the login page with `?error=session_expired`.
 
 **Fix:** This is expected behaviour — simply sign in again. If sessions expire faster than expected, check

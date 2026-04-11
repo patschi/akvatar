@@ -1,5 +1,5 @@
 /**
- * dashboard-session-check.js – Periodically probe /api/session and redirect
+ * dashboard-session-check.js – Periodically probe /api/heartbeat and redirect
  * to the login page with a session-expired notice if the server-side session
  * has expired.
  *
@@ -93,10 +93,17 @@ function onVisibilityChange() {
     }
 }
 
-document.addEventListener("visibilitychange", onVisibilityChange);
+// Only activate session checks when the user is logged in.
+// SESSION_CHECK_ENDPOINT and LOGIN_URL are injected by the dashboard template's
+// inline script block, so their presence confirms an authenticated page context.
+// If those constants are absent (e.g. script accidentally loaded on login/logged-out
+// page), do nothing.
+if (typeof SESSION_CHECK_ENDPOINT !== "undefined" && typeof LOGIN_URL !== "undefined") {
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
-// Start polling on page load if the tab is already visible.
-// No immediate probe on load – the server already validated the session to render the page.
-if (document.visibilityState !== "hidden") {
-    startSessionCheck(false);
+    // Start polling on page load if the tab is already visible.
+    // No immediate probe on load – the server already validated the session to render the page.
+    if (document.visibilityState !== "hidden") {
+        startSessionCheck(false);
+    }
 }
