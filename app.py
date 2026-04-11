@@ -183,10 +183,17 @@ def create_app() -> Flask:
             "csp_nonce": generate_csp_nonce,
         }
 
-    # Globally allowed HTTP methods - any other verb is rejected with 405
-    # before Flask routing even runs.  Routes declare their own methods= too;
-    # this is a defence-in-depth layer that covers future blueprints as well.
-    _ALLOWED_METHODS = frozenset({"GET", "HEAD", "POST"})
+    # Globally allowed HTTP methods - derived once from the URL map so the set
+    # is always in sync with whatever routes the application actually handles.
+    # Any verb absent from this set is rejected with 405 before Flask routing runs.
+    # NOTE: Flask automatically adds HEAD (for every GET route) and OPTIONS
+    # (for every route) to the map, so both will be present in the derived set.
+    _ALLOWED_METHODS = frozenset(
+        method
+        for rule in app.url_map.iter_rules()
+        for method in rule.methods
+    )
+    log.debug("Allowed HTTP methods derived from route map: %s", sorted(_ALLOWED_METHODS))
 
     @app.before_request
     def _reject_disallowed_methods():
