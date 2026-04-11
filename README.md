@@ -45,8 +45,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   redirects to the login page with a clear "session expired" notice before form submission
 - **Rate limiting**: per-IP point budget on avatar and metadata endpoints, with CIDR
   whitelist support and a configurable 404 penalty
-- **Security response headers**: `X-Content-Type-Options`, `X-Frame-Options` (HTML
-  only), and `Referrer-Policy` set on every response
+- **Security response headers**: `Content-Security-Policy`, `X-Content-Type-Options`,
+  `X-Frame-Options` (HTML only), and `Referrer-Policy` set on every response
 - **In-memory static file cache**: all static assets are read once at startup and served
   from RAM with ETag/304 support; no per-request disk I/O
 - **Health check endpoint**: `GET /healthz` returns `200 OK` for load-balancer probes

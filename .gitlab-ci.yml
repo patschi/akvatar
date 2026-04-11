@@ -19,6 +19,8 @@ variables:
   # uv version used in all lint jobs. Renovate tracks this via PyPI and updates
   # it in the same PR as the matching COPY --from=ghcr.io/astral-sh/uv in Dockerfile.
   UV_VERSION: "0.11.6"
+  # ruff version used in lint jobs. Renovate tracks this via PyPI.
+  RUFF_VERSION: "0.15.10"
 
 include:
   - template: Security/SAST.gitlab-ci.yml
@@ -72,7 +74,7 @@ stages:
 # UV_CACHE_DIR points uv to the GitLab CI cache directory so tool downloads
 # survive between pipeline runs. UV_NO_PROGRESS suppresses the progress bar.
 .uv-base:
-  image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
+  image: python:3.13-slim-trixie@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
   variables:
     UV_CACHE_DIR: .uv-cache
     UV_NO_PROGRESS: "1"
@@ -105,9 +107,9 @@ lint-ruff-check:
   extends: .ruff-base
   script:
     # Generate GitLab Code Quality report (inline MR diff annotations)
-    - uvx ruff@0.15.10 check --output-format=gitlab *.py src/ > ruff-report.json || true
+    - uvx ruff@${RUFF_VERSION} check --output-format=gitlab *.py src/ > ruff-report.json || true
     # This is the call that actually fails the job on lint errors
-    - uvx ruff@0.15.10 check *.py src/
+    - uvx ruff@${RUFF_VERSION} check *.py src/
   artifacts:
     reports:
       codequality: ruff-report.json
@@ -116,7 +118,7 @@ lint-ruff-check:
 lint-ruff-format:
   extends: .ruff-base
   script:
-    - uvx ruff@0.15.10 format --check *.py src/
+    - uvx ruff@${RUFF_VERSION} format --check *.py src/
 
 # Audits pinned deps against OSV/PyPI Advisory databases.
 # Runs on pyproject.toml/uv.lock changes and on scheduled pipelines (nightly CVE discovery).
