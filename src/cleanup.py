@@ -29,7 +29,7 @@ Safety:
   - If the Authentik API returns zero users (e.g. due to an expired token or
     network error), the cleanup aborts entirely to prevent accidental mass
     deletion.
-  - Respects dry_run mode from config.yml — when enabled, only logs what
+  - Respects dry_run mode from config.yml - when enabled, only logs what
     would be deleted without touching the filesystem.
 
 This module is used in two ways:
@@ -255,7 +255,7 @@ def run_cleanup() -> int:
       3. Remove orphaned files (obsolete sizes/formats, images without metadata).
 
     Matching is done by ``user_pk`` (Authentik's integer primary key), which
-    is immutable — unlike usernames, it survives renames and reveals no PII.
+    is immutable - unlike usernames, it survives renames and reveals no PII.
 
     Returns the total number of files removed (or that would be removed
     in dry-run mode).
@@ -424,7 +424,7 @@ def _cleanup_loop() -> None:
     """
     Sleep until the next cron-scheduled time, run cleanup, repeat.
 
-    Called as the target of a daemon thread — it exits automatically when the
+    Called as the target of a daemon thread - it exits automatically when the
     main process shuts down.
     """
     if _run_on_startup:
@@ -451,7 +451,7 @@ def _cleanup_loop() -> None:
         try:
             run_cleanup()
         except Exception:
-            # Log and continue — a transient API failure should not kill the
+            # Log and continue - a transient API failure should not kill the
             # cleanup thread permanently.
             log.exception("Cleanup iteration failed.")
 
@@ -461,7 +461,7 @@ def start_cleanup_thread() -> None:
     Start the background cleanup thread if a cron schedule is configured.
 
     Uses a daemon thread so it is automatically terminated when the main
-    process exits — no explicit shutdown logic needed.
+    process exits - no explicit shutdown logic needed.
     """
     if not _cron_expr:
         log.info("Cleanup is disabled (cleanup.interval is empty).")

@@ -3,7 +3,7 @@ run_app.py - Production entrypoint (gunicorn).
 
 Reads webserver settings from config.yml (host, port, workers, TLS) and
 launches gunicorn with the appropriate arguments.  The cleanup thread is
-started here in the master process so it runs exactly once — gunicorn
+started here in the master process so it runs exactly once - gunicorn
 workers are forked afterwards and do not duplicate it.
 
 Can be used both inside Docker and directly on the host:

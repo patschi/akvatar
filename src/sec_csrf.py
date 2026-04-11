@@ -49,7 +49,7 @@ def validate_csrf_token():
     """
     expected = session.get(_SESSION_KEY, None)
     provided = request.headers.get(_HEADER_NAME, "")
-    # Explicitly reject when either value is absent — a falsy `expected` (e.g.
+    # Explicitly reject when either value is absent - a falsy `expected` (e.g.
     # empty string or None) must never be treated as "validation passed".
     # secrets.compare_digest is only reached when both values are non-empty.
     if not expected or not provided or not secrets.compare_digest(expected, provided):

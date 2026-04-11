@@ -11,7 +11,7 @@ points (e.g. a 404 costs 5 points total) to penalise URL-guessing attempts.
 Points are recorded as (timestamp, cost) pairs in a sliding window.
 
 Worker request-handling threads only read totals and append new entries
-through the shared Manager proxy — they never prune or remove tracking
+through the shared Manager proxy - they never prune or remove tracking
 entries.  A single eviction thread in the master process periodically prunes
 expired entries and removes empty tracking records, which is the only
 mechanism that unblocks rate-limited IPs.
@@ -84,7 +84,7 @@ class _RateLimiter:
         """
         Record a request from *ip* costing *cost* points and test the limit.
 
-        Only counts and appends — expired entries are never removed here.
+        Only counts and appends - expired entries are never removed here.
         Unblocking is handled exclusively by the eviction thread in the
         master process.
 
@@ -100,7 +100,7 @@ class _RateLimiter:
             total_points = sum(c for _, c in entries)
 
             if total_points + cost > self._cfg.max_points:
-                # Denied — estimate when eviction will free enough points.
+                # Denied - estimate when eviction will free enough points.
                 # The oldest entry must first expire (age past the window),
                 # then the eviction thread must run to actually prune it.
                 if entries:
@@ -120,7 +120,7 @@ class _RateLimiter:
                 )
                 return False, retry_after
 
-            # Allowed — record this request
+            # Allowed - record this request
             entries.append((now, cost))
             self._entries[ip] = entries  # write back through Manager proxy
             total_points += cost
@@ -207,7 +207,7 @@ class _RateLimiter:
                         )
                         evicted_ips.append(ip)
                 elif not entries:
-                    # Empty record with nothing to prune — clean up
+                    # Empty record with nothing to prune - clean up
                     del self._entries[ip]
                     evicted_ips.append(ip)
 
@@ -215,7 +215,7 @@ class _RateLimiter:
 
         if pruned_total or evicted_ips:
             log.debug(
-                "[%s]: eviction pass — pruned %d entries, evicted %d IP(s), %d active.",
+                "[%s]: eviction pass - pruned %d entries, evicted %d IP(s), %d active.",
                 self._cfg.name,
                 pruned_total,
                 len(evicted_ips),
@@ -223,7 +223,7 @@ class _RateLimiter:
             )
         else:
             log.debug(
-                "[%s]: eviction pass — nothing to evict (%d active).",
+                "[%s]: eviction pass - nothing to evict (%d active).",
                 self._cfg.name,
                 remaining,
             )
@@ -416,7 +416,7 @@ def init_rate_limiting(app: Flask) -> None:
         """Return the endpoint type for a rate-limited path, or None if not rate-limited."""
         if not path.startswith("/user-avatars/"):
             return None
-        # Metadata paths contain /_metadata/ — check before the general avatar match
+        # Metadata paths contain /_metadata/ - check before the general avatar match
         return ENDPOINT_METADATA if "/_metadata/" in path else ENDPOINT_AVATARS
 
     @app.before_request
@@ -459,7 +459,7 @@ def init_rate_limiting(app: Flask) -> None:
     # With gunicorn --preload, create_app() runs in the master before workers
     # are forked.  The eviction thread stays in the master and operates on
     # shared state via the multiprocessing.Manager server process.  Workers
-    # never run eviction — they only read/append through Manager proxies.
+    # never run eviction - they only read/append through Manager proxies.
     _manager.start_eviction_thread()
 
     log.info("Rate limiting registered on avatar and metadata endpoints.")

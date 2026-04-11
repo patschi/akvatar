@@ -95,7 +95,7 @@ def validate_upload(file) -> Image.Image:
         raise ValidationError(t("error.empty_file"))
 
     # Check magic bytes to prevent fake extensions (e.g. .jpg that is actually a .exe).
-    # magic_err holds a technical description kept for the log — the user sees a
+    # magic_err holds a technical description kept for the log - the user sees a
     # generic translated message that does not expose internal format details.
     magic_err = check_magic_bytes(raw_bytes)
     if magic_err:
@@ -106,7 +106,7 @@ def validate_upload(file) -> Image.Image:
     # Decode with Pillow and verify format
     try:
         image = Image.open(io.BytesIO(raw_bytes))
-        # .load() forces full pixel decoding — catches truncated/corrupt files
+        # .load() forces full pixel decoding - catches truncated/corrupt files
         # that Image.open() (header-only) would not detect.
         image.load()
     except Exception as exc:

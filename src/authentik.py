@@ -74,13 +74,13 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
       (e.g. ``attributes``), their contents are shallow-merged so that
       only the specific sub-keys in *data* are updated.
 
-    Returns ``(pre_patch, post_patch)`` — the user data before and after the
+    Returns ``(pre_patch, post_patch)`` - the user data before and after the
     update.  In dry-run mode *post_patch* equals *pre_patch* (no PATCH is
     sent).  Respects dry-run mode.
     """
     url = f"{_users_url}{pk}/"
 
-    # Fetch current user data (always performed — callers may rely on the
+    # Fetch current user data (always performed - callers may rely on the
     # returned pre-patch dict even in dry-run mode).
     log.debug("GET %s - fetching current user data for patch.", url)
     get_resp = _session.get(url, timeout=_TIMEOUT)
@@ -317,7 +317,7 @@ def list_active_user_pks() -> set[int]:
     to identify deactivated users (present in ``list_all_user_pks`` but absent
     here) alongside deleted users (absent from ``list_all_user_pks`` entirely).
     When both deleted and deactivated cleanup are enabled, only this function
-    is called — anything not in the active set is cleaned up.
+    is called - anything not in the active set is cleaned up.
     """
     pks = _list_user_pks(active_only=True)
     log.debug("Fetched %d active user PK(s) from Authentik.", len(pks))

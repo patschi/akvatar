@@ -46,7 +46,7 @@ _photos = ldap_cfg.get("photos", [])
 
 # Pre-build one ldap3.Server object per configured URL so they are reused
 # across connections.  Each Server object holds DNS resolution, schema info,
-# and TLS config — all of which are static for the lifetime of the process.
+# and TLS config - all of which are static for the lifetime of the process.
 #
 # Per-URL port and SSL are derived from the URL itself when present:
 #   ldaps://host      → SSL=True,  port=_default_port

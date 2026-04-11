@@ -3,7 +3,7 @@ image_import.py - Remote image import routes (Gravatar and URL).
 
 Provides proxy endpoints that fetch images from external sources on behalf
 of the authenticated user.  Proxying is required so that fetched images are
-served from the same origin as the app — without this, the browser marks
+served from the same origin as the app - without this, the browser marks
 cross-origin images drawn on an HTML canvas as "tainted", which prevents
 Cropper.js from reading pixel data via ``getCroppedCanvas().toBlob()``.
 
@@ -105,7 +105,7 @@ def _resolves_to_private_ip(hostname: str) -> bool:
     try:
         results = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
-        # DNS resolution failed — not a private IP issue; let the HTTP
+        # DNS resolution failed - not a private IP issue; let the HTTP
         # request fail naturally with a more descriptive error.
         return False
 
@@ -142,7 +142,7 @@ def _safe_fetch(url: str) -> http_requests.Response:
     for hop in range(_MAX_REDIRECTS + 1):
         parsed = urlparse(url)
 
-        # Only HTTP(S) is allowed at every hop — not file:// or other schemes
+        # Only HTTP(S) is allowed at every hop - not file:// or other schemes
         if parsed.scheme not in ("http", "https"):
             raise ValueError(
                 f"Redirect to non-HTTP(S) scheme blocked: {parsed.scheme!r}"
@@ -180,7 +180,7 @@ def _safe_fetch(url: str) -> http_requests.Response:
             )
             continue
 
-        # Non-redirect response — return it to the caller
+        # Non-redirect response - return it to the caller
         return resp
 
     # Unreachable, but satisfies static analysis
@@ -253,7 +253,7 @@ def api_fetch_gravatar():
         raw_ct = resp.headers.get("Content-Type", "image/jpeg")
         content_type = raw_ct.split(";")[0].strip().lower()
 
-        # Only proxy MIME types we explicitly accept — image/svg+xml and
+        # Only proxy MIME types we explicitly accept - image/svg+xml and
         # others that can carry scripts are rejected at this layer.
         if content_type not in _ALLOWED_PROXY_MIMETYPES:
             resp.close()

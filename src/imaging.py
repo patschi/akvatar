@@ -91,7 +91,7 @@ def normalize_image(image: Image.Image) -> Image.Image:
         image.height,
     )
 
-    # Rebuild from raw pixels — discards EXIF, ICC profiles, XMP, IPTC, and any
+    # Rebuild from raw pixels - discards EXIF, ICC profiles, XMP, IPTC, and any
     # other ancillary chunks that could leak PII or carry hidden payloads.
     image = Image.frombytes(image.mode, image.size, image.tobytes())
     log.debug("Metadata stripped - working with clean pixel-only image.")
