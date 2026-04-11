@@ -42,9 +42,11 @@ def init_oauth(app):
         + "/.well-known/openid-configuration",
         client_kwargs={"scope": OIDC_SCOPES},
     )
+    _cid = oidc_cfg["client_id"]
+    _cid_censored = _cid[:3] + "***" + _cid[-3:]
     log.info(
         "OAuth client registered (client_id=%s, scopes=%s).",
-        oidc_cfg["client_id"],
+        _cid_censored,
         OIDC_SCOPES,
     )
     # Log the redirect URI that must be registered in the Authentik OAuth application.
