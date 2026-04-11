@@ -10,9 +10,12 @@
  * Network errors are treated as transient and silently ignored so a momentary
  * connectivity blip does not log the user out.
  *
- * As a side-effect, each successful probe refreshes the session cookie
- * (Flask's default SESSION_REFRESH_EACH_REQUEST behaviour), so the session
- * stays alive as long as the dashboard is open in the browser.
+ * Each successful probe refreshes the session cookie (Flask's default
+ * SESSION_REFRESH_EACH_REQUEST behaviour), keeping the session alive while the
+ * tab is visible. When the tab moves to the background the interval is paused
+ * so the session is no longer actively kept alive. When the tab returns to
+ * the foreground an immediate probe is fired (to catch any expiry that happened
+ * while checks were paused) and then normal polling resumes.
  *
  * Depends on server-provided constants injected inline by the template
  * before this script is loaded:
@@ -21,6 +24,9 @@
 
 // How often to probe the server (milliseconds). 60 s balances freshness with overhead.
 var SESSION_CHECK_INTERVAL_MS = 60000;
+
+// Active interval handle, or null when paused.
+var _sessionCheckTimer = null;
 
 /** Redirect to the login page with the session_expired error key. */
 function redirectSessionExpired() {
@@ -47,6 +53,50 @@ function checkSession() {
     });
 }
 
-// Start polling after the first interval so a page-load probe isn't wasted
-// (the server already validated the session to render the dashboard).
-setInterval(checkSession, SESSION_CHECK_INTERVAL_MS);
+/**
+ * Start the polling interval.
+ * If checkNow is true, an immediate probe is fired before the first interval tick.
+ * Safe to call when already running (no-op).
+ */
+function startSessionCheck(checkNow) {
+    if (_sessionCheckTimer !== null) {
+        return;
+    }
+    if (checkNow) {
+        // Tab just became visible – probe immediately to detect any expiry that
+        // occurred while checks were paused, then continue with the normal cadence.
+        checkSession();
+    }
+    _sessionCheckTimer = setInterval(checkSession, SESSION_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Pause the polling interval.
+ * Safe to call when already paused (no-op).
+ */
+function stopSessionCheck() {
+    if (_sessionCheckTimer === null) {
+        return;
+    }
+    clearInterval(_sessionCheckTimer);
+    _sessionCheckTimer = null;
+}
+
+/** React to the tab becoming visible or hidden. */
+function onVisibilityChange() {
+    if (document.visibilityState === "hidden") {
+        // Tab went to background – stop keeping the session alive.
+        stopSessionCheck();
+    } else {
+        // Tab returned to foreground – check immediately, then resume normal cadence.
+        startSessionCheck(true);
+    }
+}
+
+document.addEventListener("visibilitychange", onVisibilityChange);
+
+// Start polling on page load if the tab is already visible.
+// No immediate probe on load – the server already validated the session to render the page.
+if (document.visibilityState !== "hidden") {
+    startSessionCheck(false);
+}
