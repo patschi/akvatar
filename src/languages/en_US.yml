@@ -27,7 +27,7 @@ settings:
 # Login page
 login:
   heading: "Update your avatar"
-  subtitle: "Sign in with your organisation account to upload and manage your profile picture."
+  subtitle: "Sign in with your organization account to upload and manage your profile picture."
   button: "Sign in"
   error_oidc_failed: "Authentication failed. Please try again or contact your administrator."
   error_pk_failed: "Login could not be completed — unable to retrieve your account. Please try again or contact your administrator."

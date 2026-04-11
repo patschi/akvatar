@@ -13,7 +13,7 @@ How user matching works:
   - A direct integer-equality check determines whether the user still exists
     and whether they are active.
 
-Deletion behaviour (Phase 1) is controlled by two config flags:
+Deletion behavior (Phase 1) is controlled by two config flags:
   - ``cleanup.when_user_deleted`` (default true): remove avatar sets for users
     that no longer exist in Authentik at all.
   - ``cleanup.when_user_deactivated`` (default false): also remove avatar sets
@@ -297,7 +297,7 @@ def run_cleanup() -> int:
             "Phase 1 skipped (cleanup.when_user_deleted=false, cleanup.when_user_deactivated=false)."
         )
     else:
-        # Fetch user PKs from Authentik.  Minimise API calls based on which
+        # Fetch user PKs from Authentik.  Minimize API calls based on which
         # flags are set:
         #   - both flags: only active PKs needed (clean everything not active)
         #   - deleted only: all PKs needed (clean those absent from Authentik)

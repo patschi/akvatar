@@ -68,7 +68,7 @@ MAX_DIMENSION = 8192  # Each axis capped independently; Pillow caps total pixel 
 
 def normalize_image(image: Image.Image) -> Image.Image:
     """
-    Apply EXIF orientation, strip all metadata, and normalize the colour mode.
+    Apply EXIF orientation, strip all metadata, and normalize the color mode.
 
     Returns a clean pixel-only image in RGB or RGBA mode, ready for resizing.
     This is the shared preprocessing step used before any save/resize operation.
@@ -105,7 +105,7 @@ def normalize_image(image: Image.Image) -> Image.Image:
 
 def check_magic_bytes(raw_bytes: bytes) -> str | None:
     """
-    Verify that `raw_bytes` start with a recognised image signature.
+    Verify that `raw_bytes` start with a recognized image signature.
 
     Returns None on success or a human-readable error string on failure.
     This runs *before* Pillow's parser, acting as a first gate against files

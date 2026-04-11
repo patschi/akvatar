@@ -70,7 +70,7 @@ class ValidationError(Exception):
 
 def validate_upload(file) -> Image.Image:
     """
-    Run all validation checks on the uploaded file and return a normalised
+    Run all validation checks on the uploaded file and return a normalized
     PIL Image ready for processing.
 
     Raises ``ValidationError`` with a user-facing message on failure.
@@ -114,7 +114,7 @@ def validate_upload(file) -> Image.Image:
         raise ValidationError(t("error.decode_failed")) from exc
 
     # Only allow formats we explicitly intend to handle (a .png could decode
-    # as TIFF if Pillow recognises the actual content).
+    # as TIFF if Pillow recognizes the actual content).
     if image.format not in ALLOWED_FORMATS:
         log.warning("Decoded image format %r is not in the allow-list.", image.format)
         raise ValidationError(t("error.format_not_allowed"))
@@ -137,7 +137,7 @@ def validate_upload(file) -> Image.Image:
         image.format,
     )
 
-    # Normalise: apply EXIF orientation, strip metadata, ensure RGB(A)
+    # Normalize: apply EXIF orientation, strip metadata, ensure RGB(A)
     return normalize_image(image)
 
 
@@ -340,7 +340,7 @@ def generate_sse(user: dict, image: Image.Image):
     Generator that drives the upload pipeline and yields SSE frames.
 
     ``user`` is the session user dict (must contain ``pk`` and ``username``).
-    ``image`` is the already-validated and normalised PIL Image.
+    ``image`` is the already-validated and normalized PIL Image.
     """
     username = user["username"]
     user_pk = user["pk"]

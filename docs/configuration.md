@@ -244,7 +244,7 @@ See [Flask Session Key](flask-session-key.md) for generation instructions.
 Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs
 browsers to transmit the cookie only over HTTPS connections.
 
-| Value   | Behaviour                                                                                                         |
+| Value   | Behavior                                                                                                          |
 |---------|-------------------------------------------------------------------------------------------------------------------|
 | `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
 | `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
@@ -279,7 +279,7 @@ Metadata files contain the user's Authentik PK (`user_pk`) alongside upload time
 formats. Exposing them to other users or the public could allow someone to enumerate user PKs if
 they can observe or predict filenames.
 
-| Value        | Behaviour                                                                                                                                                                                                                                                                                          |
+| Value        | Behavior                                                                                                                                                                                                                                                                                           |
 |--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user - or a request for a file belonging to a different user - receives a `404` so the caller cannot distinguish "not found" from "not yours". |
 | `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
@@ -723,8 +723,8 @@ of Python's `ssl.TLSVersion` enum. Supported values as of Python 3.7+:
 | `TLSv1_1` | TLS 1.1  | Deprecated and disabled in most Python builds. Insecure. |
 | `TLSv1`   | TLS 1.0  | Deprecated and disabled in most Python builds. Insecure. |
 
-New TLS versions added to Python's `ssl` module are automatically recognised without requiring
-application updates. If an unrecognised value is configured, the application refuses to start with
+New TLS versions added to Python's `ssl` module are automatically recognized without requiring
+application updates. If an unrecognized value is configured, the application refuses to start with
 a FATAL error listing all valid values.
 
 **Note:** Has no effect when `webserver.tls.cert` and `webserver.tls.key` are not set.

@@ -51,7 +51,7 @@ _photos = ldap_cfg.get("photos", [])
 # Per-URL port and SSL are derived from the URL itself when present:
 #   ldaps://host      → SSL=True,  port=_default_port
 #   ldap://host:389   → SSL=False, port=389
-# Unrecognised or absent scheme falls back to _default_ssl / _default_port.
+# Unrecognized or absent scheme falls back to _default_ssl / _default_port.
 _servers: list[ldap3.Server] = []
 if _enabled:
     for _url in _server_urls:

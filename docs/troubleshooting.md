@@ -102,7 +102,7 @@ image or a default placeholder.
 inactivity). The dashboard's background session-liveness check (`/api/heartbeat`, polled every 60 s) detected the
 expiry and redirected to the login page with `?error=session_expired`.
 
-**Fix:** This is expected behaviour — simply sign in again. If sessions expire faster than expected, check
+**Fix:** This is expected behavior - simply sign in again. If sessions expire faster than expected, check
 [`security.web_session_lifetime_seconds`](configuration.md#securityweb_session_lifetime_seconds) in `config.yml`.
 
 ---

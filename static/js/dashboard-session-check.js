@@ -11,7 +11,7 @@
  * connectivity blip does not log the user out.
  *
  * Each successful probe refreshes the session cookie (Flask's default
- * SESSION_REFRESH_EACH_REQUEST behaviour), keeping the session alive while the
+ * SESSION_REFRESH_EACH_REQUEST behavior), keeping the session alive while the
  * tab is visible. When the tab moves to the background the interval is paused
  * so the session is no longer actively kept alive. When the tab returns to
  * the foreground an immediate probe is fired (to catch any expiry that happened

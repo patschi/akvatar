@@ -277,7 +277,7 @@ def api_fetch_gravatar():
             return jsonify({"error": "not_found"}), 404
         resp.raise_for_status()
 
-        # Normalise content-type to the bare MIME type (strip parameters)
+        # Normalize content-type to the bare MIME type (strip parameters)
         raw_ct = resp.headers.get("Content-Type", "image/jpeg")
         content_type = raw_ct.split(";")[0].strip().lower()
 
@@ -365,7 +365,7 @@ def api_fetch_url():
         resp = _safe_fetch(url)
         resp.raise_for_status()
 
-        # Normalise content-type to the bare MIME type (strip parameters)
+        # Normalize content-type to the bare MIME type (strip parameters)
         content_type = (
             resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
         )

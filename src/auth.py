@@ -26,7 +26,7 @@ OIDC_SCOPES = "openid profile email"
 # Blueprint so auth routes can be registered cleanly on the app
 auth_bp = Blueprint("auth", __name__)
 
-# OAuth / OIDC client (initialised later via init_oauth)
+# OAuth / OIDC client (initialized later via init_oauth)
 oauth = OAuth()
 
 

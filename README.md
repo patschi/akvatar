@@ -34,7 +34,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Real-time progress**: Server-Sent Events stream each processing step with
   success / failed / skipped / dry-run status
 - **Configurable branding**: customize the application name in the UI
-- **Reverse proxy / subfolder support**: honours `X-Forwarded-For`, `X-Forwarded-Proto`,
+- **Reverse proxy / subfolder support**: honors `X-Forwarded-For`, `X-Forwarded-Proto`,
   `X-Forwarded-Host`, `X-Forwarded-Prefix`
 - **Optional built-in TLS**: serve HTTPS directly without a reverse proxy; HTTP/2 is supported when
   TLS is configured (ALPN negotiation, enabled by default)
@@ -162,7 +162,7 @@ docker compose up -d
 ## Reverse proxy / subfolder deployment
 
 The app fully supports running behind a reverse proxy (nginx, Caddy, Traefik, etc.) and
-under a subfolder path (e.g. `https://example.com/avatar/`). It honours
+under a subfolder path (e.g. `https://example.com/avatar/`). It honors
 `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and
 `X-Forwarded-Prefix` automatically.
 

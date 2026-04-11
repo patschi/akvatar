@@ -1,7 +1,7 @@
 """
 app.py - Application entry point.
 
-Creates the Flask app, registers blueprints, initialises OAuth, applies reverse-proxy
+Creates the Flask app, registers blueprints, initializes OAuth, applies reverse-proxy
 and subfolder middleware, and starts the development server when run directly.
 """
 
@@ -75,14 +75,14 @@ def create_app() -> Flask:
     # Session cookie hardening.
     # HttpOnly: cookie not accessible from JavaScript (mitigates XSS session theft).
     # SameSite=Lax: browser refuses to send the cookie on cross-site POST requests,
-    #   providing a first line of defence against CSRF. POST endpoints additionally
+    #   providing a first line of defense against CSRF. POST endpoints additionally
     #   require a per-session CSRF token sent via X-CSRF-Token header (see csrf.py).
     #   Lax (not Strict) is required so the OIDC redirect from Authentik back to
     #   /callback still carries the session cookie for state verification.
     # Secure: instructs the browser to only transmit the cookie over HTTPS connections.
     #   The Secure flag is about what the *browser* sees, not the Flask-to-proxy link.
     #   When a reverse proxy terminates TLS, the browser talks to the proxy over HTTPS
-    #   so it will honour the flag; the internal proxy→Flask link being plain HTTP is
+    #   so it will honor the flag; the internal proxy→Flask link being plain HTTP is
     #   irrelevant.  We therefore set Secure whenever the public URL uses https://, not
     #   only when Flask's own built-in server has TLS configured.
     #   security.session_cookie_secure overrides this auto-detection when set explicitly.
@@ -161,7 +161,7 @@ def create_app() -> Flask:
         "Transport scheme: %s (wsgi.url_scheme=%r).", _url_scheme.upper(), _url_scheme
     )
 
-    # Initialise OIDC / OAuth
+    # Initialize OIDC / OAuth
     init_oauth(app)
 
     # Register route blueprints

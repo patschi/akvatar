@@ -134,7 +134,7 @@ function showResult(cssClass, messageHTML) {
 var dropZone = document.getElementById("dropZone");
 
 /**
- * Initialise the cropper with an image source and display name.
+ * Initialize the cropper with an image source and display name.
  * Shared by file selection, Gravatar import, and URL import.
  */
 function initCropper(imageSrc, displayName) {
@@ -160,7 +160,7 @@ function initCropper(imageSrc, displayName) {
     uploadButton.classList.remove("hidden");
     uploadButton.disabled = false;
 
-    // Initialise Cropper.js with a locked square aspect ratio
+    // Initialize Cropper.js with a locked square aspect ratio
     cropperInstance = new Cropper(cropperImage, {
         aspectRatio: 1,
         viewMode: 1,
@@ -209,7 +209,7 @@ function discardImage() {
 
 discardImageBtn.addEventListener("click", discardImage);
 
-/** Validate a selected file and initialise the cropper. Used by both file input and drag-and-drop. */
+/** Validate a selected file and initialize the cropper. Used by both file input and drag-and-drop. */
 function handleFileSelection(selectedFile) {
     if (!selectedFile) return;
 
@@ -242,7 +242,7 @@ dropZone.addEventListener("click", function (event) {
     fileInput.click();
 });
 
-// Drag-and-drop: prevent default browser behaviour on the entire page to avoid
+// Drag-and-drop: prevent default browser behavior on the entire page to avoid
 // accidentally navigating to the dropped file
 document.addEventListener("dragover", function (event) {
     event.preventDefault();

@@ -3,7 +3,7 @@ csrf.py - Per-session CSRF token generation and validation.
 
 Generates a cryptographically random token once per session and validates it
 on state-changing requests via the ``X-CSRF-Token`` header.  This is
-defence-in-depth on top of SameSite=Lax session cookies.
+defense-in-depth on top of SameSite=Lax session cookies.
 
 Usage:
   - ``generate_csrf_token()`` is injected into all templates as ``csrf_token``

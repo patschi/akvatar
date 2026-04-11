@@ -984,7 +984,7 @@ body {
 .progress-list li.step.active   { background: var(--info-soft); }
 .progress-list li.step.dry-run  { background: var(--info-soft); }
 
-/* Icon colours driven by CSS variables — SVGs use currentColor */
+/* Icon colors driven by CSS variables - SVGs use currentColor */
 .step-icon {
     flex-shrink: 0;
     width: 20px;
