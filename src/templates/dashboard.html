@@ -148,6 +148,8 @@
     const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('reset_avatar.api_remove_avatar') }}";
     const GRAVATAR_ENDPOINT       = "{{ url_for('import.api_fetch_gravatar') }}";
     const URL_FETCH_ENDPOINT      = "{{ url_for('import.api_fetch_url') }}";
+    const SESSION_CHECK_ENDPOINT  = "{{ url_for('routes.api_session_check') }}";
+    const LOGIN_URL               = "{{ url_for('routes.login_page') }}";
     const MAX_AVATAR_SIZE         = {{ max_size }};
     const CSRF_TOKEN              = "{{ csrf_token() }}";
     const I18N                    = {{ i18n | tojson }};
@@ -162,6 +164,7 @@
   {% if import_gravatar_enabled or import_url_enabled %}
     <script src="{{ url_for('static', filename='js/dashboard-image-import.js') }}"></script>
   {% endif %}
+  <script src="{{ url_for('static', filename='js/dashboard-session-check.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
 </body>

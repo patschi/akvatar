@@ -31,6 +31,7 @@ login:
   button: "Sign in"
   error_oidc_failed: "Authentication failed. Please try again or contact your administrator."
   error_pk_failed: "Login could not be completed — unable to retrieve your account. Please try again or contact your administrator."
+  error_session_expired: "Your session has expired. Please sign in again."
 
 # Logged-out page
 logout:

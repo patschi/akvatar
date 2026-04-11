@@ -6,6 +6,7 @@ Contains:
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
+  - GET  /api/session                   -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
 """
 
@@ -39,7 +40,7 @@ log = logging.getLogger("routes")
 routes_bp = Blueprint("routes", __name__)
 
 # Allowed error keys for the login page (reject arbitrary reflected strings)
-_VALID_ERROR_KEYS = frozenset({"oidc_failed", "pk_failed"})
+_VALID_ERROR_KEYS = frozenset({"oidc_failed", "pk_failed", "session_expired"})
 
 
 # robots.txt – serve from static cache (crawlers expect /robots.txt at the root)
@@ -131,6 +132,21 @@ def serve_avatar_metadata(filename):
     resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+# Session liveness probe (used by the dashboard for client-side expiry detection)
+@routes_bp.route("/api/session")
+def api_session_check():
+    """Return 200 {"alive": true} while the session is valid, 401 {"alive": false} when expired.
+
+    Called periodically by the dashboard JS so the user is redirected to the login
+    page before they discover their session is gone only upon form submission.
+    Not decorated with @login_required because that would return an HTML redirect
+    instead of a JSON response.
+    """
+    if "user" in session:
+        return jsonify({"alive": True})
+    return jsonify({"alive": False}), 401
 
 
 # Upload & process API (Server-Sent Events for real-time progress)
