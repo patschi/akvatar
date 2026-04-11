@@ -64,14 +64,14 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 1. Copy the example config:
 
    ```bash
-   # Minimal — required settings only (recommended starting point)
+   # Minimal - required settings only (recommended starting point)
    cp data/config/config.example-minimal.yml data/config/config.yml
 
-   # Full — every option with inline comments
+   # Full - every option with inline comments
    # cp data/config/config.example-full.yml data/config/config.yml
    ```
 
-2. Fill in the required settings — see
+2. Fill in the required settings - see
    [Configuration](docs/configuration.md),
    [Authentik OIDC Setup](docs/authentik-oidc-setup.md),
    [Authentik API Token](docs/authentik-api-token.md), and
@@ -107,7 +107,7 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 - An **Authentik** instance with an OIDC provider and an Admin API token
   (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and
   [Authentik API Token](docs/authentik-api-token.md))
-- *(Optional)* An LDAP server reachable via LDAPS/LDAP — tested with Microsoft Active
+- *(Optional)* An LDAP server reachable via LDAPS/LDAP - tested with Microsoft Active
   Directory; see [MS AD Service Account](docs/ms-ad-service-account.md)
 - **Container deployment:** Docker or any OCI-compatible runtime
 - **Manual deployment:** Python 3.11+, Linux (Debian, Ubuntu, RHEL, Alpine, etc.)
@@ -125,14 +125,14 @@ docker run -d \
   --tmpfs /tmp \
   -p 5000:5000 \
   -v akvatar-conf:/data/config:ro \
-  -v akvatar-data:/app/data/user-avatars \
+  -v akvatar-data:/data/user-avatars \
   ghcr.io/patschi/akvatar:latest
 ```
 
 - Runs as non-root (UID 65532) with a read-only root filesystem
-- `/tmp` is a tmpfs mount — required for gunicorn worker temp files
-- `/data/config` — read-only volume containing `config.yml`
-- `/app/data/user-avatars` — writable volume for persistent avatar storage
+- `/tmp` is a tmpfs mount - required for gunicorn worker temp files
+- `/data/config` - read-only volume containing `config.yml`
+- `/data/user-avatars` - writable volume for persistent avatar storage
 
 #### Bind-mount directories instead of named volumes
 
@@ -148,7 +148,7 @@ Then replace the volume flags:
 
 ```bash
 -v ./data/config:/data/config:ro \
--v ./data/user-avatars:/app/data/user-avatars \
+-v ./data/user-avatars:/data/user-avatars \
 ```
 
 ### Docker Compose

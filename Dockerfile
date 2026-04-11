@@ -95,7 +95,7 @@ COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4d
 COPY --from=builder --chown=65532:65532 /data-skel/ /app/data/
 COPY --from=builder --chown=65532:65532 /config-skel/ /data/config/
 
-VOLUME ["/app/data/user-avatars", "/data/config"]
+VOLUME ["/data/user-avatars", "/data/config"]
 HEALTHCHECK --interval=60s --timeout=3s --start-period=10s CMD ["/bin/httpscheck", "127.0.0.1:5000/healthz"]
 EXPOSE 5000
 
