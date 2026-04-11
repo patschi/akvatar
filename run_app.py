@@ -77,7 +77,7 @@ if tls_cert and tls_key:
     args.extend(["--certfile", tls_cert, "--keyfile", tls_key])
 
 if http2_active:
-    # What: advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
+    # Advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
     args.extend(["--http-protocols", "h2,h1"])
 elif _http2_configured and not _tls_active:
     log.warning("HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS.")
@@ -120,7 +120,7 @@ gunicorn_app = WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]")
 gunicorn_app.cfg.set("when_ready", _when_ready)
 
 if _tls_active:
-    # What: enforce the configured minimum TLS version on the server SSL context.
+    # Enforce the configured minimum TLS version on the server SSL context.
     # The default factory is called first (it loads cert/key and applies gunicorn's
     # standard options), then minimum_version is set before returning.
     _min_ver = tls_minimum_version
@@ -134,6 +134,6 @@ if _tls_active:
     log.info("TLS minimum version enforced: %s.", tls_minimum_version.name)
 
 if http2_active:
-    log.info("HTTP/2 active: gunicorn will advertise h2 via ALPN (TLS + h2 package).")
+    log.info("HTTP/2 active: gunicorn will advertise h2 via ALPN.")
 
 gunicorn_app.run()

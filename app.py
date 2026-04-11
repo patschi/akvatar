@@ -216,7 +216,7 @@ def create_app() -> Flask:
 
     @app.before_request
     def _reject_disallowed_methods():
-        # What: block any HTTP method that is not in the globally-allowed set
+        # Block any HTTP method that is not in the globally-allowed set
         if request.method not in _ALLOWED_METHODS:
             log.debug(
                 "Rejected disallowed HTTP method %r for %r (client=%s).",
@@ -307,7 +307,7 @@ if __name__ == "__main__":
     tls_cert = _tls_cfg.get("cert", "")
     tls_key = _tls_cfg.get("key", "")
     if tls_cert and tls_key:
-        # What: build a full SSLContext so minimum_version can be enforced;
+        # Build a full SSLContext so minimum_version can be enforced;
         # Werkzeug accepts either a (cert, key) tuple or an SSLContext instance.
         ssl_context = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)
         ssl_context.minimum_version = tls_minimum_version
