@@ -2,7 +2,8 @@
 routes.py – Flask route definitions.
 
 Contains:
-  - GET  /                              -> public login page (unauthenticated)
+  - GET  /                              -> redirect to /login
+  - GET  /login                         -> public login page (unauthenticated)
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
   - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON
@@ -57,10 +58,17 @@ def healthz():
     return Response("OK", mimetype="text/plain")
 
 
-# Public login page
+# Root – forward to the login page
 @routes_bp.route("/")
+def root():
+    """Redirect the root URL to the login page."""
+    return redirect(url_for("routes.login_page"))
+
+
+# Public login page
+@routes_bp.route("/login")
 def login_page():
-    """Show a static landing page with a login button, or redirect to dashboard if already authenticated."""
+    """Show the login page with a sign-in button, or redirect to dashboard if already authenticated."""
     if "user" in session:
         log.debug("User already authenticated – redirecting to dashboard.")
         return redirect(url_for("routes.dashboard"))

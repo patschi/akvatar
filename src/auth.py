@@ -74,7 +74,7 @@ def login_required(f):
     return decorated
 
 
-@auth_bp.route("/login")
+@auth_bp.route("/login-start")
 def login():
     """Redirect the browser to Authentik's authorization endpoint."""
     redirect_uri = url_for("auth.auth_callback", _external=True)
