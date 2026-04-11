@@ -771,6 +771,57 @@ body {
   background: var(--error-soft);
 }
 
+/* Webcam capture tab (inside the import dialog) */
+.webcam-hint {
+  margin: 0 0 0.65rem 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.webcam-stage {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-height: 320px;
+  margin: 0 auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--error-soft);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webcam-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Flip horizontally so the live preview behaves like a mirror,
+     which matches users' expectations from other selfie apps. */
+  transform: scaleX(-1);
+}
+
+.webcam-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.webcam-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
 /* Cropper area */
 .cropper-wrapper {
   margin-top: 1.25rem;

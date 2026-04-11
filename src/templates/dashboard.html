@@ -68,7 +68,7 @@
           <span id="fileName" class="file-name"></span>
         </div>
 
-        {% if import_gravatar_enabled or import_url_enabled %}
+        {% if import_gravatar_enabled or import_url_enabled or import_webcam_enabled %}
           <!-- Import triggers: open the import dialog with the selected tab -->
           <div id="importSection" class="import-section">
             <div class="import-divider"><span>{{ t('import.or') }}</span></div>
@@ -83,6 +83,12 @@
                 <button class="btn btn-import" data-import-tab="url" type="button">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
                   URL
+                </button>
+              {% endif %}
+              {% if import_webcam_enabled %}
+                <button class="btn btn-import" data-import-tab="webcam" type="button">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+                  {{ t('import.webcam') }}
                 </button>
               {% endif %}
             </div>
@@ -138,7 +144,7 @@
     </div>
   {% endif %}
 
-  {% if import_gravatar_enabled or import_url_enabled %}
+  {% if import_gravatar_enabled or import_url_enabled or import_webcam_enabled %}
     {% include 'partials/image-import-external.html' %}
   {% endif %}
 
@@ -161,7 +167,7 @@
   {% if user.avatar %}
   <script src="{{ url_for('static', filename='js/dashboard-remove-avatar.js') }}"></script>
   {% endif %}
-  {% if import_gravatar_enabled or import_url_enabled %}
+  {% if import_gravatar_enabled or import_url_enabled or import_webcam_enabled %}
   <script src="{{ url_for('static', filename='js/dashboard-image-import.js') }}"></script>
   {% endif %}
   <script src="{{ url_for('static', filename='js/dashboard-session-check.js') }}"></script>

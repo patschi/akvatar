@@ -56,6 +56,10 @@ _ALLOWED_PROXY_MIMETYPES = frozenset(_MIME_TO_EXT.keys())
 # Config: per-source enable flags and URL security settings
 GRAVATAR_ENABLED = import_cfg.get("gravatar", {}).get("enabled", True)
 URL_ENABLED = import_cfg.get("url", {}).get("enabled", True)
+# Webcam capture is handled entirely client-side via MediaDevices.getUserMedia,
+# so no proxy endpoint is needed - this flag only controls UI visibility and
+# the Permissions-Policy header sent with HTML responses.
+WEBCAM_ENABLED = import_cfg.get("webcam", {}).get("enabled", True)
 RESTRICT_PRIVATE_IPS = import_cfg.get("url", {}).get("restrict_private_ips", True)
 
 

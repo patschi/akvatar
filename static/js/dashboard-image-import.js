@@ -42,6 +42,18 @@
     var urlInput = document.getElementById("urlInput");
     var urlLoadBtn = document.getElementById("urlLoadBtn");
 
+    // Webcam tab elements (null when webcam import is disabled in config)
+    var tabWebcam = document.getElementById("importTabWebcam");
+    var webcamVideo = document.getElementById("webcamVideo");
+    var webcamPlaceholder = document.getElementById("webcamPlaceholder");
+    var webcamStartBtn = document.getElementById("webcamStartBtn");
+    var webcamCaptureBtn = document.getElementById("webcamCaptureBtn");
+    var webcamRetakeBtn = document.getElementById("webcamRetakeBtn");
+    var webcamStopBtn = document.getElementById("webcamStopBtn");
+
+    // Active MediaStream (retained so its tracks can be stopped on close)
+    var webcamStream = null;
+
     // Trigger buttons on the dashboard page (open dialog with a specific tab)
     var triggerBtns = document.querySelectorAll(".import-triggers [data-import-tab]");
 
@@ -84,9 +96,10 @@
     // ── Dialog open / close ──────────────────────────────────────────
 
     function openDialog(tab) {
-        // Default to whichever tab is actually available
-        if (tab === "gravatar" && !tabGravatar) tab = "url";
-        if (tab === "url" && !tabUrl) tab = "gravatar";
+        // Default to whichever tab is actually available (gravatar -> url -> webcam)
+        if (tab === "gravatar" && !tabGravatar) tab = tabUrl ? "url" : "webcam";
+        if (tab === "url" && !tabUrl) tab = tabGravatar ? "gravatar" : "webcam";
+        if (tab === "webcam" && !tabWebcam) tab = tabGravatar ? "gravatar" : "url";
         switchTab(tab || "gravatar");
         resetPreview();
         overlay.classList.remove("hidden");
@@ -94,6 +107,7 @@
 
     function closeDialog() {
         overlay.classList.add("hidden");
+        stopWebcam();
         resetPreview();
     }
 
@@ -121,6 +135,11 @@
         // Show/hide tab content panes
         if (tabGravatar) tabGravatar.classList.toggle("hidden", tab !== "gravatar");
         if (tabUrl) tabUrl.classList.toggle("hidden", tab !== "url");
+        if (tabWebcam) tabWebcam.classList.toggle("hidden", tab !== "webcam");
+        // Leaving the webcam tab must stop the stream so the camera light goes off
+        if (tab !== "webcam") {
+            stopWebcam();
+        }
         // Clear preview when switching tabs
         resetPreview();
     }
@@ -299,6 +318,165 @@
                 event.preventDefault();
                 urlLoadBtn.click();
             }
+        });
+    }
+
+    // ── Webcam capture ───────────────────────────────────────────────
+
+    /**
+     * Release the active MediaStream (if any) and reset the webcam UI back
+     * to its initial "Start camera" state.  Called on tab switch, dialog
+     * close, and after a frame is captured.
+     */
+    function stopWebcam() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(function (track) { track.stop(); });
+            webcamStream = null;
+        }
+        if (webcamVideo) {
+            webcamVideo.srcObject = null;
+            webcamVideo.classList.add("hidden");
+        }
+        if (webcamPlaceholder) webcamPlaceholder.classList.remove("hidden");
+        if (webcamStartBtn) {
+            webcamStartBtn.classList.remove("hidden");
+            webcamStartBtn.disabled = false;
+            webcamStartBtn.textContent = I18N.import_webcam_start;
+        }
+        if (webcamCaptureBtn) webcamCaptureBtn.classList.add("hidden");
+        if (webcamRetakeBtn) webcamRetakeBtn.classList.add("hidden");
+        if (webcamStopBtn) webcamStopBtn.classList.add("hidden");
+    }
+
+    /**
+     * Translate a getUserMedia() DOMException name to a user-facing message.
+     * The most common cases are permission denial and the absence of any
+     * video input device; everything else gets a generic fallback.
+     */
+    function webcamErrorMessage(err) {
+        if (!err || !err.name) return I18N.import_webcam_error;
+        switch (err.name) {
+            case "NotAllowedError":
+            case "SecurityError":
+                return I18N.import_webcam_denied;
+            case "NotFoundError":
+            case "OverconstrainedError":
+                return I18N.import_webcam_not_found;
+            case "NotReadableError":
+            case "AbortError":
+                return I18N.import_webcam_in_use;
+            default:
+                return I18N.import_webcam_error;
+        }
+    }
+
+    if (webcamStartBtn && webcamVideo) {
+        webcamStartBtn.addEventListener("click", async function () {
+            // Feature-detect: getUserMedia is only exposed on secure contexts.
+            // On plain HTTP (except localhost) navigator.mediaDevices is undefined.
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError(I18N.import_webcam_unsupported);
+                return;
+            }
+
+            webcamStartBtn.disabled = true;
+            webcamStartBtn.textContent = I18N.import_webcam_starting;
+            errorArea.classList.add("hidden");
+
+            try {
+                // Request the user-facing camera with a square-ish aspect ratio
+                // so the live preview approximates the final crop.  The browser
+                // is free to ignore ideal constraints when the camera cannot
+                // satisfy them, which is fine - we crop client-side anyway.
+                webcamStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "user",
+                        width: { ideal: 1280 },
+                        height: { ideal: 1280 },
+                    },
+                    audio: false,
+                });
+
+                webcamVideo.srcObject = webcamStream;
+                webcamVideo.classList.remove("hidden");
+                if (webcamPlaceholder) webcamPlaceholder.classList.add("hidden");
+                webcamStartBtn.classList.add("hidden");
+                webcamCaptureBtn.classList.remove("hidden");
+                webcamStopBtn.classList.remove("hidden");
+            } catch (err) {
+                // Permission denied, no camera, hardware busy, etc.
+                showError(webcamErrorMessage(err));
+                stopWebcam();
+            } finally {
+                webcamStartBtn.disabled = false;
+                webcamStartBtn.textContent = I18N.import_webcam_start;
+            }
+        });
+    }
+
+    if (webcamCaptureBtn && webcamVideo) {
+        webcamCaptureBtn.addEventListener("click", function () {
+            // Guard against a click before the first frame has been decoded
+            var vw = webcamVideo.videoWidth;
+            var vh = webcamVideo.videoHeight;
+            if (!vw || !vh) {
+                showError(I18N.import_webcam_error);
+                return;
+            }
+
+            // Draw the current frame to an offscreen canvas and convert to a Blob.
+            // This is entirely client-side: no upload happens until the user
+            // confirms with the OK button, which funnels the blob into the
+            // existing cropper flow (same path as Gravatar / URL imports).
+            var canvas = document.createElement("canvas");
+            canvas.width = vw;
+            canvas.height = vh;
+            var ctx = canvas.getContext("2d");
+            // Mirror the capture horizontally to match the mirrored live preview
+            // (the video element is flipped via CSS transform: scaleX(-1)).  Without
+            // this, the saved image would look horizontally reversed compared to
+            // what the user sees while framing the shot.
+            ctx.translate(vw, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(webcamVideo, 0, 0, vw, vh);
+
+            canvas.toBlob(function (blob) {
+                if (!blob) {
+                    showError(I18N.import_webcam_error);
+                    return;
+                }
+                // Display the captured frame in the shared preview area and
+                // swap the control bar to "Retake".  The live stream keeps
+                // running so the user can retake without re-requesting
+                // camera permission.
+                showPreview(URL.createObjectURL(blob), "webcam.jpg");
+                webcamVideo.classList.add("hidden");
+                webcamCaptureBtn.classList.add("hidden");
+                webcamRetakeBtn.classList.remove("hidden");
+            }, "image/jpeg", 0.92);
+        });
+    }
+
+    if (webcamRetakeBtn && webcamVideo) {
+        webcamRetakeBtn.addEventListener("click", function () {
+            // Clear the captured preview and return to the live stream.
+            // resetPreview() revokes the blob URL created by showPreview().
+            resetPreview();
+            if (webcamStream) {
+                webcamVideo.classList.remove("hidden");
+                webcamCaptureBtn.classList.remove("hidden");
+                webcamRetakeBtn.classList.add("hidden");
+            } else {
+                // Stream was somehow torn down - force a full reset.
+                stopWebcam();
+            }
+        });
+    }
+
+    if (webcamStopBtn) {
+        webcamStopBtn.addEventListener("click", function () {
+            resetPreview();
+            stopWebcam();
         });
     }
 

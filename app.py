@@ -27,7 +27,7 @@ from src.config import (
     web_cfg,
 )
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
-from src.image_import import import_bp
+from src.image_import import WEBCAM_ENABLED, import_bp
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.reset_avatar import reset_avatar_bp
 from src.routes import routes_bp
@@ -213,9 +213,13 @@ def create_app() -> Flask:
                 "max-age=63072000; includeSubDomains"
             )
 
-        # Permissions Policy - disable browser APIs this app never uses
+        # Permissions Policy - disable browser APIs this app never uses.
+        # camera=(self) is required when the webcam import feature is enabled,
+        # otherwise getUserMedia() is hard-blocked by the browser regardless of
+        # user consent.  When disabled, camera=() denies the API entirely.
+        camera_policy = "camera=(self)" if WEBCAM_ENABLED else "camera=()"
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=(), payment=()"
+            f"{camera_policy}, microphone=(), geolocation=(), payment=()"
         )
 
         return response

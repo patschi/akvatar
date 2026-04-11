@@ -83,6 +83,19 @@ import:
   load: "Cargar"
   ok: "Usar imagen"
   cancel: "Cancelar"
+  webcam: "Webcam"
+  webcam_hint: "Toma una foto con tu cámara. La imagen permanece en tu navegador hasta que la confirmes."
+  webcam_placeholder: "La vista previa de la cámara aparecerá aquí"
+  webcam_start: "Iniciar cámara"
+  webcam_starting: "Iniciando…"
+  webcam_capture: "Tomar foto"
+  webcam_retake: "Repetir"
+  webcam_stop: "Detener cámara"
+  webcam_unsupported: "Tu navegador no admite el acceso a la cámara. Prueba con un navegador moderno a través de HTTPS."
+  webcam_denied: "Se denegó el acceso a la cámara. Permite el permiso de cámara en tu navegador e inténtalo de nuevo."
+  webcam_not_found: "No se encontró ningún dispositivo de cámara en este ordenador."
+  webcam_in_use: "La cámara ya está siendo usada por otra aplicación. Ciérrala e inténtalo de nuevo."
+  webcam_error: "No se pudo acceder a la cámara. Por favor, inténtalo de nuevo."
 
 # Pasos de progreso (lado cliente y lado servidor)
 step:

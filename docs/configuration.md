@@ -4,8 +4,8 @@ All settings are defined in `data/config/config.yml`. Two example files are prov
 
 | File                         | Use when                                                    |
 |------------------------------|-------------------------------------------------------------|
-| `config.example-minimal.yml` | Getting started — only the required settings, short to read |
-| `config.example-full.yml`    | Full reference — every option with inline comments          |
+| `config.example-minimal.yml` | Getting started - only the required settings, short to read |
+| `config.example-full.yml`    | Full reference - every option with inline comments          |
 
 Copy whichever suits your situation:
 
@@ -25,15 +25,15 @@ The application reads the configuration file once at startup. Changes require a 
 |-----------------------------------------------------------------------------------|---------|-----------------------------------------------------|
 | [`dry_run`](#dry_run)                                                             | Boolean | Skip Authentik/LDAP writes; log all actions instead |
 | [`branding.name`](#brandingname)                                                  | String  | Application name shown in the UI                    |
-| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                                            | Integer | Maximum upload size in MB                           |
-| [`app.avatar_storage_path`](#appavatar_storage_path)                                          | String  | Directory for stored avatar images                  |
-| [`app.public_base_url`](#apppublic_base_url)                                                  | URL     | Public URL where the application is reachable       |
-| [`app.public_avatar_url`](#apppublic_avatar_url)                                              | URL     | Public URL where avatar files are served            |
-| [`security.secret_key`](#securitysecret_key)                                                  | String  | Flask session signing key                           |
-| [`security.session_cookie_secure`](#securitysession_cookie_secure)                            | Boolean | Override Secure flag on the session cookie          |
-| [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds)              | Integer | Session cookie lifetime in seconds                  |
-| [`security.metadata_access`](#securitymetadata_access)                                        | Enum    | Who may access avatar metadata JSON files           |
-| [`security.csp_enabled`](#securitycsp_enabled)                                                | Boolean | Send a Content-Security-Policy header on HTML pages |
+| [`app.max_upload_size_mb`](#appmax_upload_size_mb)                                | Integer | Maximum upload size in MB                           |
+| [`app.avatar_storage_path`](#appavatar_storage_path)                              | String  | Directory for stored avatar images                  |
+| [`app.public_base_url`](#apppublic_base_url)                                      | URL     | Public URL where the application is reachable       |
+| [`app.public_avatar_url`](#apppublic_avatar_url)                                  | URL     | Public URL where avatar files are served            |
+| [`security.secret_key`](#securitysecret_key)                                      | String  | Flask session signing key                           |
+| [`security.session_cookie_secure`](#securitysession_cookie_secure)                | Boolean | Override Secure flag on the session cookie          |
+| [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds)  | Integer | Session cookie lifetime in seconds                  |
+| [`security.metadata_access`](#securitymetadata_access)                            | Enum    | Who may access avatar metadata JSON files           |
+| [`security.csp_enabled`](#securitycsp_enabled)                                    | Boolean | Send a Content-Security-Policy header on HTML pages |
 | [`cleanup.interval`](#cleanupinterval)                                            | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanupon_startup)                                        | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)                | Integer | Avatar sets to keep per user (0 = unlimited)        |
@@ -48,6 +48,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`image_import.gravatar.enabled`](#image_importgravatarenabled)                   | Boolean | Enable Gravatar import in the UI                    |
 | [`image_import.url.enabled`](#image_importurlenabled)                             | Boolean | Enable URL import in the UI                         |
 | [`image_import.url.restrict_private_ips`](#image_importurlrestrict_private_ips)   | Boolean | Block URLs resolving to private IP addresses        |
+| [`image_import.webcam.enabled`](#image_importwebcamenabled)                       | Boolean | Enable browser webcam capture in the UI             |
 | [`sentry.enabled`](#sentryenabled)                                                | Boolean | Master switch for Sentry error tracking             |
 | [`sentry.dsn`](#sentrydsn)                                                        | String  | Sentry project DSN (ingest URL)                     |
 | [`sentry.capture_errors`](#sentrycapture_errors)                                  | Boolean | Send unhandled exceptions to Sentry                 |
@@ -57,7 +58,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`sentry.environment`](#sentryenvironment)                                        | String  | Sentry environment tag (auto-detected if empty)     |
 | [`sentry.send_default_pii`](#sentrysend_default_pii)                              | Boolean | Include IP addresses and user details in events     |
 | [`app.log_level`](#applog_level)                                                  | Enum    | Log verbosity                                       |
-| [`app.debug_full`](#appdebug_full)                                                | Boolean | Full debug mode — never enable in production        |
+| [`app.debug_full`](#appdebug_full)                                                | Boolean | Full debug mode - never enable in production        |
 | [`webserver.proxy_mode`](#webserverproxy_mode)                                    | Boolean | Enable reverse-proxy header support (ProxyFix)      |
 | [`webserver.access_log`](#webserveraccess_log)                                    | Boolean | Log every HTTP request to the console               |
 | [`webserver.workers`](#webserverworkers)                                          | Integer | Number of gunicorn worker processes                 |
@@ -240,7 +241,7 @@ the cookie only over HTTPS connections.
 |---------|-------------------------------------------------------------------------------------------------------------------|
 | `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
 | `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
-| `false` | Never set `Secure` — only use this for plain-HTTP development environments                                        |
+| `false` | Never set `Secure` - only use this for plain-HTTP development environments                                        |
 
 **You should not need to set this manually.** The auto-detection is correct for all standard deployments, including
 reverse-proxy setups where TLS is terminated at the proxy and the internal connection to Flask is plain HTTP. The
@@ -268,9 +269,9 @@ Controls who may read avatar metadata JSON files served at `/user-avatars/_metad
 user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and formats. Exposing them to other users or the
 public could allow someone to enumerate user PKs if they can observe or predict filenames.
 
-| Value        | Behaviour                                                                                                                                                         |
-|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user — or a request for a file belonging to a different user — receives a `404` so the caller cannot distinguish "not found" from "not yours". |
+| Value        | Behaviour                                                                                                                                                                                                                                                                                          |
+|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user - or a request for a file belonging to a different user - receives a `404` so the caller cannot distinguish "not found" from "not yours". |
 | `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
 
 The default (`owner_only`) is recommended for all standard deployments.
@@ -364,7 +365,7 @@ Enable this setting if deactivated accounts should be treated the same as delete
 ## Rate Limiting
 
 Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent URL-guessing abuse and ensure
-fair usage. Only the `/user-avatars/` endpoints are affected — login, dashboard, upload, static files, and health checks
+fair usage. Only the `/user-avatars/` endpoints are affected - login, dashboard, upload, static files, and health checks
 are never rate-limited.
 
 Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per client IP is exactly
@@ -475,7 +476,7 @@ A warning is logged at startup if this is `true` but the DSN is empty.
 | **Default** | `""` (empty)   |
 
 The Sentry DSN (Data Source Name) for your project. Find it in **Sentry → Project Settings → Client Keys (DSN)**. The
-DSN follows the format `https://<key>@<org>.ingest.sentry.io/<project>`. Treat it as a secret — while it only allows
+DSN follows the format `https://<key>@<org>.ingest.sentry.io/<project>`. Treat it as a secret - while it only allows
 sending events (not reading them), exposing it allows anyone to submit events to your project.
 
 ### `sentry.capture_errors`
@@ -508,9 +509,9 @@ because performance tracing produces significantly more data than error tracking
 | **Default** | `1.0`             |
 
 Fraction of error events to send. `1.0` sends every error, `0.5` sends roughly half, `0.0` sends none. Only applies
-when [`capture_errors`](#sentry_capture_errors) is `true` — otherwise forced to `0.0` regardless of this setting.
+when [`capture_errors`](#sentry_capture_errors) is `true` - otherwise forced to `0.0` regardless of this setting.
 
-For most deployments, `1.0` is correct — you want to see every unhandled exception. Lower this only if you have a
+For most deployments, `1.0` is correct - you want to see every unhandled exception. Lower this only if you have a
 high-traffic deployment generating excessive duplicate errors.
 
 ### `sentry.traces_sample_rate`
@@ -521,7 +522,7 @@ high-traffic deployment generating excessive duplicate errors.
 | **Default** | `0.2`             |
 
 Fraction of requests to trace for performance monitoring. `1.0` traces every request, `0.2` traces roughly 20%. Only
-applies when [`capture_performance`](#sentry_capture_performance) is `true` — otherwise forced to `0.0`.
+applies when [`capture_performance`](#sentry_capture_performance) is `true` - otherwise forced to `0.0`.
 
 Start with `0.2` and adjust based on your Sentry plan's event quota. Tracing every request (`1.0`) provides the most
 complete picture but can quickly consume event budgets on busy instances.
@@ -692,7 +693,7 @@ When enabled, logging out of the app also terminates the user's Authentik SSO se
 [RP-Initiated Logout](https://openid.net/specs/openid-connect-rpinitiated-1_0.html). This means the user is logged
 out of **all applications** using that Authentik session, not just this app.
 
-When disabled (default), only the local app session is cleared — the user remains logged into Authentik and can
+When disabled (default), only the local app session is cleared - the user remains logged into Authentik and can
 immediately sign back in without re-entering credentials.
 
 If you enable this, you must also register the post-logout redirect URI in your Authentik provider. See
@@ -778,21 +779,21 @@ The URL scheme determines SSL (`ldaps://` → SSL on, `ldap://` → SSL off). A 
 over [`ldap.port`](#ldapport). URLs without an explicit scheme or port fall back to `ldap.use_ssl` and `ldap.port`
 respectively.
 
-Example — single server:
+Example - single server:
 
 ```yaml
 ldap:
   servers: "ldaps://dc.example.com"
 ```
 
-Example — failover with matching protocol:
+Example - failover with matching protocol:
 
 ```yaml
 ldap:
   servers: "ldaps://dc1.example.com,ldaps://dc2.example.com"
 ```
 
-Example — per-URL port and mixed protocol:
+Example - per-URL port and mixed protocol:
 
 ```yaml
 ldap:
@@ -918,9 +919,10 @@ photos:
 
 ## Image Import (External Sources)
 
-Controls whether users can import images from external sources (Gravatar by email, or a remote URL) instead of uploading
-a file directly. Both import methods are enabled by default. When a method is disabled, its trigger button is hidden from
-the dashboard and the corresponding server endpoint returns HTTP 403.
+Controls whether users can import images from external sources (Gravatar by email, a remote URL, or a live webcam
+capture) instead of uploading a file directly. Gravatar and URL import are enabled by default; webcam capture is opt-in
+because it requires a secure origin and adjusts the `Permissions-Policy` response header. When a method is disabled, its
+trigger button is hidden from the dashboard and the corresponding server endpoint (where applicable) returns HTTP 403.
 
 ### `image_import.gravatar.enabled`
 
@@ -960,6 +962,23 @@ Blocked ranges include `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0
 
 Set to `false` only if your deployment requires fetching images from internal network hosts (not recommended in
 production).
+
+### `image_import.webcam.enabled`
+
+| Property    | Value  |
+|-------------|--------|
+| **Type**    | Boolean |
+| **Default** | `true` |
+
+When enabled, a **Webcam** tab is shown in the import dialog that lets users capture a selfie using their device's
+camera via the browser's [`MediaDevices.getUserMedia()`](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
+API. Capture happens entirely client-side - the frame is drawn to an offscreen canvas, converted to a JPEG blob, and
+handed to the same crop/upload pipeline as a locally selected file. No image data is sent to the server until the user
+confirms the capture and clicks **Upload**.
+
+Enabling this flag flips the `Permissions-Policy` response header from `camera=()` to `camera=(self)`. Without this
+change, browsers hard-block `getUserMedia()` regardless of user consent. The feature only works on secure origins, so
+the app must be served over HTTPS (or accessed via `http://localhost` during development).
 
 ---
 

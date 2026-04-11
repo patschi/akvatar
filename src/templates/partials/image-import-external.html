@@ -1,4 +1,7 @@
-<!-- Import dialog (modal overlay for Gravatar / URL import) -->
+<!-- Import dialog (modal overlay for Gravatar / URL / Webcam import) -->
+{% set import_tab_count = (1 if import_gravatar_enabled else 0)
+                        + (1 if import_url_enabled else 0)
+                        + (1 if import_webcam_enabled else 0) %}
 <div class="dialog-overlay hidden" id="importOverlay">
   <div class="dialog-panel import-panel">
 
@@ -10,18 +13,28 @@
       </button>
     </div>
 
-    {% if import_gravatar_enabled and import_url_enabled %}
-      <!-- Tab switcher: Gravatar / URL (only shown when both sources are enabled) -->
+    {% if import_tab_count > 1 %}
+      <!-- Tab switcher: Gravatar / URL / Webcam (only shown when more than one source is enabled) -->
       <div class="dialog-group">
         <div class="dialog-options">
-          <button class="btn dialog-option active" data-import-tab="gravatar" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
-            {{ t('import.gravatar') }}
-          </button>
-          <button class="btn dialog-option" data-import-tab="url" type="button">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
-            URL
-          </button>
+          {% if import_gravatar_enabled %}
+            <button class="btn dialog-option active" data-import-tab="gravatar" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+              {{ t('import.gravatar') }}
+            </button>
+          {% endif %}
+          {% if import_url_enabled %}
+            <button class="btn dialog-option{% if not import_gravatar_enabled %} active{% endif %}" data-import-tab="url" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+              URL
+            </button>
+          {% endif %}
+          {% if import_webcam_enabled %}
+            <button class="btn dialog-option{% if not import_gravatar_enabled and not import_url_enabled %} active{% endif %}" data-import-tab="webcam" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+              {{ t('import.webcam') }}
+            </button>
+          {% endif %}
         </div>
       </div>
     {% endif %}
@@ -42,6 +55,31 @@
         <div class="import-field-row">
           <input id="urlInput" type="url" class="import-input" placeholder="{{ t('import.url_placeholder') }}" />
           <button id="urlLoadBtn" class="btn btn-import" type="button">{{ t('import.load') }}</button>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if import_webcam_enabled %}
+      <!-- Webcam tab: live preview + start/capture/retake buttons.
+           The video and canvas elements are purely client-side: the captured
+           frame is turned into a Blob via canvas.toBlob() and handed to the
+           same preview/OK pipeline used by Gravatar and URL imports. -->
+      <div class="import-tab{% if import_gravatar_enabled or import_url_enabled %} hidden{% endif %}" id="importTabWebcam">
+        <p class="webcam-hint">{{ t('import.webcam_hint') }}</p>
+        <div class="webcam-stage">
+          <!-- Live video stream (hidden until camera started) -->
+          <video id="webcamVideo" class="webcam-video hidden" autoplay playsinline muted></video>
+          <!-- Placeholder shown before the camera is started -->
+          <div id="webcamPlaceholder" class="webcam-placeholder">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+            <span>{{ t('import.webcam_placeholder') }}</span>
+          </div>
+        </div>
+        <div class="webcam-controls">
+          <button id="webcamStartBtn" class="btn btn-import" type="button">{{ t('import.webcam_start') }}</button>
+          <button id="webcamCaptureBtn" class="btn btn-import hidden" type="button">{{ t('import.webcam_capture') }}</button>
+          <button id="webcamRetakeBtn" class="btn btn-import hidden" type="button">{{ t('import.webcam_retake') }}</button>
+          <button id="webcamStopBtn" class="btn btn-import hidden" type="button">{{ t('import.webcam_stop') }}</button>
         </div>
       </div>
     {% endif %}

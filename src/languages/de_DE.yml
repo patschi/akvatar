@@ -83,6 +83,19 @@ import:
   load: "Laden"
   ok: "Bild verwenden"
   cancel: "Abbrechen"
+  webcam: "Webcam"
+  webcam_hint: "Nimm ein Foto mit Deiner Kamera auf. Das Bild verbleibt in Deinem Browser, bis Du es bestätigst."
+  webcam_placeholder: "Kameravorschau erscheint hier"
+  webcam_start: "Kamera starten"
+  webcam_starting: "Wird gestartet…"
+  webcam_capture: "Foto aufnehmen"
+  webcam_retake: "Erneut aufnehmen"
+  webcam_stop: "Kamera stoppen"
+  webcam_unsupported: "Dein Browser unterstützt keinen Kamerazugriff. Bitte verwende einen modernen Browser über HTTPS."
+  webcam_denied: "Der Kamerazugriff wurde verweigert. Bitte erlaube den Kamerazugriff in Deinem Browser und versuche es erneut."
+  webcam_not_found: "Auf diesem Computer wurde kein Kameragerät gefunden."
+  webcam_in_use: "Die Kamera wird bereits von einer anderen Anwendung verwendet. Schließe sie und versuche es erneut."
+  webcam_error: "Kamerazugriff nicht möglich. Bitte versuche es erneut."
 
 # Fortschrittsschritte (client-seitig und server-seitig)
 step:

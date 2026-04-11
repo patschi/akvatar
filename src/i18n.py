@@ -290,6 +290,14 @@ _JS_KEYS = (
     "import.fetch_failed",
     "import.image_too_large",
     "import.url_not_allowed",
+    # Webcam import (all strings used by dashboard-image-import.js)
+    "import.webcam_start",
+    "import.webcam_starting",
+    "import.webcam_unsupported",
+    "import.webcam_denied",
+    "import.webcam_not_found",
+    "import.webcam_in_use",
+    "import.webcam_error",
 )
 
 # Pre-compute JS translation dicts per locale at startup (avoids rebuilding on every request).

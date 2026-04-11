@@ -83,6 +83,19 @@ import:
   load: "Load"
   ok: "Use image"
   cancel: "Cancel"
+  webcam: "Webcam"
+  webcam_hint: "Capture a photo using your camera. The image stays in your browser until you confirm."
+  webcam_placeholder: "Camera preview will appear here"
+  webcam_start: "Start camera"
+  webcam_starting: "Starting…"
+  webcam_capture: "Capture photo"
+  webcam_retake: "Retake"
+  webcam_stop: "Stop camera"
+  webcam_unsupported: "Your browser does not support camera access. Try a modern browser over HTTPS."
+  webcam_denied: "Camera access was denied. Please allow camera permission in your browser and try again."
+  webcam_not_found: "No camera device was found on this computer."
+  webcam_in_use: "The camera is already in use by another application. Close it and try again."
+  webcam_error: "Could not access the camera. Please try again."
 
 # Progress steps (client-side and server-side)
 step:

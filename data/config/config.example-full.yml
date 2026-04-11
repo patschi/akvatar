@@ -257,6 +257,15 @@ image_import:
     # protection).  Prevents users from using the server as a proxy to
     # access internal services (e.g. 127.0.0.1, 10.x, 192.168.x, etc.).
     restrict_private_ips: true
+  # Webcam import: capture a selfie via the browser's MediaDevices API.
+  # Capturing happens entirely client-side (no server endpoint is involved).
+  # Enabling this flips the Permissions-Policy header from "camera=()" to
+  # "camera=(self)", which is required for getUserMedia() to work at all.
+  # Browsers only grant camera access on secure origins, so the app must be
+  # served over HTTPS (or accessed via http://localhost during development).
+  webcam:
+    # Set to false to hide the Webcam import option from the UI
+    enabled: true
 
 # --- Image Processing ---
 images:
