@@ -1,5 +1,5 @@
 """
-app_sentry.py – Sentry SDK initialisation.
+app_sentry.py - Sentry SDK initialisation.
 
 Called once at application startup before Flask is created, so the SDK can
 hook into framework internals.  When disabled or missing a DSN this module
@@ -22,7 +22,7 @@ def init_sentry() -> None:
     dsn = sentry_cfg.get("dsn", "")
     if not dsn:
         log.warning(
-            "Sentry is enabled but no DSN is configured – skipping initialisation."
+            "Sentry is enabled but no DSN is configured - skipping initialisation."
         )
         return
 

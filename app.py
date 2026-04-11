@@ -1,5 +1,5 @@
 """
-app.py – Application entry point.
+app.py - Application entry point.
 
 Creates the Flask app, registers blueprints, initialises OAuth, applies reverse-proxy
 and subfolder middleware, and starts the development server when run directly.
@@ -39,16 +39,16 @@ log = logging.getLogger("app")
 # Logger dedicated to HTTP request logging (keeps it separate from application logic)
 http_log = logging.getLogger("http")
 
-# Sentry SDK initialisation – runs once at import time (before Flask is created)
+# Sentry SDK initialisation - runs once at import time (before Flask is created)
 # so the SDK can hook into framework internals.
 init_sentry()
 
-# Suppress Werkzeug's built-in access logging – we use our own http_log at DEBUG level
+# Suppress Werkzeug's built-in access logging - we use our own http_log at DEBUG level
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 
 def create_app() -> Flask:
-    """Application factory – build and configure the Flask instance."""
+    """Application factory - build and configure the Flask instance."""
 
     # Start the memory monitor thread immediately when DEBUG enabled so
     # it runs during startup and continues in workers after fork.
@@ -120,7 +120,7 @@ def create_app() -> Flask:
     _public_path = urlparse(app_cfg.get("public_base_url", "")).path.rstrip("/")
     if _public_path:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
-        log.info("PrefixMiddleware applied – app is served under %r.", _public_path)
+        log.info("PrefixMiddleware applied - app is served under %r.", _public_path)
 
     # Reverse proxy support
     # ProxyFix is the OUTER middleware (runs first on every request).  It reads
@@ -135,7 +135,7 @@ def create_app() -> Flask:
             "ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1)."
         )
     else:
-        log.info("Proxy mode disabled – ProxyFix middleware not applied.")
+        log.info("Proxy mode disabled - ProxyFix middleware not applied.")
 
     # Initialise OIDC / OAuth
     init_oauth(app)
@@ -161,7 +161,7 @@ def create_app() -> Flask:
     log.debug("Web routes registered.")
     log.info("App initialized.")
 
-    # Template context processor – inject shared variables into all templates
+    # Template context processor - inject shared variables into all templates
     _brand_name = branding_cfg.get("name", "Avatar Updater")
 
     @app.context_processor
@@ -176,14 +176,14 @@ def create_app() -> Flask:
             "i18n": get_js_translations(locale),
             "languages": AVAILABLE_LANGUAGES,
             "csrf_token": generate_csrf_token,
-            # Per-request CSP nonce – called as {{ csp_nonce() }} in templates.
+            # Per-request CSP nonce - called as {{ csp_nonce() }} in templates.
             # Generates once per request and is stored on Flask `g` so the
             # same value appears in both inline <script nonce="…"> tags and
             # the Content-Security-Policy response header.
             "csp_nonce": generate_csp_nonce,
         }
 
-    # Security response headers – applied to every response
+    # Security response headers - applied to every response
     @app.after_request
     def _set_security_headers(response):
         # Prevent MIME-type sniffing (e.g. serving a JPEG as text/html)
@@ -191,10 +191,10 @@ def create_app() -> Flask:
 
         # HTML-only headers
         if response.content_type.startswith("text/html"):
-            # Clickjacking protection – deny framing of HTML pages entirely
+            # Clickjacking protection - deny framing of HTML pages entirely
             response.headers["X-Frame-Options"] = "DENY"
 
-            # Content Security Policy – policy is built in sec_csp.py.
+            # Content Security Policy - policy is built in sec_csp.py.
             # build_csp_header() returns None when disabled via security.csp_enabled=false,
             # in which case the header is omitted entirely.
             nonce = generate_csp_nonce()
@@ -205,7 +205,7 @@ def create_app() -> Flask:
         # Limit referrer information sent to cross-origin destinations
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-        # HSTS – instruct browsers to always use HTTPS for this origin.
+        # HSTS - instruct browsers to always use HTTPS for this origin.
         # Only set when TLS is active so plain-HTTP deployments are not broken.
         # 63072000 s = 2 years (recommended minimum for preload eligibility).
         if _tls_active:
@@ -213,7 +213,7 @@ def create_app() -> Flask:
                 "max-age=63072000; includeSubDomains"
             )
 
-        # Permissions Policy – disable browser APIs this app never uses
+        # Permissions Policy - disable browser APIs this app never uses
         response.headers["Permissions-Policy"] = (
             "camera=(), microphone=(), geolocation=(), payment=()"
         )
@@ -235,7 +235,7 @@ def create_app() -> Flask:
                 )
             return response
 
-    # Template cache warm-up – pre-compile all templates so workers forked
+    # Template cache warm-up - pre-compile all templates so workers forked
     # via --preload inherit them and the first request has zero disk I/O.
     all_templates = app.jinja_loader.list_templates()
     log.info("Warming up template cache by pre-compiling all templates...")

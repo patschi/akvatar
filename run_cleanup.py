@@ -1,5 +1,5 @@
 """
-run_cleanup.py – Manual trigger for avatar cleanup.
+run_cleanup.py - Manual trigger for avatar cleanup.
 
 Run with:  python run_cleanup.py
 

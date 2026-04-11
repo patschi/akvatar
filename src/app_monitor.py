@@ -1,5 +1,5 @@
 """
-app_monitor.py – Periodic process memory monitor.
+app_monitor.py - Periodic process memory monitor.
 
 Logs the process RSS (Resident Set Size) in MB every few seconds, but only
 when the value has changed.  Runs in a daemon thread so it exits automatically

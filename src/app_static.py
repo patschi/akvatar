@@ -1,5 +1,5 @@
 """
-app_static.py – In-memory static file cache.
+app_static.py - In-memory static file cache.
 
 All files in static/ are read once at import time and served from memory.
 With gunicorn --preload, workers inherit the cache via fork (shared pages).

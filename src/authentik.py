@@ -1,5 +1,5 @@
 """
-authentik.py – Authentik Admin API client.
+authentik.py - Authentik Admin API client.
 
 Provides helpers to resolve users, update avatar attributes, and enumerate
 all active users for cleanup.  All lookups use the Authentik integer PK as
@@ -82,7 +82,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
 
     # Fetch current user data (always performed — callers may rely on the
     # returned pre-patch dict even in dry-run mode).
-    log.debug("GET %s – fetching current user data for patch.", url)
+    log.debug("GET %s - fetching current user data for patch.", url)
     get_resp = _session.get(url, timeout=_TIMEOUT)
     get_resp.raise_for_status()
     current = _parse_json(get_resp)
@@ -98,7 +98,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
         else:
             payload[key] = value
 
-    log.debug("PATCH %s – merged payload: %s", url, payload)
+    log.debug("PATCH %s - merged payload: %s", url, payload)
 
     if dry_run:
         log.info("[DRY-RUN] Would PATCH %s with: %s", url, payload)
@@ -109,7 +109,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
 
     result = _parse_json(patch_resp)
     log.debug(
-        "PATCH %s – response (HTTP %d): %s",
+        "PATCH %s - response (HTTP %d): %s",
         url,
         patch_resp.status_code,
         result.get("attributes", {}),
@@ -129,7 +129,7 @@ def retrieve_user(username: str) -> dict:
     The PK is stored in the session for all subsequent API operations; the
     avatar is used to display the current profile picture on the dashboard.
     """
-    log.debug("GET %s?username=%s – retrieving user.", _users_url, username)
+    log.debug("GET %s?username=%s - retrieving user.", _users_url, username)
     resp = _session.get(_users_url, params={"username": username}, timeout=_TIMEOUT)
     resp.raise_for_status()
 
@@ -264,7 +264,7 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     # Paginate through all result pages, collecting PKs from each page
     while url:
         page += 1
-        log.debug("GET %s (page %d) – fetching user list.", url, page)
+        log.debug("GET %s (page %d) - fetching user list.", url, page)
         resp = _session.get(url, params=params, timeout=_TIMEOUT_LIST)
         resp.raise_for_status()
 

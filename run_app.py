@@ -1,5 +1,5 @@
 """
-run_app.py – Production entrypoint (gunicorn).
+run_app.py - Production entrypoint (gunicorn).
 
 Reads webserver settings from config.yml (host, port, workers, TLS) and
 launches gunicorn with the appropriate arguments.  The cleanup thread is

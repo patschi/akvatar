@@ -1,5 +1,5 @@
 """
-cleanup.py – Avatar cleanup.
+cleanup.py - Avatar cleanup.
 
 Removes avatar files that belong to users who no longer exist in Authentik
 (and optionally users who are deactivated), enforces per-user retention
@@ -315,7 +315,7 @@ def run_cleanup() -> int:
                 active_pks = list_active_user_pks()
         except Exception:
             log.exception(
-                "Failed to fetch user list from Authentik – aborting cleanup."
+                "Failed to fetch user list from Authentik - aborting cleanup."
             )
             return 0
 
@@ -323,7 +323,7 @@ def run_cleanup() -> int:
         # or the token expired.  Aborting prevents catastrophic mass deletion.
         if not all_pks:
             log.warning(
-                "Authentik returned zero users – aborting to prevent accidental mass deletion."
+                "Authentik returned zero users - aborting to prevent accidental mass deletion."
             )
             return 0
 
@@ -428,7 +428,7 @@ def _cleanup_loop() -> None:
     main process shuts down.
     """
     if _run_on_startup:
-        log.info("cleanup.on_startup is enabled – running cleanup in 60 s.")
+        log.info("cleanup.on_startup is enabled - running cleanup in 60 s.")
         time.sleep(60)
         try:
             run_cleanup()
@@ -469,7 +469,7 @@ def start_cleanup_thread() -> None:
 
     if not croniter.is_valid(_cron_expr):
         log.error(
-            "Invalid cron expression %r for cleanup.interval – cleanup is disabled.",
+            "Invalid cron expression %r for cleanup.interval - cleanup is disabled.",
             _cron_expr,
         )
         return

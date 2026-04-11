@@ -1,5 +1,5 @@
 """
-rate_limit.py – Application-wide, thread-safe, sliding-window rate limiter.
+rate_limit.py - Application-wide, thread-safe, sliding-window rate limiter.
 
 Tracks per-IP points using shared state across all gunicorn worker processes
 (via multiprocessing.Manager) and returns HTTP 429 when limits are exceeded.
@@ -232,7 +232,7 @@ class _RateLimiter:
 
 
 # ---------------------------------------------------------------------------
-# Manager – orchestrates limiters, whitelist, eviction thread
+# Manager - orchestrates limiters, whitelist, eviction thread
 # ---------------------------------------------------------------------------
 
 
@@ -331,7 +331,7 @@ class _RateLimitManager:
         limiter = self._limiters.get(endpoint_type)
         if limiter is None:
             log.debug(
-                "Rate limiting: endpoint type %r has no limiter – skipping.",
+                "Rate limiting: endpoint type %r has no limiter - skipping.",
                 endpoint_type,
             )
             return True, 0
@@ -364,12 +364,12 @@ class _RateLimitManager:
             addr = ipaddress.ip_address(ip)
         except ValueError:
             log.debug(
-                "Rate limiting: could not parse client IP %r – applying limits.", ip
+                "Rate limiting: could not parse client IP %r - applying limits.", ip
             )
             return False
         result = any(addr in network for network in self._whitelist)
         if result:
-            log.debug("Rate limiting: %s is whitelisted – skipping.", ip)
+            log.debug("Rate limiting: %s is whitelisted - skipping.", ip)
         return result
 
     # -- central eviction thread (master process only) ---------------------

@@ -1,5 +1,5 @@
 """
-ldap_client.py – LDAP server client.
+ldap_client.py - LDAP server client.
 
 Writes photo data (binary images or URL strings) into configurable LDAP
 attributes for the user object that matches the authenticated user's unique
@@ -226,7 +226,7 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
     found, and RuntimeError if the LDAP modify is rejected.
     """
     if not _enabled:
-        log.info("LDAP integration is disabled – skipping photo updates.")
+        log.info("LDAP integration is disabled - skipping photo updates.")
         return
 
     if not updates:

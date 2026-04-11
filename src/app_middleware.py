@@ -1,5 +1,5 @@
 """
-app_middleware.py – WSGI and Jinja2 middleware (PrefixMiddleware, MinifyingTemplateLoader).
+app_middleware.py - WSGI and Jinja2 middleware (PrefixMiddleware, MinifyingTemplateLoader).
 """
 
 import re

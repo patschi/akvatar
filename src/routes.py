@@ -1,5 +1,5 @@
 """
-routes.py – Flask route definitions.
+routes.py - Flask route definitions.
 
 Contains:
   - GET  /                              -> redirect to /login
@@ -47,7 +47,7 @@ routes_bp = Blueprint("routes", __name__)
 _VALID_ERROR_KEYS = frozenset({"oidc_failed", "pk_failed", "session_expired"})
 
 
-# robots.txt – serve from static cache (crawlers expect /robots.txt at the root)
+# robots.txt - serve from static cache (crawlers expect /robots.txt at the root)
 @routes_bp.route("/robots.txt")
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
@@ -61,7 +61,7 @@ def healthz():
     return Response("OK", mimetype="text/plain")
 
 
-# Root – forward to the login page
+# Root - forward to the login page
 @routes_bp.route("/")
 def root():
     """Redirect the root URL to the login page."""
@@ -73,7 +73,7 @@ def root():
 def login_page():
     """Show the login page with a sign-in button, or redirect to dashboard if already authenticated."""
     if "user" in session:
-        log.debug("User already authenticated – redirecting to dashboard.")
+        log.debug("User already authenticated - redirecting to dashboard.")
         return redirect(url_for("routes.dashboard"))
     error_key = request.args.get("error", "")
     if not error_key and "autologin" in request.args:
@@ -114,7 +114,7 @@ def dashboard():
 
 
 # Serve stored avatar files
-# Dimensions must be NxN (e.g. "256x256") – reject anything else before touching the filesystem
+# Dimensions must be NxN (e.g. "256x256") - reject anything else before touching the filesystem
 _DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 
 
@@ -122,7 +122,7 @@ _DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 def serve_avatar(dimensions, filename):
     """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
     if not _DIMENSIONS_RE.match(dimensions):
-        log.debug("Avatar request rejected – invalid dimensions: %r", dimensions)
+        log.debug("Avatar request rejected - invalid dimensions: %r", dimensions)
         abort(404)
     filepath = f"{dimensions}/{filename}"
     log.debug("Serving avatar file: %s", filepath)
@@ -137,8 +137,8 @@ def serve_avatar(dimensions, filename):
 
 # Serve avatar metadata JSON files
 # Access control is governed by security.metadata_access in config.yml:
-#   "owner_only" (default) – only the authenticated user who owns the file may access it
-#   "public"               – no authentication required
+#   "owner_only" (default) - only the authenticated user who owns the file may access it
+#   "public"               - no authentication required
 _METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
 
 
@@ -154,7 +154,7 @@ def serve_avatar_metadata(filename):
     if metadata_access not in _METADATA_ACCESS_MODES:
         if metadata_access is not None:
             log.warning(
-                "Unknown security.metadata_access value %r – falling back to owner_only.",
+                "Unknown security.metadata_access value %r - falling back to owner_only.",
                 metadata_access,
             )
         metadata_access = "owner_only"
@@ -163,7 +163,7 @@ def serve_avatar_metadata(filename):
         # Must be authenticated first
         if "user" not in session:
             log.debug(
-                "Unauthenticated metadata request for %r – redirecting to login.",
+                "Unauthenticated metadata request for %r - redirecting to login.",
                 filename,
             )
             return redirect(url_for("routes.login_page"))
@@ -173,14 +173,14 @@ def serve_avatar_metadata(filename):
         try:
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
-            # File not found or unreadable – return 404 without leaking details
+            # File not found or unreadable - return 404 without leaking details
             abort(404)
 
         # Reject access when the session user is not the file owner.
         # Return 404 (not 403) so callers cannot distinguish "not found" from "not yours".
         if meta.get("user_pk", None) != session["user"].get("pk", None):
             log.debug(
-                "Metadata access denied for %r – user pk mismatch (session pk=%r).",
+                "Metadata access denied for %r - user pk mismatch (session pk=%r).",
                 filename,
                 session["user"].get("pk", None),
             )
@@ -229,7 +229,7 @@ def api_upload():
 
     # Synchronous validation (returns JSON 400 on failure)
     if "file" not in request.files:
-        log.warning("Upload rejected – no file part in request.")
+        log.warning("Upload rejected - no file part in request.")
         return jsonify({"error": t("error.no_file")}), 400
 
     try:
@@ -239,7 +239,7 @@ def api_upload():
         return jsonify({"error": str(exc)}), 400
 
     log.info(
-        "Image validated – mode=%s, size=%dx%d. Starting SSE stream.",
+        "Image validated - mode=%s, size=%dx%d. Starting SSE stream.",
         image.mode,
         image.width,
         image.height,

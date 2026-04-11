@@ -1,5 +1,5 @@
 """
-image_import.py – Remote image import routes (Gravatar and URL).
+image_import.py - Remote image import routes (Gravatar and URL).
 
 Provides proxy endpoints that fetch images from external sources on behalf
 of the authenticated user.  Proxying is required so that fetched images are
@@ -44,7 +44,7 @@ _MIME_TO_EXT: dict[str, str] = {
     "image/gif": "gif",
 }
 
-# Allowlist of MIME types accepted from remote servers – derived from _MIME_TO_EXT
+# Allowlist of MIME types accepted from remote servers - derived from _MIME_TO_EXT
 # so both stay in sync automatically: adding a new MIME type to _MIME_TO_EXT
 # automatically permits it here too.  Types absent from _MIME_TO_EXT (e.g.
 # image/svg+xml, which can carry embedded JavaScript) are excluded by design.
@@ -258,7 +258,7 @@ def api_fetch_gravatar():
         if content_type not in _ALLOWED_PROXY_MIMETYPES:
             resp.close()
             log.warning(
-                "Gravatar returned unexpected Content-Type %r – rejecting.",
+                "Gravatar returned unexpected Content-Type %r - rejecting.",
                 content_type,
             )
             return jsonify({"error": t("error.import.unsupported_type")}), 400

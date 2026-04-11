@@ -1,4 +1,4 @@
-# src package – all application modules live here.
+# src package - all application modules live here.
 
 APP_NAME = "akvatar"
 APP_VERSION = "0.1"

@@ -1,5 +1,5 @@
 """
-reset_avatar.py – Avatar removal route.
+reset_avatar.py - Avatar removal route.
 
 Provides the ``POST /api/remove-avatar`` endpoint that strips the custom
 avatar attribute from the Authentik user and clears it from the Flask session.

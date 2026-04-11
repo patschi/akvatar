@@ -1,5 +1,5 @@
 """
-i18n.py – Internationalisation support.
+i18n.py - Internationalisation support.
 
 Loads translations from YAML files in the ``src/languages/`` directory at startup.
 Each ``.yml`` file represents one locale (e.g. ``en_US.yml``, ``de_DE.yml``).
@@ -77,7 +77,7 @@ def _load_translations() -> None:
     default_path = _LANGUAGES_DIR / f"{DEFAULT_LOCALE}.yml"
     if not default_path.is_file():
         log.error(
-            "Reference language file not found: %s – i18n will be broken.", default_path
+            "Reference language file not found: %s - i18n will be broken.", default_path
         )
         return
 
@@ -88,7 +88,7 @@ def _load_translations() -> None:
                 data = yaml.safe_load(fh)
             if not isinstance(data, dict):
                 log.warning(
-                    "Skipping %s – expected a YAML mapping, got %s.",
+                    "Skipping %s - expected a YAML mapping, got %s.",
                     yml_path.name,
                     type(data).__name__,
                 )

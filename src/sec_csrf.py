@@ -1,5 +1,5 @@
 """
-csrf.py – Per-session CSRF token generation and validation.
+csrf.py - Per-session CSRF token generation and validation.
 
 Generates a cryptographically random token once per session and validates it
 on state-changing requests via the ``X-CSRF-Token`` header.  This is

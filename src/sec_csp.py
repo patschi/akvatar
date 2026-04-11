@@ -1,5 +1,5 @@
 """
-sec_csp.py – Per-request Content Security Policy nonce generation and header construction.
+sec_csp.py - Per-request Content Security Policy nonce generation and header construction.
 
 A fresh cryptographically random nonce is generated once per request and
 stored on Flask's ``g`` object so that both the template (which adds it to
@@ -40,7 +40,7 @@ _NONCE_BYTES = 16
 # Flask `g` key used to store the nonce for the duration of one request
 _G_KEY = "csp_nonce"
 
-# Master switch – set security.csp_enabled to false to suppress the CSP header entirely.
+# Master switch - set security.csp_enabled to false to suppress the CSP header entirely.
 # Defaults to true; only disable when a reverse proxy or WAF owns the CSP header.
 _CSP_ENABLED = bool(security_cfg.get("csp_enabled", True))
 
@@ -56,10 +56,10 @@ _avatar_origin = (
 )
 
 # Build the img-src value once at startup.
-# 'self'  – same-origin avatar files served by this application.
-# data:   – base64-encoded preview images produced by Cropper.js in the browser.
-# blob:   – object URLs created by Cropper.js for the canvas preview.
-# <origin> – explicit avatar host when public_avatar_url is on a different origin.
+# 'self'   - same-origin avatar files served by this application.
+# data:    - base64-encoded preview images produced by Cropper.js in the browser.
+# blob:    - object URLs created by Cropper.js for the canvas preview.
+# <origin> - explicit avatar host when public_avatar_url is on a different origin.
 _img_src_parts = ["'self'", "data:", "blob:"]
 if _avatar_origin:
     _img_src_parts.append(_avatar_origin)
@@ -69,10 +69,10 @@ _IMG_SRC = " ".join(_img_src_parts)
 # Pre-built CSP directive string.  The nonce placeholder is substituted per
 # request in build_csp_header() to keep allocation minimal.
 #
-# default-src 'none'     – deny everything not explicitly listed below.
-# nonce-based script-src – only <script> tags carrying the per-request nonce
+# default-src 'none'     - deny everything not explicitly listed below.
+# nonce-based script-src - only <script> tags carrying the per-request nonce
 #                          are executed; injected inline scripts are blocked.
-# frame-ancestors 'none' – CSP3 equivalent of X-Frame-Options: DENY, respected
+# frame-ancestors 'none' - CSP3 equivalent of X-Frame-Options: DENY, respected
 #                          by modern browsers that ignore the legacy header.
 _CSP_TEMPLATE = (
     "default-src 'none'; "

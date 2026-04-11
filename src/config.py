@@ -1,5 +1,5 @@
 """
-config.py – Load YAML configuration and set up application-wide logging.
+config.py - Load YAML configuration and set up application-wide logging.
 
 Reads config.yml once at import time so every other module can simply
 `from src.config import cfg`.
@@ -83,13 +83,13 @@ log.info("Starting %s v%s...", APP_NAME, APP_VERSION)
 log.debug("Configuration loaded from %r.", CONFIG_PATH)
 if debug_full:
     log.warning(
-        "FULL DEBUG MODE is enabled – Flask debugger, template auto-reload, and verbose logging are active. Disable in production."
+        "FULL DEBUG MODE is enabled - Flask debugger, template auto-reload, and verbose logging are active. Disable in production."
     )
     log.debug("Log level forced to DEBUG by debug_full.")
 log.debug("Log level set to %s.", _configured_level)
 if dry_run:
     log.warning(
-        "DRY-RUN MODE is enabled – no changes will be pushed to Authentik or LDAP."
+        "DRY-RUN MODE is enabled - no changes will be pushed to Authentik or LDAP."
     )
 
 # Startup SSL warnings (logged once at import time)
@@ -97,7 +97,7 @@ _tls_cert = web_cfg.get("tls_cert", "")
 _tls_key = web_cfg.get("tls_key", "")
 if not _tls_cert or not _tls_key:
     log.warning(
-        "Server TLS is NOT configured – the built-in server will run over plain HTTP."
+        "Server TLS is NOT configured - the built-in server will run over plain HTTP."
     )
 
 if ldap_cfg.get("enabled", False):
@@ -106,12 +106,12 @@ if ldap_cfg.get("enabled", False):
         _scheme = urlparse(_srv.strip()).scheme.lower()
         if _scheme == "ldap" or (not _scheme and not _use_ssl_fallback):
             log.warning(
-                "One or more LDAP servers are configured WITHOUT SSL – credentials and data will be sent in plain text."
+                "One or more LDAP servers are configured WITHOUT SSL - credentials and data will be sent in plain text."
             )
             break
     if ldap_cfg.get("skip_cert_verify", False):
         log.warning(
-            "LDAP TLS certificate verification is DISABLED – connections are vulnerable to MITM attacks."
+            "LDAP TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
         )
 
 # Validate configured image sizes for backends

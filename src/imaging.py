@@ -1,5 +1,5 @@
 """
-imaging.py – Image processing helpers.
+imaging.py - Image processing helpers.
 
 Handles secure, unguessable filename generation, resizing to all configured
 square sizes, and saving in every configured format (jpg, png, webp).
@@ -23,7 +23,7 @@ log = logging.getLogger("imaging")
 # A "decompression bomb" is a small file on disk (e.g. 1 MB) that expands to
 # an enormous bitmap in memory (e.g. 20 GB) when decoded.  Pillow's default
 # limit is ~178 megapixels, which is far too generous for an avatar uploader.
-# 25 MP at 4 bytes/pixel = ~100 MB of RAM – a practical ceiling that still
+# 25 MP at 4 bytes/pixel = ~100 MB of RAM - a practical ceiling that still
 # accepts very high-resolution source photos while blocking crafted inputs.
 Image.MAX_IMAGE_PIXELS = 25_000_000
 
@@ -94,7 +94,7 @@ def normalize_image(image: Image.Image) -> Image.Image:
     # Rebuild from raw pixels — discards EXIF, ICC profiles, XMP, IPTC, and any
     # other ancillary chunks that could leak PII or carry hidden payloads.
     image = Image.frombytes(image.mode, image.size, image.tobytes())
-    log.debug("Metadata stripped – working with clean pixel-only image.")
+    log.debug("Metadata stripped - working with clean pixel-only image.")
 
     if image.mode not in ("RGB", "RGBA"):
         log.debug("Converting image mode %s -> RGBA.", image.mode)
@@ -224,7 +224,7 @@ def process_image(
             total_bytes += file_size
             results[key][ext] = f"{_avatar_base_url}/{key}/{filename_base}.{ext}"
             log.debug(
-                "Saved %s/%s.%s (%s) – %d bytes.",
+                "Saved %s/%s.%s (%s) - %d bytes.",
                 key,
                 filename_base,
                 ext,
@@ -233,7 +233,7 @@ def process_image(
             )
 
     log.info(
-        "Image processing complete – %d sizes x %d formats, %d bytes total. Filename: %s",
+        "Image processing complete - %d sizes x %d formats, %d bytes total. Filename: %s",
         len(sizes),
         len(formats),
         total_bytes,
@@ -287,7 +287,7 @@ def prepare_ldap_image(
             )
             return data
         log.debug(
-            "Pre-generated file %s is %d bytes, exceeds limit of %d bytes – will re-encode.",
+            "Pre-generated file %s is %d bytes, exceeds limit of %d bytes - will re-encode.",
             existing_path.name,
             len(data),
             max_bytes,
@@ -346,7 +346,7 @@ def prepare_ldap_image(
         )
 
     log.debug(
-        "Image exceeds %d KB limit – starting quality reduction from %d.",
+        "Image exceeds %d KB limit - starting quality reduction from %d.",
         max_file_size_kb,
         quality,
     )
@@ -398,7 +398,7 @@ def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
                 deleted += 1
                 log.debug("Deleted %s.", path)
             except FileNotFoundError:
-                pass  # already gone – not a failure
+                pass  # already gone - not a failure
             except OSError as exc:
                 log.warning("Failed to remove %s during cleanup: %s", path, exc)
                 failed += 1

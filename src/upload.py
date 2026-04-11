@@ -1,5 +1,5 @@
 """
-upload.py – Avatar upload processing pipeline.
+upload.py - Avatar upload processing pipeline.
 
 Handles the full lifecycle of an avatar upload:
   1. Validate the uploaded file (extension, magic bytes, Pillow decode, dimensions)
@@ -61,7 +61,7 @@ def _sse(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
-# Upload validation (synchronous – called before switching to SSE stream)
+# Upload validation (synchronous - called before switching to SSE stream)
 
 
 class ValidationError(Exception):
@@ -153,7 +153,7 @@ def _step_process_image(image: Image.Image, filename_base: str):
     urls, total_bytes = process_image(image, filename_base)
     if not urls:
         raise RuntimeError(
-            "Image processing produced no output – check images.sizes/formats config."
+            "Image processing produced no output - check images.sizes/formats config."
         )
 
     if total_bytes >= 1_048_576:
@@ -267,7 +267,7 @@ def _build_ldap_updates(
 
         else:
             log.warning(
-                "Unknown LDAP photo type %r for attribute %s – skipping.", ptype, attr
+                "Unknown LDAP photo type %r for attribute %s - skipping.", ptype, attr
             )
 
     return updates
@@ -289,12 +289,12 @@ def _step_sync_ldap(
 
     # Users without ldap_uniq are Authentik-only (not synced from LDAP)
     if not ldap_uniq:
-        log.info("User pk=%s has no ldap_uniq – skipping LDAP updates.", user_pk)
+        log.info("User pk=%s has no ldap_uniq - skipping LDAP updates.", user_pk)
         yield _sse({"step": t("step.ldap_updated"), "status": "skipped"})
         return False
 
     log.debug(
-        "User has ldap_uniq=%r – preparing %d LDAP photo update(s).",
+        "User has ldap_uniq=%r - preparing %d LDAP photo update(s).",
         ldap_uniq,
         len(_ldap_photos),
     )
@@ -332,7 +332,7 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
     log.debug("Metadata saved to %s.", meta_path)
 
 
-# Main SSE generator – orchestrates the full pipeline
+# Main SSE generator - orchestrates the full pipeline
 
 
 def generate_sse(user: dict, image: Image.Image):
@@ -377,7 +377,7 @@ def generate_sse(user: dict, image: Image.Image):
 
         # Rollback on any backend failure
         if ak_failed or ldap_failed:
-            log.warning("Backend update failed – rolling back for %s.", filename_base)
+            log.warning("Backend update failed - rolling back for %s.", filename_base)
             # Revert Authentik if it was already updated successfully
             if not ak_failed and not dry_run:
                 try:
@@ -407,7 +407,7 @@ def generate_sse(user: dict, image: Image.Image):
         log.exception("Upload processing failed for user %r.", username)
         if filename_base:
             cleanup_avatar_files(filename_base)
-        # Show a vague user-friendly message – never expose internal errors to the client
+        # Show a vague user-friendly message - never expose internal errors to the client
         yield _sse(
             {
                 "step": t("step.processing_failed"),
