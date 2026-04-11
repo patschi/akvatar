@@ -3,6 +3,14 @@
     "extends": ["config:best-practices", "mergeConfidence:all-badges"],
     "labels": ["renovate"],
     "automergeType": "branch",
+    "semanticCommits": "enabled",
+    "dependencyDashboard": true,
+    "dependencyDashboardTitle": "Renovate: Dependency Dashboard",
+    "osvVulnerabilityAlerts": true,
+    "lockFileMaintenance": {
+        "enabled": true,
+        "schedule": ["before 6am on monday"]
+    },
     "vulnerabilityAlerts": {
         "enabled": true,
         "labels": ["security"],
@@ -66,11 +74,30 @@
             "automerge": true
         },
         {
-            "description": "Automerge distroless base image updates - no shell or userland, minimal risk.",
+            "description": "Automerge distroless base image updates - no shell or userland, minimal risk. separateMajorMinor disabled because the nonroot tag does not follow semver.",
             "matchDatasources": ["docker"],
             "matchDepNames": ["gcr.io/distroless/python3-debian13"],
             "matchFileNames": ["Dockerfile"],
+            "separateMajorMinor": false,
             "automerge": true
+        },
+        {
+            "description": "Wait 3 days after a PyPI release before raising a PR - avoids packages yanked shortly after publishing.",
+            "matchDatasources": ["pypi"],
+            "minimumReleaseAge": "3 days"
+        },
+        {
+            "description": "Group application Python dependency patch updates (from pyproject.toml) into one PR. Safe to automerge - scoped to uv manager only so uv/ruff tool pins are unaffected.",
+            "matchManagers": ["uv"],
+            "matchUpdateTypes": ["patch"],
+            "groupName": "python dependencies (patch)",
+            "automerge": true
+        },
+        {
+            "description": "Group application Python dependency minor and major updates (from pyproject.toml) into one PR for manual review.",
+            "matchManagers": ["uv"],
+            "matchUpdateTypes": ["minor", "major"],
+            "groupName": "python dependencies (minor/major)"
         }
     ]
 }
