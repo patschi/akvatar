@@ -49,9 +49,10 @@ authentik:
   base_url: "https://auth.example.com"
   api_token: "CHANGE-ME"
 
-# Image import from external sources (Gravatar, URL).
-# Both enabled by default. URL import blocks private IPs by default.
-# Set image_import.gravatar.enabled or image_import.url.enabled to false to disable.
+# Image import from external sources (Gravatar, URL, Webcam).
+# Gravatar and URL are enabled by default; webcam is off by default because
+# it requires a secure origin (HTTPS) and enables the camera Permissions-Policy.
+# Set image_import.webcam.enabled: true to offer browser-based selfie capture.
 image_import: {}
 
 # LDAP is disabled by default. Enable and configure it here if you want
@@ -76,23 +77,4 @@ images:
 # --- Sentry Error Tracking (optional) ---
 # Sends unhandled exceptions and (optionally) performance data to Sentry.
 # Requires a valid DSN from your Sentry project settings.
-sentry:
-  # Master switch – set to true to enable Sentry integration
-  enabled: false
-  # Sentry DSN (Data Source Name) – project-specific ingest URL from Sentry
-  dsn: ""
-  # Capture unhandled exceptions and send them to Sentry
-  capture_errors: true
-  # Capture performance / transaction traces
-  capture_performance: false
-  # Sample rate for error events (0.0 to 1.0, where 1.0 = send every error)
-  sample_rate: 1.0
-  # Sample rate for performance traces (0.0 to 1.0, where 1.0 = trace every request).
-  # Only applies when capture_performance is true.
-  traces_sample_rate: 0.2
-  # Sentry environment tag (e.g. "production", "staging", "development").
-  # Leave empty to auto-detect from debug_full (debug_full=true -> "development", otherwise "production").
-  environment: ""
-  # Send default PII (IP addresses, user details) with events.
-  # When false, Sentry scrubs personally identifiable information automatically.
-  send_default_pii: false
+sentry: {}

@@ -19,3 +19,5 @@ Desktop.ini
 # App runtime data
 data/config/config.yml
 data/user-avatars/*
+data/config/key.pem
+data/config/cert.pem

@@ -30,8 +30,8 @@ Set the certificate and key paths in `data/config/config.yml`:
 
 ```yaml
 webserver:
-  tls_cert: "/path/to/cert.pem"
-  tls_key: "/path/to/key.pem"
+  tls_cert: "/app/data/config/cert.pem"
+  tls_key: "/app/data/config/key.pem"
 ```
 
 The server uses the same port for HTTPS. When TLS is not configured, a warning is logged at startup.
@@ -43,9 +43,7 @@ See [Configuration Reference](configuration.md#webservertls_cert--tls_key) for d
 For development or testing, generate a self-signed certificate:
 
 ```bash
-openssl req -x509 -newkey rsa:3072 -nodes \
-  -keyout key.pem -out cert.pem \
-  -days 3650 -subj "/CN=akvatar"
+openssl req -x509 -newkey rsa:3072 -nodes -keyout key.pem -out cert.pem -days 3650 -subj "/CN=akvatar"
 ```
 
 | Parameter          | Purpose                                             |
