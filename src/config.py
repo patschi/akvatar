@@ -136,7 +136,9 @@ log.debug("TLS minimum version: %s.", tls_minimum_version.name)
 # HTTP/2 startup status
 _http2_enabled = bool(http2_cfg.get("enabled", True))
 if _http2_enabled and _tls_configured:
-    log.info("HTTP/2 support enabled (TLS configured, ALPN negotiation will advertise h2).")
+    log.info(
+        "HTTP/2 support enabled (TLS configured, ALPN negotiation will advertise h2)."
+    )
 elif _http2_enabled and not _tls_configured:
     log.warning(
         "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS and will not be used."

@@ -154,7 +154,9 @@ def create_app() -> Flask:
         return _inner_wsgi(environ, start_response)
 
     app.wsgi_app = _set_url_scheme
-    log.info("Transport scheme: %s (wsgi.url_scheme=%r).", _url_scheme.upper(), _url_scheme)
+    log.info(
+        "Transport scheme: %s (wsgi.url_scheme=%r).", _url_scheme.upper(), _url_scheme
+    )
 
     # Initialise OIDC / OAuth
     init_oauth(app)
@@ -226,11 +228,11 @@ def create_app() -> Flask:
     # NOTE: Flask automatically adds HEAD (for every GET route) and OPTIONS
     # (for every route) to the map, so both will be present in the derived set.
     _ALLOWED_METHODS = frozenset(
-        method
-        for rule in app.url_map.iter_rules()
-        for method in rule.methods
+        method for rule in app.url_map.iter_rules() for method in rule.methods
     )
-    log.debug("Allowed HTTP methods derived from route map: %s", sorted(_ALLOWED_METHODS))
+    log.debug(
+        "Allowed HTTP methods derived from route map: %s", sorted(_ALLOWED_METHODS)
+    )
 
     @app.before_request
     def _reject_disallowed_methods():

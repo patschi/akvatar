@@ -61,6 +61,7 @@ threads = web_cfg.get("threads", 4)
 timeout = web_cfg.get("timeout", 120)
 wtmpdir = tempfile.gettempdir()
 
+# fmt: off
 args = [
     "gunicorn",
     "--no-control-socket",
@@ -72,6 +73,7 @@ args = [
     "--threads", str(threads),
     "--timeout", str(timeout),
 ]
+# fmt: on
 
 if tls_cert and tls_key:
     args.extend(["--certfile", tls_cert, "--keyfile", tls_key])
@@ -80,7 +82,9 @@ if http2_active:
     # Advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
     args.extend(["--http-protocols", "h2,h1"])
 elif _http2_configured and not _tls_active:
-    log.warning("HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS.")
+    log.warning(
+        "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS."
+    )
 
 args.append("app:create_app()")
 

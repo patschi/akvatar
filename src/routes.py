@@ -33,7 +33,12 @@ from src.app_static import serve_static_file
 from src.auth import login_required
 from src.config import security_cfg
 from src.i18n import t
-from src.image_import import GRAVATAR_ENABLED, GRAVATAR_RESTRICT_EMAIL, URL_ENABLED, WEBCAM_ENABLED
+from src.image_import import (
+    GRAVATAR_ENABLED,
+    GRAVATAR_RESTRICT_EMAIL,
+    URL_ENABLED,
+    WEBCAM_ENABLED,
+)
 from src.imaging import ALLOWED_EXTENSIONS, AVATAR_ROOT, MAX_SIZE, METADATA_ROOT
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.sec_csrf import validate_csrf_token
