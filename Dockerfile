@@ -26,11 +26,26 @@ RUN apt-get update && \
         zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
+# Copy uv binary from the official image. Pin to a specific tag or SHA for
+# reproducible builds (consistent with the rest of this Dockerfile).
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 # Install Python dependencies into a staging directory (no venv needed in
 # Docker). The target path is version-independent so the Dockerfile does
 # not need updating when the base Python version changes.
-COPY pyproject.toml .
-RUN pip install --no-cache-dir --target /opt/site-packages .
+#
+# uv export reads the pre-resolved uv.lock and emits a pip-compatible
+# requirements file with pinned hashes. uv pip install then fetches and
+# installs exactly those versions - no dependency resolution, no dummy
+# package build. --no-emit-project excludes the application itself (it is
+# not an importable package; only its declared dependencies are needed).
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt && \
+    uv pip install \
+        --no-cache \
+        --system \
+        --target /opt/site-packages \
+        -r /tmp/requirements.txt
 
 # Resolve symlink chains for Pillow's shared libraries into a flat staging
 # directory. Kaniko cannot follow multi-level .so symlinks across stages,

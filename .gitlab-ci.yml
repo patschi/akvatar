@@ -38,13 +38,14 @@ container_scanning:
         - "**/*.py"
         - "Dockerfile"
         - "pyproject.toml"
+        - "uv.lock"
         - ".gitlab-ci.yml"
         - "static/**"
         - "src/**"
       when: always
     - when: never
 
-# Run dependency scanning on scheduled pipelines in addition to pyproject.toml changes
+# Run dependency scanning on scheduled pipelines in addition to pyproject.toml/uv.lock changes
 gemnasium-python-dependency_scanning:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -52,6 +53,7 @@ gemnasium-python-dependency_scanning:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
       changes:
         - "pyproject.toml"
+        - "uv.lock"
         - ".gitlab-ci.yml"
       when: always
     - when: never
@@ -61,27 +63,34 @@ stages:
   - build-container
   - test
 
-# Shared base for all lint jobs: pinned Python image, pip cache, and pip self-upgrade.
-# Child jobs reference this before_script with !reference so they can append their
-# own tool installs without losing the upgrade step.
-.pip-base:
+# Shared base for all lint jobs: pinned Python image, uv install, and uv cache.
+# Child jobs reference this before_script with !reference so they can append
+# their own steps without losing the uv bootstrap.
+# UV_CACHE_DIR points uv to the GitLab CI cache directory so tool downloads
+# survive between pipeline runs. UV_NO_PROGRESS suppresses the progress bar.
+.uv-base:
   image: python:3.13-slim@sha256:eefe082c4b73082d83b8e7705ed999bc8a1dae57fe1ea723f907a0fc4b90f088
+  variables:
+    UV_CACHE_DIR: .uv-cache
+    UV_NO_PROGRESS: "1"
   cache:
-    key: pip-$CI_COMMIT_REF_SLUG
+    key: uv-$CI_COMMIT_REF_SLUG
     paths:
-      - .pip-cache/
+      - .uv-cache/
   before_script:
-    - pip install --quiet --root-user-action=ignore --upgrade pip --cache-dir .pip-cache
+    # Bootstrap uv via pip. Pin the version (e.g. uv==0.7.2) for reproducibility.
+    - pip install --quiet --root-user-action=ignore uv --cache-dir .uv-cache
 
-# Shared base for ruff lint jobs: extends pip-base, pins ruff, and declares the
-# shared trigger rules so check and format stay in sync without repetition.
+# Shared base for ruff lint jobs: extends uv-base and declares the shared trigger
+# rules so check and format stay in sync without repetition.
+# ruff is invoked via uvx (uv's tool executor) - no explicit install step needed.
+# uvx caches the tool in UV_CACHE_DIR so repeated calls across jobs are fast.
 .ruff-base:
-  extends: .pip-base
+  extends: .uv-base
   stage: lint
   interruptible: true
   before_script:
-    - !reference [.pip-base, before_script]
-    - pip install --quiet --root-user-action=ignore ruff==0.15.10 --cache-dir .pip-cache
+    - !reference [.uv-base, before_script]
   rules:
     - changes:
         - "**/*.py"
@@ -94,9 +103,9 @@ lint-ruff-check:
   extends: .ruff-base
   script:
     # Generate GitLab Code Quality report (inline MR diff annotations)
-    - ruff check --output-format=gitlab *.py src/ > ruff-report.json || true
+    - uvx ruff@0.15.10 check --output-format=gitlab *.py src/ > ruff-report.json || true
     # This is the call that actually fails the job on lint errors
-    - ruff check *.py src/
+    - uvx ruff@0.15.10 check *.py src/
   artifacts:
     reports:
       codequality: ruff-report.json
@@ -105,21 +114,20 @@ lint-ruff-check:
 lint-ruff-format:
   extends: .ruff-base
   script:
-    - ruff format --check *.py src/
+    - uvx ruff@0.15.10 format --check *.py src/
 
 # Audits pinned deps against OSV/PyPI Advisory databases.
-# Runs on pyproject.toml changes and on scheduled pipelines (nightly CVE discovery).
-# Configure the schedule in GitLab UI → CI/CD → Schedules.
-lint-pip-audit:
-  extends: .pip-base
+# Runs on pyproject.toml/uv.lock changes and on scheduled pipelines (nightly CVE discovery).
+# Configure the schedule in GitLab UI -> CI/CD -> Schedules.
+# uv audit reads uv.lock directly - no separate resolution step needed.
+lint-uv-audit:
+  extends: .uv-base
   stage: lint
   interruptible: true
   before_script:
-    - !reference [.pip-base, before_script]
-    - pip install --quiet --root-user-action=ignore pip-audit --cache-dir .pip-cache
+    - !reference [.uv-base, before_script]
   script:
-    # pip-audit resolves and audits project deps from pyproject.toml in an isolated env
-    - pip-audit --cache-dir .pip-cache .
+    - uv audit
   retry:
     max: 2
     when:
@@ -132,6 +140,7 @@ lint-pip-audit:
       when: always
     - changes:
         - "pyproject.toml"
+        - "uv.lock"
         - ".gitlab-ci.yml"
       when: always
     - when: never
@@ -178,6 +187,7 @@ push-container-gitlab:
         - "**/*.py"
         - "Dockerfile"
         - "pyproject.toml"
+        - "uv.lock"
         - ".gitlab-ci.yml"
         - "static/**"
         - "src/**"
