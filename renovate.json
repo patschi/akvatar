@@ -5,7 +5,6 @@
     "automergeType": "branch",
     "semanticCommits": "enabled",
     "dependencyDashboard": true,
-    "dependencyDashboardTitle": "Renovate: Dependency Dashboard",
     "osvVulnerabilityAlerts": true,
     "lockFileMaintenance": {
         "enabled": true,
