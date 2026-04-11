@@ -100,10 +100,15 @@ function updateStep(stepElement, label, status, detail) {
     stepElement.innerHTML = buildStepHTML(label, status, detail);
 }
 
-/** Build the HTML for the retry/change-avatar button shown after a result. */
-function buildRetryButtonHTML() {
-    return '<button class="btn btn-block btn-retry" onclick="location.reload()">'
-        + escapeHTML(I18N.result_retry) + '</button>';
+/** Build and return the retry/change-avatar button element shown after a result. */
+function buildRetryButton() {
+    var btn = document.createElement("button");
+    btn.className = "btn btn-block btn-retry";
+    btn.textContent = I18N.result_retry;
+    // Use addEventListener instead of an inline onclick attribute — inline handlers
+    // are blocked by the CSP script-src nonce directive.
+    btn.addEventListener("click", function () { location.reload(); });
+    return btn;
 }
 
 /** Reset upload button to its default enabled state. */
@@ -121,13 +126,15 @@ function showResultView() {
  * Display a result message with a retry button and switch to the result view.
  * Also used by dashboard-remove-avatar.js for error display.
  */
-function showResult(cssClass, messageHTML) {
+function showResult(cssClass, messageText) {
     showResultView();
-    // messageHTML is pre-escaped by the caller via escapeHTML() — only static
-    // CSS class names and the escaped message are inserted here.
-    resultMessage.innerHTML =
-        '<p class="' + cssClass + '">' + messageHTML + '</p>' +
-        buildRetryButtonHTML();
+    // Use DOM methods with textContent for safe text insertion — no escaping needed.
+    var para = document.createElement("p");
+    para.className = cssClass;
+    para.textContent = messageText;
+    resultMessage.textContent = "";
+    resultMessage.appendChild(para);
+    resultMessage.appendChild(buildRetryButton());
 }
 
 // Drop zone element reference
@@ -338,7 +345,7 @@ uploadButton.addEventListener("click", async function () {
             // show a specific translated message prompting a page reload.
             if (errorData.error === "csrf_failed") {
                 updateStep(uploadStepElement, I18N.step_upload, "failed");
-                showResult("result-error", escapeHTML(I18N.result_csrf_failed));
+                showResult("result-error", I18N.result_csrf_failed);
                 return;
             }
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
@@ -432,7 +439,7 @@ uploadButton.addEventListener("click", async function () {
         // Display final result
         if (finalResult && finalResult.avatar_url && !finalResult.error) {
             // Success: show the updated avatar
-            showResult("result-success", escapeHTML(I18N.result_success));
+            showResult("result-success", I18N.result_success);
 
             // Update the avatar image in the profile header
             var profileAvatar = document.querySelector(".profile-avatar");
@@ -443,8 +450,8 @@ uploadButton.addEventListener("click", async function () {
             // Failure: show the error with a retry button
             var errorCode = finalResult && finalResult.error;
             var errorMessage = (errorCode === 'contact_admin')
-                ? escapeHTML(I18N.step_save_failed) + ' ' + escapeHTML(I18N.result_contact_admin)
-                : (errorCode ? escapeHTML(errorCode) : escapeHTML(I18N.result_error));
+                ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
+                : (errorCode ? errorCode : I18N.result_error);
             showResult("result-error", errorMessage);
         }
     } catch (networkError) {
@@ -456,6 +463,6 @@ uploadButton.addEventListener("click", async function () {
         appendStep(I18N.step_upload, "failed", networkError.message);
 
         // Show the error with a retry button
-        showResult("result-error", escapeHTML(I18N.result_network_error));
+        showResult("result-error", I18N.result_network_error);
     }
 });
