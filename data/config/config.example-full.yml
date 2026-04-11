@@ -55,6 +55,15 @@ app:
   #     files are needed by an unauthenticated service and the privacy
   #     implications are acceptable.
   metadata_access: "owner_only"
+  # Content Security Policy (CSP) response header.
+  # When enabled (default), every HTML response includes a nonce-based CSP
+  # header that restricts the origins from which the browser may load scripts,
+  # styles, images, and other resources.  The img-src directive automatically
+  # includes the origin derived from public_avatar_url above, so avatars hosted
+  # on a separate domain or CDN are not blocked.
+  # Set to false only when a reverse proxy or WAF injects its own CSP header
+  # and two competing policies cause compatibility problems.
+  csp_enabled: true
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   log_level: "INFO"
   # Enable full debug mode: activates Flask debugger, forces log level to

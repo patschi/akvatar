@@ -17,7 +17,7 @@ from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
 from src.app_static import serve_static_file
 from src.auth import auth_bp, init_oauth
-from src.sec_csp import generate_csp_nonce
+from src.sec_csp import generate_csp_nonce, build_csp_header
 from src.sec_csrf import generate_csrf_token
 from src.cleanup import start_cleanup_thread
 from src.config import app_cfg, web_cfg, branding_cfg, debug_full, access_log
@@ -187,27 +187,13 @@ def create_app() -> Flask:
             # Clickjacking protection – deny framing of HTML pages entirely
             response.headers["X-Frame-Options"] = "DENY"
 
-            # Content Security Policy – restricts what the browser will load/execute.
-            #
-            # nonce-based script-src: only <script> tags carrying the per-request
-            # nonce (injected via {{ csp_nonce() }} in templates) are executed.
-            # This blocks injected inline scripts even if XSS is somehow achieved.
-            #
-            # default-src 'none' denies everything not explicitly allowed below.
-            # frame-ancestors 'none' is the CSP equivalent of X-Frame-Options: DENY
-            # and is respected by modern browsers that ignore the legacy header.
+            # Content Security Policy – policy is built in sec_csp.py.
+            # build_csp_header() returns None when disabled via app.csp_enabled=false,
+            # in which case the header is omitted entirely.
             nonce = generate_csp_nonce()
-            response.headers["Content-Security-Policy"] = (
-                f"default-src 'none'; "
-                f"script-src 'self' 'nonce-{nonce}'; "
-                f"style-src 'self'; "
-                f"img-src 'self' data: blob:; "
-                f"font-src 'self'; "
-                f"connect-src 'self'; "
-                f"frame-ancestors 'none'; "
-                f"base-uri 'self'; "
-                f"form-action 'self'"
-            )
+            csp = build_csp_header(nonce)
+            if csp is not None:
+                response.headers["Content-Security-Policy"] = csp
 
         # Limit referrer information sent to cross-origin destinations
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
