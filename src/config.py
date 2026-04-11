@@ -103,6 +103,18 @@ _tls_cert = _tls_cfg.get("cert", "")
 _tls_key = _tls_cfg.get("key", "")
 _tls_configured = bool(_tls_cert and _tls_key)
 
+# Validate that configured TLS file paths actually exist on disk
+if _tls_cert:
+    _fatal_unless(
+        os.path.isfile(_tls_cert),
+        f"webserver.tls.cert={_tls_cert!r} does not exist or is not a file.",
+    )
+if _tls_key:
+    _fatal_unless(
+        os.path.isfile(_tls_key),
+        f"webserver.tls.key={_tls_key!r} does not exist or is not a file.",
+    )
+
 # Minimum TLS version: dynamically resolved against ssl.TLSVersion by name so
 # any TLS version added to Python's ssl module in the future is valid without
 # requiring code changes.
