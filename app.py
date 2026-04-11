@@ -8,7 +8,7 @@ and subfolder middleware, and starts the development server when run directly.
 import logging
 from urllib.parse import urlparse
 
-from flask import Flask, request
+from flask import Flask, abort, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import APP_VERSION
@@ -154,7 +154,7 @@ def create_app() -> Flask:
     init_rate_limiting(app)
 
     # Serve static files from in-memory cache
-    @app.route("/static/<path:filename>", endpoint="static")
+    @app.route("/static/<path:filename>", endpoint="static", methods=["GET", "HEAD"])
     def _serve_static(filename):
         return serve_static_file(filename)
 
@@ -182,6 +182,23 @@ def create_app() -> Flask:
             # the Content-Security-Policy response header.
             "csp_nonce": generate_csp_nonce,
         }
+
+    # Globally allowed HTTP methods - any other verb is rejected with 405
+    # before Flask routing even runs.  Routes declare their own methods= too;
+    # this is a defence-in-depth layer that covers future blueprints as well.
+    _ALLOWED_METHODS = frozenset({"GET", "HEAD", "POST"})
+
+    @app.before_request
+    def _reject_disallowed_methods():
+        # What: block any HTTP method that is not in the globally-allowed set
+        if request.method not in _ALLOWED_METHODS:
+            log.debug(
+                "Rejected disallowed HTTP method %r for %r (client=%s).",
+                request.method,
+                request.path,
+                request.remote_addr,
+            )
+            abort(405)
 
     # Security response headers - applied to every response
     @app.after_request

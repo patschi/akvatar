@@ -48,28 +48,28 @@ _VALID_ERROR_KEYS = frozenset({"oidc_failed", "pk_failed", "session_expired"})
 
 
 # robots.txt - serve from static cache (crawlers expect /robots.txt at the root)
-@routes_bp.route("/robots.txt")
+@routes_bp.route("/robots.txt", methods=["GET", "HEAD"])
 def robots_txt():
     """Serve robots.txt from the in-memory static cache."""
     return serve_static_file("robots.txt")
 
 
 # Health check
-@routes_bp.route("/healthz")
+@routes_bp.route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     """Lightweight health probe for load balancers or healthchecks."""
     return Response("OK", mimetype="text/plain")
 
 
 # Root - forward to the login page
-@routes_bp.route("/")
+@routes_bp.route("/", methods=["GET", "HEAD"])
 def root():
     """Redirect the root URL to the login page."""
     return redirect(url_for("routes.login_page"))
 
 
 # Public login page
-@routes_bp.route("/login")
+@routes_bp.route("/login", methods=["GET", "HEAD"])
 def login_page():
     """Show the login page with a sign-in button, or redirect to dashboard if already authenticated."""
     if "user" in session:
@@ -86,7 +86,7 @@ def login_page():
 
 
 # Dashboard (authenticated)
-@routes_bp.route("/dashboard")
+@routes_bp.route("/dashboard", methods=["GET", "HEAD"])
 @login_required
 def dashboard():
     """Serve the authenticated avatar upload / crop page."""
@@ -120,7 +120,7 @@ def dashboard():
 _DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 
 
-@routes_bp.route("/user-avatars/<dimensions>/<filename>")
+@routes_bp.route("/user-avatars/<dimensions>/<filename>", methods=["GET", "HEAD"])
 def serve_avatar(dimensions, filename):
     """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
     if not _DIMENSIONS_RE.match(dimensions):
@@ -144,7 +144,7 @@ def serve_avatar(dimensions, filename):
 _METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
 
 
-@routes_bp.route("/user-avatars/_metadata/<filename>")
+@routes_bp.route("/user-avatars/_metadata/<filename>", methods=["GET", "HEAD"])
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory.
 
@@ -195,7 +195,7 @@ def serve_avatar_metadata(filename):
 
 
 # Session liveness probe (used by the dashboard for client-side expiry detection)
-@routes_bp.route("/api/session")
+@routes_bp.route("/api/session", methods=["GET", "HEAD"])
 def api_session_check():
     """Return 200 {"alive": true} while the session is valid, 401 {"alive": false} when expired.
 
