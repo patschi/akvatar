@@ -76,6 +76,7 @@ effect.
 | [`oidc.client_secret`](#oidcclient_secret)                                       | String  | OAuth2 client secret                                |
 | [`oidc.username_claim`](#oidcusername_claim)                                     | String  | OIDC claim used as the username                     |
 | [`oidc.end_provider_session`](#oidcend_provider_session)                         | Boolean | End Authentik SSO session on logout                 |
+| [`oidc.skip_cert_verify`](#oidcskip_cert_verify)                                 | Boolean | Skip TLS certificate verification for OIDC requests |
 | [`authentik.base_url`](#authentikbase_url)                                       | URL     | Authentik instance base URL                         |
 | [`authentik.api_token`](#authentikapi_token)                                     | String  | Authentik Admin API token                           |
 | [`authentik.avatar_size`](#authentikavatar_size)                                 | Integer | Image size (px) used for the Authentik avatar URL   |
@@ -811,6 +812,22 @@ Authentik and can immediately sign back in without re-entering credentials.
 
 If you enable this, you must also register the post-logout redirect URI in your Authentik provider.
 See [Post-Logout Redirect URI](authentik-oidc-setup.md#post-logout-redirect-uri) for details.
+
+### `oidc.skip_cert_verify`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When `true`, TLS certificate verification is skipped for all OIDC requests - including the initial
+discovery fetch (`/.well-known/openid-configuration`), the token exchange, and the userinfo
+endpoint. This is useful when the Authentik instance uses a self-signed certificate and the
+application communicates with it over an internal network.
+
+A warning is logged at startup when this option is enabled. Do not enable this in production
+environments where traffic may cross untrusted networks - disabling certificate verification
+makes connections vulnerable to man-in-the-middle attacks.
 
 ---
 

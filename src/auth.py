@@ -34,13 +34,20 @@ def init_oauth(app):
     """Bind the OAuth instance to the Flask `app` and register the Authentik provider. Must be called once at startup."""
     log.debug("Initialising OAuth client for Authentik.")
     oauth.init_app(app)
+    # Build client_kwargs, disabling TLS verification when configured.
+    # Authlib's OAuth2Session (requests backend) propagates the verify flag to
+    # ALL requests it makes, including the server metadata (OIDC discovery) fetch.
+    _client_kwargs = {"scope": OIDC_SCOPES}
+    if oidc_cfg.get("skip_cert_verify", False):
+        _client_kwargs["verify"] = False
+
     oauth.register(
         name="authentik",
         client_id=oidc_cfg["client_id"],
         client_secret=oidc_cfg["client_secret"],
         server_metadata_url=oidc_cfg["issuer_url"].rstrip("/")
         + "/.well-known/openid-configuration",
-        client_kwargs={"scope": OIDC_SCOPES},
+        client_kwargs=_client_kwargs,
     )
     _cid = oidc_cfg["client_id"]
     _cid_censored = _cid[:3] + "***" + _cid[-3:]

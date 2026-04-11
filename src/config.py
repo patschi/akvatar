@@ -163,6 +163,11 @@ if ak_cfg.get("skip_cert_verify", False):
         "Authentik API TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
 
+if oidc_cfg.get("skip_cert_verify", False):
+    log.warning(
+        "OIDC TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
+    )
+
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get("sizes", [])
 

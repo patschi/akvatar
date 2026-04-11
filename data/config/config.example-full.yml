@@ -196,6 +196,9 @@ oidc:
   # If enabled, the post-logout redirect URI must be registered in Authentik.
   # See docs/authentik-oidc-setup.md for details.
   end_provider_session: false
+  # Skip TLS certificate verification for OIDC requests (set to true for self-signed certificates)
+  # This includes calls, for example, to OIDC discovery, OIDC UserInfo, etc.
+  skip_cert_verify: false
 
 # --- Authentik Admin API ---
 authentik:
