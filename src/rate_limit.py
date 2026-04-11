@@ -183,8 +183,7 @@ class _RateLimiter:
                 if entries is None:
                     continue
                 before = len(entries)
-                while entries and entries[0][0] <= cutoff:
-                    entries.pop(0)
+                entries = [e for e in entries if e[0] > cutoff]
                 pruned = before - len(entries)
                 if pruned > 0:
                     pruned_total += pruned

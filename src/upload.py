@@ -389,12 +389,7 @@ def generate_sse(user: dict, image: Image.Image):
                     )
             cleanup_avatar_files(filename_base)
             yield _sse({"step": t("step.rollback"), "status": "success"})
-            yield _sse(
-                {
-                    "done": True,
-                    "error": "Could not update your avatar. Please try again later.",
-                }
-            )
+            yield _sse({"done": True, "error": t("result.error")})
             return
 
         # Step 6: Persist metadata

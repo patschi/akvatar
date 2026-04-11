@@ -22,7 +22,11 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 os.environ.setdefault("PYTHONUNBUFFERED", "1")
 
 from src.cleanup import run_cleanup  # noqa: E402
+from src.imaging import ensure_size_directories_existence  # noqa: E402
 
 if __name__ == "__main__":
+    # Ensure avatar root and metadata directory exist before running cleanup.
+    # When run standalone (outside the Flask app) these may not have been created yet.
+    ensure_size_directories_existence()
     run_cleanup()
     sys.exit(0)

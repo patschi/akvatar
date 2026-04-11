@@ -348,7 +348,12 @@ def run_cleanup() -> int:
 
         # Delete avatar sets for every targeted user PK.
         for user_pk in phase1_delete_pks:
-            reason = "deleted" if user_pk not in all_pks else "deactivated"
+            if _cleanup_when_deleted and _cleanup_when_deactivated:
+                # When both flags are set, all_pks holds active PKs only -
+                # cannot distinguish deleted from deactivated without a second API call.
+                reason = "deleted or deactivated"
+            else:
+                reason = "deleted" if user_pk not in all_pks else "deactivated"
             for meta in per_user[user_pk]:
                 filename = meta.get("filename", "")
                 if dry_run:
