@@ -72,6 +72,9 @@ _IMG_SRC = " ".join(_img_src_parts)
 # default-src 'none'     - deny everything not explicitly listed below.
 # nonce-based script-src - only <script> tags carrying the per-request nonce
 #                          are executed; injected inline scripts are blocked.
+# connect-src blob:      - Cropper.js calls fetch(blobUrl) to read the cropped
+#                          canvas back as binary data before POSTing it; blob:
+#                          must be listed here so that connection is not blocked.
 # frame-ancestors 'none' - CSP3 equivalent of X-Frame-Options: DENY, respected
 #                          by modern browsers that ignore the legacy header.
 _CSP_TEMPLATE = (
@@ -80,7 +83,7 @@ _CSP_TEMPLATE = (
     "style-src 'self'; "
     f"img-src {_IMG_SRC}; "
     "font-src 'self'; "
-    "connect-src 'self'; "
+    "connect-src 'self' blob:; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
