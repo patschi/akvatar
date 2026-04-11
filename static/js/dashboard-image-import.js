@@ -44,6 +44,7 @@
 
     // Webcam tab elements (null when webcam import is disabled in config)
     var tabWebcam = document.getElementById("importTabWebcam");
+    var webcamStage = document.getElementById("webcamStage");
     var webcamVideo = document.getElementById("webcamVideo");
     var webcamPlaceholder = document.getElementById("webcamPlaceholder");
     var webcamStartBtn = document.getElementById("webcamStartBtn");
@@ -337,6 +338,8 @@
             webcamVideo.srcObject = null;
             webcamVideo.classList.add("hidden");
         }
+        // Ensure the stage is visible so it shows the placeholder on next open
+        if (webcamStage) webcamStage.classList.remove("hidden");
         if (webcamPlaceholder) webcamPlaceholder.classList.remove("hidden");
         if (webcamStartBtn) {
             webcamStartBtn.classList.remove("hidden");
@@ -384,15 +387,14 @@
             errorArea.classList.add("hidden");
 
             try {
-                // Request the user-facing camera with a square-ish aspect ratio
-                // so the live preview approximates the final crop.  The browser
-                // is free to ignore ideal constraints when the camera cannot
-                // satisfy them, which is fine - we crop client-side anyway.
+                // Request the user-facing camera at a reasonable resolution.
+                // The browser may deliver a different resolution or aspect ratio
+                // depending on the hardware - that's fine, we crop client-side.
                 webcamStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: "user",
                         width: { ideal: 1280 },
-                        height: { ideal: 1280 },
+                        height: { ideal: 720 },
                     },
                     audio: false,
                 });
@@ -448,8 +450,10 @@
                 // Display the captured frame in the shared preview area and
                 // swap the control bar to "Retake".  The live stream keeps
                 // running so the user can retake without re-requesting
-                // camera permission.
+                // camera permission.  Hide the stage so only the captured
+                // image (in importPreview) is visible.
                 showPreview(URL.createObjectURL(blob), "webcam.jpg");
+                if (webcamStage) webcamStage.classList.add("hidden");
                 webcamVideo.classList.add("hidden");
                 webcamCaptureBtn.classList.add("hidden");
                 webcamRetakeBtn.classList.remove("hidden");
@@ -463,6 +467,7 @@
             // resetPreview() revokes the blob URL created by showPreview().
             resetPreview();
             if (webcamStream) {
+                if (webcamStage) webcamStage.classList.remove("hidden");
                 webcamVideo.classList.remove("hidden");
                 webcamCaptureBtn.classList.remove("hidden");
                 webcamRetakeBtn.classList.add("hidden");

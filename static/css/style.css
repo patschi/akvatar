@@ -731,11 +731,11 @@ body {
 }
 
 .import-preview img {
-  max-width: 200px;
-  max-height: 200px;
+  /* Preserve natural aspect ratio - no cropping */
+  max-width: 100%;
+  max-height: 220px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
-  object-fit: cover;
 }
 
 .import-error {
@@ -780,13 +780,11 @@ body {
 }
 
 .webcam-stage {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  max-height: 320px;
+  /* No fixed aspect-ratio: the container grows to fit the actual camera feed */
+  min-height: 140px;
   margin: 0 auto;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
-  background: var(--error-soft);
   background: color-mix(in srgb, var(--text) 6%, transparent);
   overflow: hidden;
   display: flex;
@@ -795,9 +793,13 @@ body {
 }
 
 .webcam-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  /* Let the video size itself to its intrinsic dimensions, constrained to
+     the available width and a sensible max-height */
+  max-width: 100%;
+  max-height: 320px;
+  width: auto;
+  height: auto;
+  display: block;
   /* Flip horizontally so the live preview behaves like a mirror,
      which matches users' expectations from other selfie apps. */
   transform: scaleX(-1);

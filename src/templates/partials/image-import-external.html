@@ -66,7 +66,7 @@
            same preview/OK pipeline used by Gravatar and URL imports. -->
       <div class="import-tab{% if import_gravatar_enabled or import_url_enabled %} hidden{% endif %}" id="importTabWebcam">
         <p class="webcam-hint">{{ t('import.webcam_hint') }}</p>
-        <div class="webcam-stage">
+        <div id="webcamStage" class="webcam-stage">
           <!-- Live video stream (hidden until camera started) -->
           <video id="webcamVideo" class="webcam-video hidden" autoplay playsinline muted></video>
           <!-- Placeholder shown before the camera is started -->
