@@ -162,6 +162,14 @@ webserver:
   # Leave empty to run plain HTTP (a warning will be logged at startup).
   tls_cert: ""
   tls_key: ""
+  # HTTP/2 support.  Requires tls_cert and tls_key to be configured.
+  # Has no effect when running over plain HTTP.
+  http2:
+    # Enable HTTP/2 (h2) via on TLS connections.
+    # When enabled (default), gunicorn advertises h2 alongside http/1.1 during
+    # the TLS handshake so clients that support HTTP/2 can use it automatically.
+    # When disabled, it is restricted to http/1.1 only.
+    enabled: true
 
 # --- OpenID Connect / Authentik Login ---
 # Scopes (openid, profile, email) are always requested and cannot be changed.

@@ -23,7 +23,7 @@ See [Nginx Reverse Proxy](nginx-reverse-proxy.md) for a complete nginx configura
 
 ## Built-in TLS (development / testing)
 
-The application can serve HTTPS directly using its built-in server. This is intended for 
+The application can serve HTTPS directly using its built-in server. This is intended for
 **development and testing only**, not for production use.
 
 Set the certificate and key paths in `data/config/config.yml`:
@@ -37,6 +37,24 @@ webserver:
 The server uses the same port for HTTPS. When TLS is not configured, a warning is logged at startup.
 
 See [Configuration Reference](configuration.md#webservertls_cert--tls_key) for details.
+
+## HTTP/2
+
+When TLS is configured and `webserver.http2.enabled` is `true` (the default), gunicorn advertises
+HTTP/2 (`h2`) alongside HTTP/1.1 via the ALPN TLS extension. Clients that support HTTP/2 negotiate
+the upgrade automatically during the TLS handshake - no changes are needed on the client side.
+
+HTTP/2 requires TLS. It has no effect when the application runs over plain HTTP.
+
+To disable HTTP/2 entirely (for example, to match a deployment policy that requires HTTP/1.1 only):
+
+```yaml
+webserver:
+  http2:
+    enabled: false
+```
+
+See [Configuration Reference](configuration.md#webserverhttp2enabled) for all HTTP/2 options.
 
 ## Generating a self-signed certificate
 

@@ -52,6 +52,7 @@ cleanup_cfg = cfg.get("cleanup", {})
 import_cfg = cfg.get("image_import", {})
 sentry_cfg = cfg.get("sentry", {})
 access_log = bool(web_cfg.get("access_log", False))
+http2_cfg = web_cfg.get("http2", {})
 
 # Logging setup
 _LOG_LEVELS = {
@@ -78,6 +79,9 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S %z",
 )
 
+# Suppress hpack's per-header DEBUG spam - it floods logs when HTTP/2 is active
+logging.getLogger("hpack").setLevel(logging.WARNING)
+
 log = logging.getLogger("config")
 log.info("Starting %s v%s...", APP_NAME, APP_VERSION)
 log.debug("Configuration loaded from %r.", CONFIG_PATH)
@@ -95,9 +99,19 @@ if dry_run:
 # Startup SSL warnings (logged once at import time)
 _tls_cert = web_cfg.get("tls_cert", "")
 _tls_key = web_cfg.get("tls_key", "")
-if not _tls_cert or not _tls_key:
+_tls_configured = bool(_tls_cert and _tls_key)
+if not _tls_configured:
     log.warning(
         "Server TLS is NOT configured - the built-in server will run over plain HTTP."
+    )
+
+# HTTP/2 startup status
+_http2_enabled = bool(http2_cfg.get("enabled", True))
+if _http2_enabled and _tls_configured:
+    log.info("HTTP/2 support enabled (TLS configured, ALPN negotiation will advertise h2).")
+elif _http2_enabled and not _tls_configured:
+    log.warning(
+        "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS and will not be used."
     )
 
 if ldap_cfg.get("enabled", False):

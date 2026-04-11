@@ -35,7 +35,7 @@ os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ["HOME"] = "/tmp"
 
 from src.cleanup import start_cleanup_thread  # noqa: E402
-from src.config import web_cfg  # noqa: E402
+from src.config import http2_cfg, web_cfg  # noqa: E402
 
 log = logging.getLogger("run_app")
 
@@ -44,6 +44,12 @@ port = web_cfg.get("port", 5000)
 tls_cert = web_cfg.get("tls_cert", "")
 tls_key = web_cfg.get("tls_key", "")
 scheme = "https" if tls_cert and tls_key else "http"
+
+# HTTP/2 is active when both the config option is enabled and TLS is configured.
+# gunicorn negotiates HTTP/2 via ALPN during the TLS handshake when h2 is installed.
+_http2_configured = bool(http2_cfg.get("enabled", True))
+_tls_active = bool(tls_cert and tls_key)
+http2_active = _http2_configured and _tls_active
 
 # Start the cleanup thread in the master process before gunicorn forks
 start_cleanup_thread()
@@ -56,23 +62,24 @@ wtmpdir = tempfile.gettempdir()
 
 args = [
     "gunicorn",
+    "--no-control-socket",
     "--preload",
-    "--bind",
-    f"{host}:{port}",
-    "--workers",
-    str(workers),
-    "--threads",
-    str(threads),
-    "--worker-class",
-    "gthread",
-    "--worker-tmp-dir",
-    wtmpdir,
-    "--timeout",
-    str(timeout),
+    "--bind", f"{host}:{port}",
+    "--worker-class", "gthread",
+    "--worker-tmp-dir", wtmpdir,
+    "--workers", str(workers),
+    "--threads", str(threads),
+    "--timeout", str(timeout),
 ]
 
 if tls_cert and tls_key:
     args.extend(["--certfile", tls_cert, "--keyfile", tls_key])
+
+if http2_active:
+    # What: advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
+    args.extend(["--http-protocols", "h2,h1"])
+elif _http2_configured and not _tls_active:
+    log.warning("HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS.")
 
 args.append("app:create_app()")
 
@@ -110,4 +117,8 @@ def _when_ready(server):
 
 gunicorn_app = WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]")
 gunicorn_app.cfg.set("when_ready", _when_ready)
+
+if http2_active:
+    log.info("HTTP/2 active: gunicorn will advertise h2 via ALPN (TLS + h2 package).")
+
 gunicorn_app.run()

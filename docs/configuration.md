@@ -68,6 +68,7 @@ The application reads the configuration file once at startup. Changes require a 
 | [`webserver.timeout`](#webservertimeout)                                          | Integer | Worker timeout in seconds                           |
 | [`webserver.tls_cert`](#webservertls_cert--tls_key)                               | String  | Path to TLS certificate file                        |
 | [`webserver.tls_key`](#webservertls_cert--tls_key)                                | String  | Path to TLS private key file                        |
+| [`webserver.http2.enabled`](#webserverhttp2enabled)                               | Boolean | Enable HTTP/2 via ALPN (requires TLS)               |
 | [`oidc.issuer_url`](#oidcissuer_url)                                              | URL     | Authentik OIDC provider URL                         |
 | [`oidc.client_id`](#oidcclient_id)                                                | String  | OAuth2 client ID                                    |
 | [`oidc.client_secret`](#oidcclient_secret)                                        | String  | OAuth2 client secret                                |
@@ -671,6 +672,19 @@ Paths to the TLS certificate and private key files for HTTPS. When both are set,
 When empty, the server runs over plain HTTP and a warning is logged at startup.
 
 For production, terminate TLS at a reverse proxy instead. See [TLS Configuration](tls.md).
+
+### `webserver.http2.enabled`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+Enable HTTP/2 support when TLS is configured. When `true` (default), gunicorn advertises the `h2` protocol alongside `http/1.1` via the ALPN TLS extension, allowing HTTP/2-capable clients to negotiate HTTP/2 automatically during the TLS handshake.
+
+When `false`, ALPN is restricted to `http/1.1` only, even though the `h2` package is installed. This gives you explicit control over which protocol is used.
+
+**Requires:** `webserver.tls_cert` and `webserver.tls_key` must both be set. Has no effect when running over plain HTTP - HTTP/2 negotiation only happens inside a TLS connection.
 
 ---
 
