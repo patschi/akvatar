@@ -51,6 +51,7 @@ select = [
 ]
 ignore = [
     "E501", # line too long — handled by the formatter
+    "UP015", # Checks for redundant open mode arguments.
 ]
 
 [tool.ruff.lint.isort]

@@ -95,7 +95,7 @@ def _try_unlink(path, label: str) -> tuple[int, int]:
         return 0, 1
 
 
-# Files per avatar set: one image per size×format combination, plus one metadata file.
+# Files per avatar set: one image per size x format combination, plus one metadata file.
 # Used in dry-run to estimate how many files would be removed for each targeted set.
 _FILES_PER_SET = len(img_cfg["sizes"]) * len(img_cfg["formats"]) + 1
 

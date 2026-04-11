@@ -376,7 +376,7 @@ def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
     """
     Remove all generated image files and the metadata JSON for one avatar set.
 
-    Iterates every configured size × format combination and deletes the
+    Iterates every configured size x format combination and deletes the
     corresponding file.  Used both for rollback on upload failure and for
     retention cleanup.
 
