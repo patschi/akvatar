@@ -208,6 +208,8 @@ authentik:
   avatar_size: 512
   # Authentik user attribute to store the avatar URL in
   avatar_attribute: "avatar-url"
+  # Skip TLS certificate verification (set to true for self-signed certificates)
+  skip_cert_verify: false
 
 # --- LDAP Server (optional) ---
 # Supports any standards-compliant LDAP server.  Microsoft Active Directory

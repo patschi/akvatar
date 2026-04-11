@@ -9,6 +9,7 @@ the stable identifier (usernames can be renamed; PKs cannot).
 import logging
 
 import requests as http_requests
+import urllib3
 
 from src import USER_AGENT
 from src.config import ak_cfg, dry_run
@@ -19,6 +20,9 @@ log = logging.getLogger("authentik")
 
 # Which Authentik user attribute stores the avatar URL (configurable in config)
 _avatar_attr = ak_cfg.get("avatar_attribute", "avatar-url")
+
+# Whether to skip TLS certificate verification for Authentik API requests
+_skip_cert_verify = ak_cfg.get("skip_cert_verify", False)
 
 # Timeout in seconds for individual API requests (longer for paginated list)
 _TIMEOUT = 15
@@ -34,6 +38,13 @@ _session.headers.update(
         "User-Agent": USER_AGENT,
     }
 )
+
+if _skip_cert_verify:
+    # Disable TLS certificate verification for all requests on this session.
+    # Also suppress urllib3's per-request InsecureRequestWarning - the startup
+    # warning in config.py already informs the operator that verification is off.
+    _session.verify = False
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Pre-compute base URLs used in every call
 _base_url = ak_cfg["base_url"]

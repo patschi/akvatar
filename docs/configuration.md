@@ -80,6 +80,7 @@ effect.
 | [`authentik.api_token`](#authentikapi_token)                                     | String  | Authentik Admin API token                           |
 | [`authentik.avatar_size`](#authentikavatar_size)                                 | Integer | Image size (px) used for the Authentik avatar URL   |
 | [`authentik.avatar_attribute`](#authentikavatar_attribute)                       | String  | Authentik user attribute to store the avatar URL    |
+| [`authentik.skip_cert_verify`](#authentikskip_cert_verify)                       | Boolean | Skip TLS certificate verification for API requests  |
 | [`ldap.enabled`](#ldapenabled)                                                   | Boolean | Enable LDAP photo attribute updates                 |
 | [`ldap.servers`](#ldapservers)                                                   | String  | LDAP server URL(s), comma-separated                 |
 | [`ldap.port`](#ldapport)                                                         | Integer | LDAP server port (applied to all servers)           |
@@ -858,6 +859,21 @@ exits with an error if the size is not found.
 The Authentik user attribute name where the avatar URL is stored. The application sets
 `attributes.<this-value>` on the user object via the API. Change this if your Authentik
 configuration uses a different attribute name for avatar URLs.
+
+### `authentik.skip_cert_verify`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When `true`, TLS certificate verification is skipped for all Authentik API requests. This is
+useful when the Authentik instance uses a self-signed certificate and the application communicates
+with it over an internal network.
+
+A warning is logged at startup when this option is enabled. Do not enable this in production
+environments where traffic may cross untrusted networks - disabling certificate verification
+makes connections vulnerable to man-in-the-middle attacks.
 
 ---
 

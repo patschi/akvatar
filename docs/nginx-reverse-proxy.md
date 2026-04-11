@@ -148,7 +148,8 @@ server {
 
 # Main server block
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name avatar.example.com;
 
     ssl_certificate     /etc/ssl/certs/avatar.example.com.pem;
@@ -165,6 +166,8 @@ server {
         proxy_set_header X-Real-IP         $remote_addr;
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_http_version 1.1;
 
         # SSE support
         proxy_buffering    off;

@@ -158,6 +158,11 @@ if ldap_cfg.get("enabled", False):
             "LDAP TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
         )
 
+if ak_cfg.get("skip_cert_verify", False):
+    log.warning(
+        "Authentik API TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
+    )
+
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get("sizes", [])
 
