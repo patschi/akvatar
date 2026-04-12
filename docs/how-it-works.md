@@ -153,14 +153,14 @@ The compressed blob is sent as `multipart/form-data` to `POST /api/upload`.
 Validation happens **synchronously** before the SSE stream begins. If any check fails the
 server returns a JSON error response with HTTP 400 and the browser shows the error inline.
 
-| Check                    | What it catches                                                        | Implementation                                                          |
-|--------------------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| File extension           | Blocks unexpected file types early                                     | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`                   |
-| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)      | Compares first 12 bytes against JPEG, PNG, WebP, and AVIF signatures    |
-| Pillow decode            | Catches corrupt, truncated, or crafted images                          | `Image.open()` + `.load()` (forces full pixel decode)                   |
-| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP) | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP', 'AVIF'}`        |
-| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)    | Min: 64 px, max: 8 192 px per side                                      |
-| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory            | Pillow's `MAX_IMAGE_PIXELS` set to 25 megapixels                        |
+| Check                    | What it catches                                                        | Implementation                                                       |
+|--------------------------|------------------------------------------------------------------------|----------------------------------------------------------------------|
+| File extension           | Blocks unexpected file types early                                     | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`                |
+| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)      | Compares first 12 bytes against JPEG, PNG, WebP, and AVIF signatures |
+| Pillow decode            | Catches corrupt, truncated, or crafted images                          | `Image.open()` + `.load()` (forces full pixel decode)                |
+| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP) | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP', 'AVIF'}`      |
+| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)    | Min: 64 px, max: 8 192 px per side                                   |
+| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory            | Pillow's `MAX_IMAGE_PIXELS` set to 25 megapixels                     |
 
 ## Server-side processing
 
@@ -508,7 +508,7 @@ max-age=86400` header instructs browsers to cache assets locally.
 | Magic byte verification          | Blocks files with fake extensions before they reach the image decoder                                                 |
 | Decompression bomb limit (25 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images                                          |
 | Dimension limits (64-8 192 px)   | Guards against excessive CPU/memory use during resizing                                                               |
-| Format allow-list                | Only JPEG, PNG, WebP, AVIF are processed - no TIFF, BMP, SVG, GIF, etc.                                              |
+| Format allow-list                | Only JPEG, PNG, WebP, AVIF are processed - no TIFF, BMP, SVG, GIF, etc.                                               |
 | Metadata stripping               | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII                                            |
 | CSRF protection                  | Per-session token validated via `X-CSRF-Token` header on all state-changing requests using `secrets.compare_digest()` |
 | SSRF protection                  | URL import (`import.url_enabled`) validates hosts against a configurable allow-list before fetching                   |

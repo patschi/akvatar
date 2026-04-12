@@ -695,10 +695,10 @@ A warning is logged at startup if browser Sentry is enabled but this value is em
 
 ### `sentry.browser.dsn`
 
-| Property    | Value                               |
-|-------------|-------------------------------------|
-| **Type**    | String (URL)                        |
-| **Default** | `""` (falls back to `sentry.dsn`)   |
+| Property    | Value                             |
+|-------------|-----------------------------------|
+| **Type**    | String (URL)                      |
+| **Default** | `""` (falls back to `sentry.dsn`) |
 
 The Sentry DSN used by the browser SDK. When empty, the top-level [`sentry.dsn`](#sentrydsn) is
 used as a fallback. A dedicated browser project DSN is recommended (see note above about DSN
@@ -1023,8 +1023,9 @@ actually be generated for it). The application validates this at startup and exi
 if the format is not valid or not present in the generated formats list.
 
 Supported values: `jpg` (or `jpeg`), `png`, `webp`, `avif`. Both `jpg` and `jpeg` are equivalent
+
 - they resolve to the `.jpg` file extension. Using `avif` requires Pillow compiled with
-`libavif` support; see [`images.avif_quality`](#imagesavif_quality).
+  `libavif` support; see [`images.avif_quality`](#imagesavif_quality).
 
 Use `jpg` for maximum compatibility. Use `png` for lossless encoding, `webp` for
 high-efficiency encoding, or `avif` for modern clients where maximum compression matters.
@@ -1394,9 +1395,9 @@ cryptic runtime error on the first upload.
 
 ### `images.rgba_background_color`
 
-| Property    | Value            |
-|-------------|------------------|
-| **Type**    | List of integers |
+| Property    | Value             |
+|-------------|-------------------|
+| **Type**    | List of integers  |
 | **Default** | `[255, 255, 255]` |
 
 The solid RGB background color used when compositing RGBA images (those with an alpha channel)
