@@ -34,11 +34,13 @@
     }
 
     function openRemoveDialog() {
+        logger.info("remove-avatar", "remove avatar dialog opened");
         removeAvatarOverlay.classList.remove("hidden");
         document.addEventListener("keydown", onEscapeKey);
     }
 
     function closeRemoveDialog() {
+        logger.debug("remove-avatar", "remove avatar dialog closed");
         removeAvatarOverlay.classList.add("hidden");
         document.removeEventListener("keydown", onEscapeKey);
     }
@@ -62,6 +64,7 @@
 
     // Confirm: send the removal request
     removeAvatarConfirmBtn.addEventListener("click", async function () {
+        logger.info("remove-avatar", "avatar removal confirmed by user");
         removeAvatarConfirmBtn.disabled = true;
         removeAvatarCancelBtn.disabled = true;
 
@@ -74,11 +77,15 @@
                 },
             });
 
+            logger.info("remove-avatar", "avatar removal response received", { status: resp.status, ok: resp.ok });
+
             if (!resp.ok) {
+                logger.error("remove-avatar", "avatar removal failed", { status: resp.status });
                 showDialogError(I18N.reset_avatar_failed);
                 return;
             }
 
+            logger.info("remove-avatar", "avatar removed successfully");
             closeRemoveDialog();
 
             // Revert the profile avatar in the header to the placeholder circle
@@ -87,6 +94,7 @@
             // Hide the remove button (avatar is gone)
             removeAvatarBtn.classList.add("hidden");
         } catch (e) {
+            logger.error("remove-avatar", "network error during avatar removal", { message: e.message });
             showDialogError(I18N.reset_avatar_failed);
         } finally {
             removeAvatarConfirmBtn.disabled = false;

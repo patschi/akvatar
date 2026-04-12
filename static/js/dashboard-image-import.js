@@ -101,12 +101,14 @@
         if (tab === "gravatar" && !tabGravatar) tab = tabUrl ? "url" : "webcam";
         if (tab === "url" && !tabUrl) tab = tabGravatar ? "gravatar" : "webcam";
         if (tab === "webcam" && !tabWebcam) tab = tabGravatar ? "gravatar" : "url";
+        logger.info("import", "import dialog opened", { tab: tab || "gravatar" });
         switchTab(tab || "gravatar");
         resetPreview();
         overlay.classList.remove("hidden");
     }
 
     function closeDialog() {
+        logger.debug("import", "import dialog closed");
         overlay.classList.add("hidden");
         stopWebcam();
         resetPreview();
@@ -129,6 +131,7 @@
     // ── Tab switching ────────────────────────────────────────────────
 
     function switchTab(tab) {
+        logger.debug("import", "tab switched", { tab: tab });
         // Highlight the active tab button
         dialogTabBtns.forEach(function (btn) {
             btn.classList.toggle("active", btn.dataset.importTab === tab);
@@ -185,6 +188,7 @@
 
     /** Display a successfully fetched image in the preview area. */
     function showPreview(blobUrl, displayName) {
+        logger.debug("import", "preview shown", { displayName: displayName });
         if (currentBlobUrl) {
             URL.revokeObjectURL(currentBlobUrl);
         }
@@ -198,6 +202,7 @@
 
     /** Display an error message in the dialog. */
     function showError(message) {
+        logger.error("import", "import error displayed", { message: message });
         errorArea.textContent = message;
         errorArea.classList.remove("hidden");
         previewArea.classList.add("hidden");
@@ -222,6 +227,7 @@
             var email = gravatarEmail.value.trim();
             if (!email) return;
 
+            logger.info("import", "Gravatar fetch started", { email: email });
             gravatarLoadBtn.disabled = true;
             gravatarLoadBtn.textContent = I18N.import_gravatar_loading;
             errorArea.classList.add("hidden");
@@ -236,12 +242,16 @@
                     body: JSON.stringify({ email: email }),
                 });
 
+                logger.info("import", "Gravatar response received", { status: resp.status, ok: resp.ok });
+
                 if (resp.status === 404) {
+                    logger.info("import", "Gravatar not found for email");
                     showError(I18N.import_gravatar_not_found);
                     return;
                 }
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function () { return {}; });
+                    logger.error("import", "Gravatar fetch failed", { error: errData.error || null, status: resp.status });
                     showError(translateError(errData, I18N.import_gravatar_error));
                     return;
                 }
@@ -254,6 +264,7 @@
                 var displayName = nameMatch ? nameMatch[1] : "gravatar";
                 showPreview(URL.createObjectURL(blob), displayName);
             } catch (e) {
+                logger.error("import", "Gravatar fetch threw a network error", { message: e.message });
                 showError(I18N.import_gravatar_error);
             } finally {
                 startLoadCooldown(gravatarLoadBtn);
@@ -278,10 +289,12 @@
 
             // Client-side scheme validation
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                logger.warn("import", "URL rejected - invalid scheme", { url: url });
                 showError(I18N.import_url_invalid);
                 return;
             }
 
+            logger.info("import", "URL fetch started", { url: url });
             urlLoadBtn.disabled = true;
             urlLoadBtn.textContent = I18N.import_url_loading;
             errorArea.classList.add("hidden");
@@ -296,8 +309,11 @@
                     body: JSON.stringify({ url: url }),
                 });
 
+                logger.info("import", "URL fetch response received", { status: resp.status, ok: resp.ok });
+
                 if (!resp.ok) {
                     var errData = await resp.json().catch(function () { return {}; });
+                    logger.error("import", "URL fetch failed", { error: errData.error || null, status: resp.status });
                     showError(translateError(errData, I18N.import_url_error));
                     return;
                 }
@@ -307,6 +323,7 @@
                 var displayName = url.split("/").pop().split("?")[0] || "Remote image";
                 showPreview(URL.createObjectURL(blob), displayName);
             } catch (e) {
+                logger.error("import", "URL fetch threw a network error", { message: e.message });
                 showError(I18N.import_url_error);
             } finally {
                 startLoadCooldown(urlLoadBtn);
@@ -378,10 +395,12 @@
             // Feature-detect: getUserMedia is only exposed on secure contexts.
             // On plain HTTP (except localhost) navigator.mediaDevices is undefined.
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                logger.warn("import", "webcam unavailable - getUserMedia not supported in this context");
                 showError(I18N.import_webcam_unsupported);
                 return;
             }
 
+            logger.info("import", "webcam start requested");
             webcamStartBtn.disabled = true;
             webcamStartBtn.textContent = I18N.import_webcam_starting;
             errorArea.classList.add("hidden");
@@ -399,6 +418,10 @@
                     audio: false,
                 });
 
+                var track = webcamStream.getVideoTracks()[0];
+                var settings = track ? track.getSettings() : {};
+                logger.info("import", "webcam stream acquired", { width: settings.width, height: settings.height, deviceId: settings.deviceId });
+
                 webcamVideo.srcObject = webcamStream;
                 webcamVideo.classList.remove("hidden");
                 if (webcamPlaceholder) webcamPlaceholder.classList.add("hidden");
@@ -407,6 +430,7 @@
                 webcamStopBtn.classList.remove("hidden");
             } catch (err) {
                 // Permission denied, no camera, hardware busy, etc.
+                logger.error("import", "webcam start failed", { errorName: err.name, message: err.message });
                 showError(webcamErrorMessage(err));
                 stopWebcam();
             } finally {
@@ -444,9 +468,11 @@
 
             canvas.toBlob(function (blob) {
                 if (!blob) {
+                    logger.error("import", "webcam frame capture failed - canvas toBlob returned null");
                     showError(I18N.import_webcam_error);
                     return;
                 }
+                logger.debug("import", "webcam frame captured", { width: vw, height: vh });
                 // Display the captured frame in the shared preview area and
                 // swap the control bar to "Retake".  The live stream keeps
                 // running so the user can retake without re-requesting
@@ -463,6 +489,7 @@
 
     if (webcamRetakeBtn && webcamVideo) {
         webcamRetakeBtn.addEventListener("click", function () {
+            logger.debug("import", "webcam retake requested");
             // Clear the captured preview and return to the live stream.
             // resetPreview() revokes the blob URL created by showPreview().
             resetPreview();
@@ -480,6 +507,7 @@
 
     if (webcamStopBtn) {
         webcamStopBtn.addEventListener("click", function () {
+            logger.debug("import", "webcam stopped by user");
             resetPreview();
             stopWebcam();
         });
@@ -490,7 +518,9 @@
     okBtn.addEventListener("click", function () {
         if (!currentBlobUrl) return;
 
-        // Transfer ownership of the blob URL to initCropper – don't revoke it
+        logger.info("import", "import confirmed, sending to cropper", { displayName: currentDisplayName });
+
+        // Transfer ownership of the blob URL to initCropper - don't revoke it
         var blobUrl = currentBlobUrl;
         var name = currentDisplayName;
         currentBlobUrl = null;

@@ -144,6 +144,7 @@ function showResult(cssClass, messageText) {
  * null removes it so the initials show through again.
  */
 function setProfileAvatar(url) {
+    logger.debug("main", "profile avatar updated in header", { url: url });
     var avatarContainer = document.querySelector(".profile-avatar");
     if (!avatarContainer) return;
     var img = avatarContainer.querySelector(".profile-avatar__img");
@@ -182,6 +183,8 @@ var dropZone = document.getElementById("dropZone");
  * Shared by file selection, Gravatar import, and URL import.
  */
 function initCropper(imageSrc, displayName) {
+    logger.debug("main", "cropper initialized", { displayName: displayName, srcType: imageSrc.startsWith("blob:") ? "blob" : "url" });
+
     // Hide file picker and import section; reveal the image-selected bar
     filePicker.classList.add("hidden");
     if (importSection) importSection.classList.add("hidden");
@@ -227,6 +230,8 @@ function initCropper(imageSrc, displayName) {
 
 /** Discard the selected image and restore the file picker and import section. */
 function discardImage() {
+    logger.debug("main", "image discarded by user");
+
     // Destroy the cropper and free the blob URL
     if (cropperImage.src.startsWith("blob:")) {
         URL.revokeObjectURL(cropperImage.src);
@@ -262,8 +267,11 @@ function handleFileSelection(selectedFile) {
         ? selectedFile.name.split(".").pop().toLowerCase()
         : "";
 
+    logger.debug("main", "file selected", { name: selectedFile.name, sizeBytes: selectedFile.size, type: selectedFile.type, ext: fileExtension });
+
     if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
         var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
+        logger.warn("main", "file rejected - invalid extension", { ext: fileExtension, allowed: allowedList });
         alert(I18N.upload_invalid_ext
             .replace("{ext}", fileExtension)
             .replace("{allowed}", allowedList));
@@ -319,6 +327,7 @@ dropZone.addEventListener("drop", function (event) {
 
     var droppedFile = event.dataTransfer.files[0];
     if (droppedFile) {
+        logger.debug("main", "file dropped onto drop zone", { name: droppedFile.name });
         handleFileSelection(droppedFile);
     }
 });
@@ -326,6 +335,8 @@ dropZone.addEventListener("drop", function (event) {
 // Upload flow with SSE streaming progress
 uploadButton.addEventListener("click", async function () {
     if (!cropperInstance) return;
+
+    logger.info("main", "upload started by user");
 
     // Lock the UI and switch to progress view
     uploadSection.classList.add("hidden");
@@ -341,6 +352,7 @@ uploadButton.addEventListener("click", async function () {
         imageSmoothingEnabled: true,
         imageSmoothingQuality: "high",
     });
+    logger.debug("main", "crop complete", { width: MAX_AVATAR_SIZE, height: MAX_AVATAR_SIZE });
     updateStep(cropStepElement, I18N.step_crop, "success");
 
     // Step 2: Compress to WebP (preferred) with JPEG as fallback
@@ -352,6 +364,7 @@ uploadButton.addEventListener("click", async function () {
 
     // Fall back to JPEG if the browser doesn't support WebP encoding
     if (!imageBlob || imageBlob.type !== "image/webp") {
+        logger.warn("main", "WebP encoding not supported, falling back to JPEG");
         imageBlob = await new Promise(function (resolve) {
             croppedCanvas.toBlob(resolve, "image/jpeg", 0.85);
         });
@@ -359,6 +372,7 @@ uploadButton.addEventListener("click", async function () {
     }
 
     var fileSizeKB = (imageBlob.size / 1024).toFixed(0);
+    logger.debug("main", "compress complete", { format: imageFormat, sizeKB: fileSizeKB });
     updateStep(compressStepElement, I18N.step_compress, "success",
         imageFormat.toUpperCase() + ", " + fileSizeKB + " KB");
 
@@ -366,6 +380,8 @@ uploadButton.addEventListener("click", async function () {
     var uploadStepElement = appendStep(I18N.step_upload, "active");
     var formData = new FormData();
     formData.append("file", imageBlob, "avatar." + imageFormat);
+
+    logger.info("main", "sending upload request", { endpoint: UPLOAD_ENDPOINT, sizeBytes: imageBlob.size });
 
     try {
         var response = await fetch(UPLOAD_ENDPOINT, {
@@ -376,15 +392,19 @@ uploadButton.addEventListener("click", async function () {
 
         // Server returns JSON for validation errors (4xx responses)
         var contentType = response.headers.get("content-type") || "";
+        logger.info("main", "upload response received", { status: response.status, contentType: contentType });
+
         if (contentType.includes("application/json")) {
             var errorData = await response.json();
-            // CSRF failure indicates an expired or missing session token –
+            // CSRF failure indicates an expired or missing session token -
             // show a specific translated message prompting a page reload.
             if (errorData.error === "csrf_failed") {
+                logger.error("main", "upload rejected - CSRF token failure");
                 updateStep(uploadStepElement, I18N.step_upload, "failed");
                 showResult("result-error", I18N.result_csrf_failed);
                 return;
             }
+            logger.error("main", "upload rejected - server validation error", { error: errorData.error });
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
             // resultMessage.innerHTML only contains static I18N strings
             // that are escaped via escapeHTML() – no untrusted data is interpolated.
@@ -393,7 +413,8 @@ uploadButton.addEventListener("click", async function () {
             return;
         }
 
-        // Upload accepted — server streams processing progress as SSE
+        // Upload accepted - server streams processing progress as SSE
+        logger.info("main", "upload accepted, streaming SSE progress");
         updateStep(uploadStepElement, I18N.step_upload, "success");
 
         // Pre-render all expected server steps as "pending" so the user sees what's coming
@@ -446,9 +467,12 @@ uploadButton.addEventListener("click", async function () {
 
                     // The final event signals completion with an avatar URL or error
                     if (sseEvent.done) {
+                        logger.info("main", "SSE stream complete", { hasAvatarUrl: !!sseEvent.avatar_url, error: sseEvent.error || null });
                         finalResult = sseEvent;
                         continue;
                     }
+
+                    logger.debug("main", "SSE event received", { step: sseEvent.step, status: sseEvent.status, detail: sseEvent.detail || null });
 
                     // Update the matching pre-rendered step, or append unexpected extra steps
                     if (currentStepIndex < serverStepElements.length) {
@@ -475,6 +499,7 @@ uploadButton.addEventListener("click", async function () {
 
         // Display final result
         if (finalResult && finalResult.avatar_url && !finalResult.error) {
+            logger.info("main", "avatar upload succeeded", { avatarUrl: finalResult.avatar_url });
             // Commit the pending avatar URL to the session cookie.
             // During the upload request the server stored the canonical URL in
             // session["_pending_avatar"] (captured in the cookie header before the
@@ -500,6 +525,7 @@ uploadButton.addEventListener("click", async function () {
         } else {
             // Failure: show the error with a retry button
             var errorCode = finalResult && finalResult.error;
+            logger.error("main", "avatar upload failed", { error: errorCode || null });
             var errorMessage = (errorCode === 'contact_admin')
                 ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
                 : (errorCode ? errorCode : I18N.result_error);
@@ -507,6 +533,7 @@ uploadButton.addEventListener("click", async function () {
         }
     } catch (networkError) {
         // Network failure or stream read error
+        logger.error("main", "network or stream error during upload", { message: networkError.message });
         var lastStep = progressList.lastChild;
         if (lastStep && lastStep.classList.contains("pending")) {
             lastStep.remove();

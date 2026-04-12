@@ -79,10 +79,12 @@
     var settingsPanel = settingsOverlay.querySelector(".dialog-panel");
 
     function openSettingsOverlay() {
+        logger.debug("settings", "settings overlay opened");
         settingsOverlay.classList.remove("hidden");
     }
 
     function closeSettingsOverlay() {
+        logger.debug("settings", "settings overlay closed");
         settingsOverlay.classList.add("hidden");
     }
 
@@ -147,6 +149,7 @@
     themeButtons.forEach(function (button) {
         button.addEventListener("click", function () {
             var selectedTheme = button.dataset.themeValue;
+            logger.info("settings", "theme changed", { theme: selectedTheme });
 
             highlightActiveTheme(selectedTheme);
 
@@ -165,6 +168,7 @@
 
     localeButtons.forEach(function (button) {
         button.addEventListener("click", function () {
+            logger.info("settings", "locale changed", { locale: button.dataset.locale });
             setCookie("locale", button.dataset.locale);
             location.reload();
         });
@@ -175,6 +179,7 @@
     var resetButton = document.getElementById("settingsReset");
     if (resetButton) {
         resetButton.addEventListener("click", function () {
+            logger.info("settings", "settings reset - clearing theme and locale cookies");
             deleteCookie("theme");
             deleteCookie("locale");
             location.reload();

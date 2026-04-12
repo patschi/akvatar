@@ -38,6 +38,7 @@ function redirectSessionExpired() {
  * Redirects on 401 (expired); ignores 5xx and network failures (transient).
  */
 function checkSession() {
+    logger.debug("session", "probing session heartbeat");
     fetch(SESSION_CHECK_ENDPOINT, {
         method: "GET",
         credentials: "same-origin",
@@ -45,11 +46,17 @@ function checkSession() {
         cache: "no-store",
     }).then(function (response) {
         if (response.status === 401) {
+            logger.info("session", "session expired (401), redirecting to login");
             redirectSessionExpired();
+        } else if (response.status >= 500) {
+            logger.warn("session", "server error during session check, will retry next tick", { status: response.status });
+        } else {
+            logger.debug("session", "session alive", { status: response.status });
         }
         // 200 = alive; anything else (5xx, etc.) = server trouble, retry next tick
-    }).catch(function () {
-        // Network error – transient failure, do not redirect
+    }).catch(function (err) {
+        // Network error - transient failure, do not redirect
+        logger.warn("session", "network error during session check, ignoring", { message: err.message });
     });
 }
 
@@ -62,8 +69,9 @@ function startSessionCheck(checkNow) {
     if (_sessionCheckTimer !== null) {
         return;
     }
+    logger.debug("session", "session check started", { checkNow: checkNow, intervalMs: SESSION_CHECK_INTERVAL_MS });
     if (checkNow) {
-        // Tab just became visible – probe immediately to detect any expiry that
+        // Tab just became visible - probe immediately to detect any expiry that
         // occurred while checks were paused, then continue with the normal cadence.
         checkSession();
     }
@@ -78,17 +86,19 @@ function stopSessionCheck() {
     if (_sessionCheckTimer === null) {
         return;
     }
+    logger.debug("session", "session check paused (tab hidden)");
     clearInterval(_sessionCheckTimer);
     _sessionCheckTimer = null;
 }
 
 /** React to the tab becoming visible or hidden. */
 function onVisibilityChange() {
+    logger.debug("session", "visibility changed", { state: document.visibilityState });
     if (document.visibilityState === "hidden") {
-        // Tab went to background – stop keeping the session alive.
+        // Tab went to background - stop keeping the session alive.
         stopSessionCheck();
     } else {
-        // Tab returned to foreground – check immediately, then resume normal cadence.
+        // Tab returned to foreground - check immediately, then resume normal cadence.
         startSessionCheck(true);
     }
 }
