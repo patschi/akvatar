@@ -530,7 +530,7 @@ body {
     background: none;
     border: 1px solid var(--border-strong);
     cursor: pointer;
-    padding: 0.25rem 0.55rem;
+    padding: 0.45rem 0.65rem;
     border-radius: var(--radius-sm);
     white-space: nowrap;
     overflow: hidden;
