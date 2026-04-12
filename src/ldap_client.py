@@ -27,23 +27,33 @@ from urllib.parse import urlparse
 import ldap3
 import ldap3.utils.conv
 
-from src.config import dry_run, ldap_cfg
+from src.config import (
+    dry_run,
+    ldap_bind_dn,
+    ldap_bind_password,
+    ldap_enabled,
+    ldap_photos,
+    ldap_port,
+    ldap_search_base,
+    ldap_search_filter,
+    ldap_server_urls,
+    ldap_skip_cert_verify,
+    ldap_use_ssl,
+)
 
 log = logging.getLogger("ldap")
 
 # Module-level configuration (config is immutable after startup)
-_enabled = ldap_cfg.get("enabled", False)
-_server_urls: list[str] = [
-    s.strip() for s in ldap_cfg.get("servers", "").split(",") if s.strip()
-]
-_default_port = ldap_cfg.get("port", 636)
-_default_ssl = ldap_cfg.get("use_ssl", False)
-_skip_verify = ldap_cfg.get("skip_cert_verify", False)
-_bind_dn = ldap_cfg.get("bind_dn", "")
-_bind_password = ldap_cfg.get("bind_password", "")
-_search_base = ldap_cfg.get("search_base", "")
-_search_filter_tpl = ldap_cfg.get("search_filter", "(objectSid={ldap_uniq})")
-_photos = ldap_cfg.get("photos", [])
+_enabled = ldap_enabled
+_server_urls: list[str] = ldap_server_urls
+_default_port = ldap_port
+_default_ssl = ldap_use_ssl
+_skip_verify = ldap_skip_cert_verify
+_bind_dn = ldap_bind_dn
+_bind_password = ldap_bind_password
+_search_base = ldap_search_base
+_search_filter_tpl = ldap_search_filter
+_photos = ldap_photos
 
 # Pre-build one ldap3.Server object per configured URL so they are reused
 # across connections.  Each Server object holds DNS resolution, schema info,

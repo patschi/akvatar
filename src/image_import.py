@@ -19,29 +19,36 @@ from urllib.parse import urlparse
 import requests as http_requests
 
 from src import USER_AGENT
-from src.config import app_cfg, import_cfg
+from src.config import (
+    gravatar_enabled,
+    gravatar_restrict_email,
+    import_url_enabled,
+    import_url_restrict_private_ips,
+    max_upload_size_mb,
+    webcam_enabled,
+)
 from src.i18n import t
 from src.image_formats import ALLOWED_PROXY_MIMETYPES, MIME_TO_EXT
 
 log = logging.getLogger("img_import")
 
 # Remote image fetch limits (derived from the same config as direct uploads)
-MAX_FETCH_SIZE_MB = app_cfg.get("max_upload_size_mb", 10)
+MAX_FETCH_SIZE_MB = max_upload_size_mb
 _MAX_FETCH_SIZE = MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
 FETCH_TIMEOUT = 15  # seconds
 _MAX_REDIRECTS = 5  # maximum redirect hops to follow during URL import
 
 # Config: per-source enable flags and URL security settings
-GRAVATAR_ENABLED = import_cfg.get("gravatar", {}).get("enabled", True)
+GRAVATAR_ENABLED = gravatar_enabled
 # When True, the Gravatar email input is locked to the session user's email and
 # the backend enforces a strict match - preventing oracle lookups for arbitrary emails.
-GRAVATAR_RESTRICT_EMAIL = import_cfg.get("gravatar", {}).get("restrict_email", True)
-URL_ENABLED = import_cfg.get("url", {}).get("enabled", True)
+GRAVATAR_RESTRICT_EMAIL = gravatar_restrict_email
+URL_ENABLED = import_url_enabled
 # Webcam capture is handled entirely client-side via MediaDevices.getUserMedia,
 # so no proxy endpoint is needed - this flag only controls UI visibility and
 # the Permissions-Policy header sent with HTML responses.
-WEBCAM_ENABLED = import_cfg.get("webcam", {}).get("enabled", True)
-RESTRICT_PRIVATE_IPS = import_cfg.get("url", {}).get("restrict_private_ips", True)
+WEBCAM_ENABLED = webcam_enabled
+RESTRICT_PRIVATE_IPS = import_url_restrict_private_ips
 
 
 def read_with_limit(resp: http_requests.Response) -> bytes | None:

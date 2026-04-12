@@ -16,7 +16,15 @@ from authlib.integrations.flask_client import OAuth
 from flask import redirect, session, url_for
 
 from src.authentik import retrieve_user
-from src.config import app_cfg, oidc_cfg
+from src.config import (
+    oidc_client_id,
+    oidc_client_secret,
+    oidc_end_provider_session,
+    oidc_issuer_url,
+    oidc_skip_cert_verify,
+    oidc_username_claim,
+    public_base_url,
+)
 from src.i18n import resolve_oidc_locale
 
 log = logging.getLogger("auth")
@@ -36,19 +44,18 @@ def init_oauth(app):
     # Authlib's OAuth2Session (requests backend) propagates the verify flag to
     # ALL requests it makes, including the server metadata (OIDC discovery) fetch.
     _client_kwargs = {"scope": OIDC_SCOPES}
-    if oidc_cfg.get("skip_cert_verify", False):
+    if oidc_skip_cert_verify:
         _client_kwargs["verify"] = False
 
     oauth.register(
         name="authentik",
-        client_id=oidc_cfg["client_id"],
-        client_secret=oidc_cfg["client_secret"],
-        server_metadata_url=oidc_cfg["issuer_url"].rstrip("/")
+        client_id=oidc_client_id,
+        client_secret=oidc_client_secret,
+        server_metadata_url=oidc_issuer_url.rstrip("/")
         + "/.well-known/openid-configuration",
         client_kwargs=_client_kwargs,
     )
-    _cid = oidc_cfg["client_id"]
-    _cid_censored = _cid[:3] + "***" + _cid[-3:]
+    _cid_censored = oidc_client_id[:3] + "***" + oidc_client_id[-3:]
     log.info(
         "OAuth client registered (client_id=%s, scopes=%s).",
         _cid_censored,
@@ -57,9 +64,7 @@ def init_oauth(app):
     # Log the redirect URI that must be registered in the Authentik OAuth application.
     # This is derived from public_base_url - if it doesn't match what Authentik has
     # registered, logins will fail with "mismatching redirection URI".
-    _expected_redirect_uri = (
-        app_cfg.get("public_base_url", "").rstrip("/") + "/callback"
-    )
+    _expected_redirect_uri = public_base_url + "/callback"
     log.debug(
         "Expected OIDC redirect URI (must match Authentik app config): %s",
         _expected_redirect_uri,
@@ -92,7 +97,7 @@ def process_oidc_callback(token: dict, userinfo: dict) -> tuple[dict, str | None
     Returns (user_dict, id_token_or_None, locale).
     Raises on Authentik user lookup failure - caller should redirect to login.
     """
-    username = userinfo.get(oidc_cfg["username_claim"], userinfo["sub"])
+    username = userinfo.get(oidc_username_claim, userinfo["sub"])
     ak_user = retrieve_user(username)  # raises on failure
 
     user_dict = {
@@ -106,7 +111,7 @@ def process_oidc_callback(token: dict, userinfo: dict) -> tuple[dict, str | None
     # Only extract the ID token when RP-Initiated Logout is enabled; it is only
     # used as id_token_hint in RP-Initiated Logout and is dead weight otherwise.
     id_token = None
-    if oidc_cfg.get("end_provider_session", False):
+    if oidc_end_provider_session:
         id_token = token.get("id_token", None)
 
     locale = resolve_oidc_locale(userinfo.get("locale", ""))
@@ -123,7 +128,7 @@ def build_provider_logout_url(id_token: str | None) -> str | None:
     post_logout_redirect_uri and optional id_token_hint.
     Returns None when RP-Initiated Logout is disabled or the endpoint is unavailable.
     """
-    if not oidc_cfg.get("end_provider_session", False):
+    if not oidc_end_provider_session:
         log.debug("oidc.end_provider_session is disabled - skipping provider logout.")
         return None
 
@@ -142,7 +147,7 @@ def build_provider_logout_url(id_token: str | None) -> str | None:
         )
         return None
 
-    post_logout_uri = app_cfg.get("public_base_url", "").rstrip("/") + "/logged-out"
+    post_logout_uri = public_base_url + "/logged-out"
     params = {"post_logout_redirect_uri": post_logout_uri}
     # id_token_hint lets the provider skip the "are you sure?" confirmation page
     if id_token:

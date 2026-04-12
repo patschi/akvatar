@@ -36,32 +36,33 @@ os.environ["HOME"] = "/tmp"
 
 from src.cleanup import start_cleanup_thread  # noqa: E402
 from src.config import (  # noqa: E402
-    http2_cfg,
+    http2_enabled,
     tls_cert,
     tls_configured,
     tls_key,
     tls_minimum_version,
-    web_cfg,
+    web_host,
+    web_port,
+    web_threads,
+    web_timeout,
+    web_workers,
 )
 
 log = logging.getLogger("run_app")
 
-host = web_cfg.get("host", "0.0.0.0")
-port = web_cfg.get("port", 5000)
 scheme = "https" if tls_configured else "http"
 
 # HTTP/2 is active when both the config option is enabled and TLS is configured.
 # gunicorn negotiates HTTP/2 via ALPN during the TLS handshake when h2 is installed.
-_http2_configured = bool(http2_cfg.get("enabled", True))
-http2_active = _http2_configured and tls_configured
+http2_active = http2_enabled and tls_configured
 
 # Start the cleanup thread in the master process before gunicorn forks
 start_cleanup_thread()
 
 # Build gunicorn command-line arguments
-workers = web_cfg.get("workers", 2)
-threads = web_cfg.get("threads", 4)
-timeout = web_cfg.get("timeout", 120)
+workers = web_workers
+threads = web_threads
+timeout = web_timeout
 wtmpdir = tempfile.gettempdir()
 
 # fmt: off
@@ -69,7 +70,7 @@ args = [
     "gunicorn",
     "--no-control-socket",
     "--preload",
-    "--bind", f"{host}:{port}",
+    "--bind", f"{web_host}:{web_port}",
     "--worker-class", "gthread",
     "--worker-tmp-dir", wtmpdir,
     "--workers", str(workers),
@@ -84,7 +85,7 @@ if tls_cert and tls_key:
 if http2_active:
     # Advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
     args.extend(["--http-protocols", "h2,h1"])
-elif _http2_configured and not tls_configured:
+elif http2_enabled and not tls_configured:
     log.warning(
         "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS."
     )
@@ -94,8 +95,8 @@ args.append("app:create_app()")
 log.info(
     "Initializing gunicorn on %s://%s:%s (workers=%d, threads=%d, timeout=%ds)...",
     scheme,
-    host,
-    port,
+    web_host,
+    web_port,
     workers,
     threads,
     timeout,

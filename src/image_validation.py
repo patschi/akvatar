@@ -18,7 +18,7 @@ import logging
 
 from PIL import Image
 
-from src.config import img_cfg
+from src.config import img_sizes
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, ALLOWED_FORMATS
 
@@ -52,7 +52,7 @@ MAGIC_SIGNATURES = {
 # images this limit fires first only when the side exceeds sqrt(MAX_IMAGE_PIXELS)
 # ≈ 5 000 px; above that Pillow's DecompressionBombError fires during decode.
 # Both paths are caught by the same except block in validate_upload().
-MIN_DIMENSION = min(img_cfg["sizes"])
+MIN_DIMENSION = min(img_sizes)
 MAX_DIMENSION = 8192  # Each axis capped independently; Pillow caps total pixel area
 
 

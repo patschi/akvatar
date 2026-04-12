@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from PIL import Image
 
 from src.authentik import revert_avatar_url, update_avatar_url
-from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_cfg
+from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_formats, img_sizes
 from src.i18n import t
 from src.image_formats import FORMAT_MAP
 from src.imaging import (
@@ -111,8 +111,8 @@ def _step_process_image(image: Image.Image, filename_base: str):
             "status": "success",
             "detail": t(
                 "step.processed_detail",
-                sizes=len(img_cfg["sizes"]),
-                formats=len(img_cfg["formats"]),
+                sizes=len(img_sizes),
+                formats=len(img_formats),
                 total=size_label,
             ),
         }
@@ -267,8 +267,8 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
         "filename": filename_base,
         "user_pk": user_pk,
         "uploaded_at": datetime.now(UTC).isoformat(),
-        "sizes": img_cfg["sizes"],
-        "formats": img_cfg["formats"],
+        "sizes": img_sizes,
+        "formats": img_formats,
         "total_bytes": total_bytes,
     }
     meta_path = METADATA_ROOT / f"{filename_base}.meta.json"

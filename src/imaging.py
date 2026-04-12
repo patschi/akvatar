@@ -15,34 +15,38 @@ from uuid import uuid4
 
 from PIL import Image, ImageOps
 
-from src.config import app_cfg, img_cfg
+from src.config import (
+    avatar_storage_path,
+    img_avif_quality,
+    img_formats,
+    img_jpeg_quality,
+    img_png_compress_level,
+    img_rgba_background_color,
+    img_sizes,
+    img_webp_quality,
+    public_avatar_url,
+)
 from src.image_formats import FORMAT_MAP
 
 log = logging.getLogger("imaging")
 
 # Resolve the avatar storage root from config
-AVATAR_ROOT = Path(app_cfg.get("avatar_storage_path", "/data/avatars"))
+AVATAR_ROOT = Path(avatar_storage_path)
 
 # Metadata JSON files live in a dedicated subfolder so they don't clutter
 # the avatar root alongside the size subdirectories.
 METADATA_ROOT = AVATAR_ROOT / "_metadata"
 
 # Pre-compute frequently used values from config at import time
-MAX_SIZE = max(img_cfg["sizes"])
-_avatar_base_url = app_cfg["public_avatar_url"]
-AVATAR_BASE_URL = _avatar_base_url
+MAX_SIZE = max(img_sizes)
+AVATAR_BASE_URL = public_avatar_url
 
 # Background color used when compositing RGBA images onto a solid fill before
 # encoding to JPEG (which has no alpha channel).  Without compositing, transparent
 # and semi-transparent pixels would map to black - compositing onto a configured
 # color produces the correct result for logos and photos with transparent borders.
 # Configured via images.rgba_background_color; defaults to white [255, 255, 255].
-_rgba_bg_raw = img_cfg.get("rgba_background_color", [255, 255, 255])
-_RGBA_BG_COLOR: tuple[int, int, int] = (
-    int(_rgba_bg_raw[0]),
-    int(_rgba_bg_raw[1]),
-    int(_rgba_bg_raw[2]),
-)
+_RGBA_BG_COLOR: tuple[int, int, int] = img_rgba_background_color
 
 
 def normalize_image(image: Image.Image) -> Image.Image:
@@ -95,7 +99,7 @@ def generate_filename() -> str:
 def ensure_size_directories_existence() -> None:
     """Create AVATAR_ROOT, all size sub-directories, and the metadata directory. Called once at startup."""
     AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
-    for size in img_cfg["sizes"]:
+    for size in img_sizes:
         (AVATAR_ROOT / f"{size}x{size}").mkdir(parents=True, exist_ok=True)
     METADATA_ROOT.mkdir(parents=True, exist_ok=True)
     log.debug("Ensured size and metadata directories under %s.", AVATAR_ROOT)
@@ -113,21 +117,21 @@ def _save_image(
         image.save(
             target,
             format="JPEG",
-            quality=quality if quality is not None else img_cfg["jpeg_quality"],
+            quality=quality if quality is not None else img_jpeg_quality,
             optimize=True,
         )
     elif pillow_fmt == "PNG":
         image.save(
             target,
             format="PNG",
-            compress_level=img_cfg["png_compress_level"],
+            compress_level=img_png_compress_level,
             optimize=True,
         )
     elif pillow_fmt == "WEBP":
         image.save(
             target,
             format="WEBP",
-            quality=quality if quality is not None else img_cfg["webp_quality"],
+            quality=quality if quality is not None else img_webp_quality,
             method=6,
         )
     elif pillow_fmt == "AVIF":
@@ -136,7 +140,7 @@ def _save_image(
         image.save(
             target,
             format="AVIF",
-            quality=quality if quality is not None else img_cfg.get("avif_quality", 80),
+            quality=quality if quality is not None else img_avif_quality,
         )
     else:
         raise ValueError(f"Unsupported Pillow format: {pillow_fmt!r}")
@@ -154,8 +158,8 @@ def process_image(
     """
     log.info("Starting image processing for %r.", filename_base)
     results: dict[str, dict[str, str]] = {}
-    sizes = img_cfg["sizes"]
-    formats = img_cfg["formats"]
+    sizes = img_sizes
+    formats = img_formats
     total_bytes = 0
 
     for size in sizes:
@@ -187,7 +191,7 @@ def process_image(
 
             file_size = out_path.stat().st_size
             total_bytes += file_size
-            results[key][ext] = f"{_avatar_base_url}/{key}/{filename_base}.{ext}"
+            results[key][ext] = f"{AVATAR_BASE_URL}/{key}/{filename_base}.{ext}"
             log.debug(
                 "Saved %s/%s.%s (%s) - %d bytes.",
                 key,
@@ -276,11 +280,11 @@ def prepare_ldap_image(
 
     # PNG is lossless (quality=None); JPEG/WebP/AVIF use a configurable quality level
     if pillow_fmt == "JPEG":
-        quality = img_cfg["jpeg_quality"]
+        quality = img_jpeg_quality
     elif pillow_fmt == "WEBP":
-        quality = img_cfg["webp_quality"]
+        quality = img_webp_quality
     elif pillow_fmt == "AVIF":
-        quality = img_cfg.get("avif_quality", 80)
+        quality = img_avif_quality
     else:
         quality = None
 
@@ -358,8 +362,8 @@ def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
     counted as failures).
     """
     log.info("Cleaning up avatar files for %s.", filename_base)
-    sizes = img_cfg["sizes"]
-    formats = img_cfg["formats"]
+    sizes = img_sizes
+    formats = img_formats
     deleted = 0
     failed = 0
     for size in sizes:

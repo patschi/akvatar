@@ -29,7 +29,7 @@ from urllib.parse import urlparse
 
 from flask import g
 
-from src.config import app_cfg, security_cfg
+from src.config import csp_enabled, csp_report_only, csp_report_uri, public_avatar_url
 
 log = logging.getLogger("csp")
 
@@ -42,17 +42,17 @@ _G_KEY = "csp_nonce"
 
 # Master switch - set security.csp_enabled to false to suppress the CSP header entirely.
 # Defaults to true; only disable when a reverse proxy or WAF owns the CSP header.
-_CSP_ENABLED = bool(security_cfg.get("csp_enabled", True))
+_CSP_ENABLED = csp_enabled
 
 # Report-only mode: when true, the policy is sent as Content-Security-Policy-Report-Only
 # instead of Content-Security-Policy so violations are reported (browser console / report-uri)
 # but NOT enforced.  Useful for testing a new policy without breaking the live site.
 # Ignored when csp_enabled is false.
-_CSP_REPORT_ONLY = bool(security_cfg.get("csp_report_only", False))
+_CSP_REPORT_ONLY = csp_report_only
 
 # Optional CSP report-uri directive - URL where the browser sends violation reports.
 # Leave empty to omit the directive (violations are logged to the browser console only).
-_CSP_REPORT_URI = security_cfg.get("csp_report_uri", "")
+_CSP_REPORT_URI = csp_report_uri
 
 # The header name to use: the standard enforcing header, or the report-only variant.
 # Exported so app.py can set the correct header without hard-coding the name.
@@ -65,8 +65,7 @@ CSP_HEADER_NAME = (
 # Extract the origin from public_avatar_url and add it to img-src so that
 # avatars hosted on a separate origin are not blocked by the policy.
 # Example: "https://cdn.example.com/user-avatars" → "https://cdn.example.com"
-_avatar_url = app_cfg.get("public_avatar_url", "")
-_parsed_avatar = urlparse(_avatar_url)
+_parsed_avatar = urlparse(public_avatar_url)
 _avatar_origin = (
     f"{_parsed_avatar.scheme}://{_parsed_avatar.netloc}"
     if _parsed_avatar.scheme and _parsed_avatar.netloc

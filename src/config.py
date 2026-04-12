@@ -56,6 +56,109 @@ sentry_cfg = cfg.get("sentry", {})
 access_log = bool(web_cfg.get("access_log", False))
 http2_cfg = web_cfg.get("http2", {})
 
+# ---------------------------------------------------------------------------
+# Per-setting named exports - defaults resolved centrally; re-use in modules
+# ---------------------------------------------------------------------------
+
+# Application
+public_base_url: str = app_cfg.get("public_base_url", "").rstrip("/")
+avatar_storage_path: str = app_cfg.get("avatar_storage_path", "/data/avatars")
+max_upload_size_mb: int = int(app_cfg.get("max_upload_size_mb", 10))
+branding_name: str = branding_cfg.get("name", "Avatar Updater")
+
+# Images
+img_sizes: list = img_cfg.get("sizes", [])
+img_formats: list = img_cfg.get("formats", [])
+img_jpeg_quality: int = int(img_cfg.get("jpeg_quality", 90))
+img_webp_quality: int = int(img_cfg.get("webp_quality", 85))
+img_avif_quality: int = int(img_cfg.get("avif_quality", 80))
+img_png_compress_level: int = int(img_cfg.get("png_compress_level", 6))
+
+# Authentik
+ak_base_url: str = ak_cfg.get("base_url", "")
+ak_api_token: str = ak_cfg.get("api_token", "")
+ak_avatar_attribute: str = ak_cfg.get("avatar_attribute", "avatar")
+ak_skip_cert_verify: bool = bool(ak_cfg.get("skip_cert_verify", False))
+
+# OIDC
+oidc_issuer_url: str = oidc_cfg.get("issuer_url", "")
+oidc_client_id: str = oidc_cfg.get("client_id", "")
+oidc_client_secret: str = oidc_cfg.get("client_secret", "")
+oidc_username_claim: str = oidc_cfg.get("username_claim", "preferred_username")
+oidc_end_provider_session: bool = bool(oidc_cfg.get("end_provider_session", False))
+oidc_skip_cert_verify: bool = bool(oidc_cfg.get("skip_cert_verify", False))
+
+# LDAP
+ldap_enabled: bool = bool(ldap_cfg.get("enabled", False))
+ldap_server_urls: list[str] = [
+    s.strip() for s in ldap_cfg.get("servers", "").split(",") if s.strip()
+]
+ldap_port: int = int(ldap_cfg.get("port", 636))
+ldap_use_ssl: bool = bool(ldap_cfg.get("use_ssl", False))
+ldap_skip_cert_verify: bool = bool(ldap_cfg.get("skip_cert_verify", False))
+ldap_bind_dn: str = ldap_cfg.get("bind_dn", "")
+ldap_bind_password: str = ldap_cfg.get("bind_password", "")
+ldap_search_base: str = ldap_cfg.get("search_base", "")
+ldap_search_filter: str = ldap_cfg.get("search_filter", "(objectSid={ldap_uniq})")
+ldap_photos: list = ldap_cfg.get("photos", [])
+
+# Security - metadata_access validated here so all consumers get the corrected value
+_METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
+_raw_metadata_access: str = security_cfg.get("metadata_access", "owner_only")
+metadata_access: str = (
+    _raw_metadata_access
+    if _raw_metadata_access in _METADATA_ACCESS_MODES
+    else "owner_only"
+)
+session_cookie_secure = security_cfg.get("session_cookie_secure", None)
+web_session_lifetime_seconds: int = int(
+    security_cfg.get("web_session_lifetime_seconds", 1800)
+)
+csp_enabled: bool = bool(security_cfg.get("csp_enabled", True))
+csp_report_only: bool = bool(security_cfg.get("csp_report_only", False))
+csp_report_uri: str = security_cfg.get("csp_report_uri", "")
+
+# Webserver
+proxy_mode: bool = bool(web_cfg.get("proxy_mode", True))
+_trusted_hosts_raw = web_cfg.get("trusted_hosts", None)
+trusted_hosts: list[str] | None = (
+    [h.lower().strip() for h in _trusted_hosts_raw if h] if _trusted_hosts_raw else None
+)
+web_host: str = web_cfg.get("host", "0.0.0.0")
+web_port: int = int(web_cfg.get("port", 5000))
+web_workers: int = int(web_cfg.get("workers", 2))
+web_threads: int = int(web_cfg.get("threads", 4))
+web_timeout: int = int(web_cfg.get("timeout", 120))
+http2_enabled: bool = bool(http2_cfg.get("enabled", True))
+
+# Cleanup
+cleanup_interval: str = str(cleanup_cfg.get("interval", "0 2 * * *")).strip()
+cleanup_on_startup: bool = bool(cleanup_cfg.get("on_startup", False))
+cleanup_retention_count: int = int(cleanup_cfg.get("avatar_retention_count", 2))
+cleanup_when_deleted: bool = bool(cleanup_cfg.get("when_user_deleted", True))
+cleanup_when_deactivated: bool = bool(cleanup_cfg.get("when_user_deactivated", False))
+
+# Image import
+gravatar_enabled: bool = bool(import_cfg.get("gravatar", {}).get("enabled", True))
+gravatar_restrict_email: bool = bool(
+    import_cfg.get("gravatar", {}).get("restrict_email", True)
+)
+import_url_enabled: bool = bool(import_cfg.get("url", {}).get("enabled", True))
+import_url_restrict_private_ips: bool = bool(
+    import_cfg.get("url", {}).get("restrict_private_ips", True)
+)
+webcam_enabled: bool = bool(import_cfg.get("webcam", {}).get("enabled", True))
+
+# Sentry
+sentry_enabled: bool = bool(sentry_cfg.get("enabled", False))
+sentry_dsn: str = sentry_cfg.get("dsn", "")
+sentry_environment: str = sentry_cfg.get("environment", "")
+sentry_capture_performance: bool = bool(sentry_cfg.get("capture_performance", False))
+sentry_traces_sample_rate: float = float(sentry_cfg.get("traces_sample_rate", 0.2))
+sentry_capture_errors: bool = bool(sentry_cfg.get("capture_errors", True))
+sentry_sample_rate: float = float(sentry_cfg.get("sample_rate", 1.0))
+sentry_send_default_pii: bool = bool(sentry_cfg.get("send_default_pii", False))
+
 # Rate limiting configuration (exported for use in rate_limit.py)
 # The full section dict is passed to _RateLimitManager as-is; the named
 # variables below are for the upload cooldown so rate_limit.py does not
@@ -64,11 +167,11 @@ rate_limiting_cfg = cfg.get("rate_limiting", {})
 _upload_rate_cfg = rate_limiting_cfg.get("upload", {})
 # Master switch governs all rate limiting (IP limiter and upload cooldown).
 # upload_cooldown_enabled is False when either the master or upload.enabled is off.
-_rate_limiting_master = bool(rate_limiting_cfg.get("enabled", False))
-upload_cooldown_enabled = _rate_limiting_master and bool(
+rate_limiting_enabled: bool = bool(rate_limiting_cfg.get("enabled", False))
+upload_cooldown_enabled: bool = rate_limiting_enabled and bool(
     _upload_rate_cfg.get("enabled", True)
 )
-upload_cooldown_secs = int(_upload_rate_cfg.get("cooldown", 10))
+upload_cooldown_secs: int = int(_upload_rate_cfg.get("cooldown", 10))
 
 # Logging setup
 _LOG_LEVELS = {
@@ -114,6 +217,13 @@ if dry_run:
         "DRY-RUN MODE is enabled - no changes will be pushed to Authentik or LDAP."
     )
 
+# Warn when security.metadata_access had an unrecognized value and fell back to owner_only
+if metadata_access != _raw_metadata_access:
+    log.warning(
+        "Unknown security.metadata_access value %r - falling back to owner_only.",
+        _raw_metadata_access,
+    )
+
 # Startup SSL warnings (logged once at import time)
 # TLS configuration (exported for use by app.py and run_app.py)
 tls_cfg = web_cfg.get("tls", {})
@@ -152,51 +262,49 @@ if not tls_configured:
 log.debug("TLS minimum version: %s.", tls_minimum_version.name)
 
 # HTTP/2 startup status
-_http2_enabled = bool(http2_cfg.get("enabled", True))
-if _http2_enabled and tls_configured:
+if http2_enabled and tls_configured:
     log.info(
         "HTTP/2 support enabled (TLS configured, ALPN negotiation will advertise h2)."
     )
-elif _http2_enabled and not tls_configured:
+elif http2_enabled and not tls_configured:
     log.warning(
         "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS and will not be used."
     )
 
-if ldap_cfg.get("enabled", False):
-    _use_ssl_fallback = ldap_cfg.get("use_ssl", False)
-    for _srv in ldap_cfg.get("servers", "").split(","):
-        _scheme = urlparse(_srv.strip()).scheme.lower()
-        if _scheme == "ldap" or (not _scheme and not _use_ssl_fallback):
+if ldap_enabled:
+    for _srv in ldap_server_urls:
+        _scheme = urlparse(_srv).scheme.lower()
+        if _scheme == "ldap" or (not _scheme and not ldap_use_ssl):
             log.warning(
                 "One or more LDAP servers are configured WITHOUT SSL - credentials and data will be sent in plain text."
             )
             break
-    if ldap_cfg.get("skip_cert_verify", False):
+    if ldap_skip_cert_verify:
         log.warning(
             "LDAP TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
         )
 
-if ak_cfg.get("skip_cert_verify", False):
+if ak_skip_cert_verify:
     log.warning(
         "Authentik API TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
 
-if oidc_cfg.get("skip_cert_verify", False):
+if oidc_skip_cert_verify:
     log.warning(
         "OIDC TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
 
 # Validate app.public_avatar_url - required for building avatar URLs pushed to Authentik/LDAP.
 # Caught here with a clear FATAL message rather than a KeyError deep in imaging.py.
-_public_avatar_url = app_cfg.get("public_avatar_url", "")
+public_avatar_url: str = app_cfg.get("public_avatar_url", "")
 _fatal_unless(
-    bool(_public_avatar_url),
+    bool(public_avatar_url),
     "app.public_avatar_url is required but not set in config.yml.",
 )
-_parsed_pub_avatar = urlparse(_public_avatar_url)
+_parsed_pub_avatar = urlparse(public_avatar_url)
 _fatal_unless(
     bool(_parsed_pub_avatar.scheme and _parsed_pub_avatar.netloc),
-    f"app.public_avatar_url={_public_avatar_url!r} must be an absolute URL "
+    f"app.public_avatar_url={public_avatar_url!r} must be an absolute URL "
     f"(e.g. 'https://example.com/user-avatars').",
 )
 
@@ -243,9 +351,8 @@ log.debug(
     ak_avatar_ext.upper(),
 )
 
-if ldap_cfg.get("enabled", False):
-    _ldap_photos = ldap_cfg.get("photos", [])
-    if not _ldap_photos:
+if ldap_enabled:
+    if not ldap_photos:
         log.warning(
             "LDAP is enabled but no photo attributes are configured (ldap.photos is empty)."
         )
@@ -253,7 +360,7 @@ if ldap_cfg.get("enabled", False):
     _valid_image_types = set(_FORMAT_MAP.keys())
     _REQUIRED_PHOTO_KEYS = ("attribute", "type", "image_type", "image_size")
 
-    for _i, _photo in enumerate(_ldap_photos):
+    for _i, _photo in enumerate(ldap_photos):
         _pfx = f"ldap.photos[{_i}]"
 
         # Every photo entry must have the four required keys
@@ -296,30 +403,30 @@ if ldap_cfg.get("enabled", False):
 
     log.debug(
         "LDAP user lookup: base=%r, filter=%r, servers=%s (port %s).",
-        ldap_cfg.get("search_base", ""),
-        ldap_cfg.get("search_filter", "(objectSid={ldap_uniq})"),
-        ldap_cfg.get("servers", ""),
-        ldap_cfg.get("port", 636),
+        ldap_search_base,
+        ldap_search_filter,
+        ", ".join(ldap_server_urls),
+        ldap_port,
     )
-    log.info("LDAP configured with %d photo attribute(s).", len(_ldap_photos))
+    log.info("LDAP configured with %d photo attribute(s).", len(ldap_photos))
 
 # Validate Flask secret key
-_secret_key = security_cfg.get("secret_key", "")
+secret_key: str = security_cfg.get("secret_key", "")
 _SECRET_KEY_MIN_LENGTH = 32
 _SECRET_KEY_HINT = (
     'Generate one with: python3 -c "import secrets; print(secrets.token_hex(32))"'
 )
 
 _fatal_unless(
-    _secret_key != "CHANGE-ME-to-a-random-secret-key",
+    secret_key != "CHANGE-ME-to-a-random-secret-key",
     f"security.secret_key is still set to the default placeholder value. {_SECRET_KEY_HINT}",
 )
 _fatal_unless(
-    len(_secret_key) >= _SECRET_KEY_MIN_LENGTH,
-    f"security.secret_key is too short ({len(_secret_key)} chars, minimum {_SECRET_KEY_MIN_LENGTH}). {_SECRET_KEY_HINT}",
+    len(secret_key) >= _SECRET_KEY_MIN_LENGTH,
+    f"security.secret_key is too short ({len(secret_key)} chars, minimum {_SECRET_KEY_MIN_LENGTH}). {_SECRET_KEY_HINT}",
 )
 
-log.debug("Secret key validation passed (length=%d).", len(_secret_key))
+log.debug("Secret key validation passed (length=%d).", len(secret_key))
 
 # Validate images.rgba_background_color - must be a 3-element RGB list
 _rgba_bg = img_cfg.get("rgba_background_color", [255, 255, 255])
@@ -329,6 +436,12 @@ _fatal_unless(
     and all(isinstance(v, int) and 0 <= v <= 255 for v in _rgba_bg),
     "images.rgba_background_color must be a list of three integers [R, G, B] "
     "each in the range 0-255 (e.g. [255, 255, 255] for white).",
+)
+# Exported as a typed tuple for modules that need the RGBA background color
+img_rgba_background_color: tuple[int, int, int] = (
+    _rgba_bg[0],
+    _rgba_bg[1],
+    _rgba_bg[2],
 )
 
 # Verify Pillow runtime support for every configured format by attempting a

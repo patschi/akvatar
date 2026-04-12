@@ -34,7 +34,12 @@ from typing import NamedTuple
 
 from flask import Flask, Response, request
 
-from src.config import rate_limiting_cfg, upload_cooldown_enabled, upload_cooldown_secs
+from src.config import (
+    rate_limiting_cfg,
+    rate_limiting_enabled,
+    upload_cooldown_enabled,
+    upload_cooldown_secs,
+)
 
 log = logging.getLogger("ratelimit")
 
@@ -236,7 +241,8 @@ class _RateLimitManager:
     """Read config, build limiters with shared state, expose a single `check()` entry point."""
 
     def __init__(self, rate_cfg: dict) -> None:
-        self.enabled = bool(rate_cfg.get("enabled", False))
+        # Use the centrally resolved master switch from config.py
+        self.enabled = rate_limiting_enabled
         self.cost_not_found = int(rate_cfg.get("points_cost_404", 5))
         if not self.enabled:
             self._whitelist: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []

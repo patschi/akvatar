@@ -13,17 +13,23 @@ import requests as http_requests
 import urllib3
 
 from src import USER_AGENT
-from src.config import ak_cfg, dry_run
+from src.config import (
+    ak_api_token,
+    ak_avatar_attribute,
+    ak_base_url,
+    ak_skip_cert_verify,
+    dry_run,
+)
 
 log = logging.getLogger("authentik")
 
 # Module-level configuration
 
 # Which Authentik user attribute stores the avatar URL (configurable in config)
-_avatar_attr = ak_cfg.get("avatar_attribute", "avatar")
+_avatar_attr = ak_avatar_attribute
 
 # Whether to skip TLS certificate verification for Authentik API requests
-_skip_cert_verify = ak_cfg.get("skip_cert_verify", False)
+_skip_cert_verify = ak_skip_cert_verify
 
 # Timeout in seconds for individual API requests (longer for paginated list)
 _TIMEOUT = 15
@@ -34,7 +40,7 @@ _TIMEOUT_LIST = 30
 _session = http_requests.Session()
 _session.headers.update(
     {
-        "Authorization": f"Bearer {ak_cfg['api_token']}",
+        "Authorization": f"Bearer {ak_api_token}",
         "Content-Type": "application/json",
         "User-Agent": USER_AGENT,
     }
@@ -48,8 +54,7 @@ if _skip_cert_verify:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Pre-compute base URLs used in every call.
-_base_url = ak_cfg["base_url"]
-_users_url = f"{_base_url}/api/v3/core/users/"
+_users_url = f"{ak_base_url}/api/v3/core/users/"
 log.debug("Authentik users API URL: %s", _users_url)
 
 # Retry configuration for transient network-layer failures (connection refused,
@@ -333,7 +338,7 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
         page += 1
         log.debug("GET %s (page %d) - fetching user list.", url, page)
         resp = _retry_request(
-            lambda: _session.get(url, params=params, timeout=_TIMEOUT_LIST)
+            lambda u=url, p=params: _session.get(u, params=p, timeout=_TIMEOUT_LIST)
         )
         resp.raise_for_status()
 

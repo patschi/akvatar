@@ -20,15 +20,19 @@ from src.auth import init_oauth
 from src.cleanup import start_cleanup_thread
 from src.config import (
     access_log,
-    app_cfg,
-    branding_cfg,
+    branding_name,
     debug_full,
-    security_cfg,
+    max_upload_size_mb,
+    proxy_mode,
+    public_base_url,
+    secret_key,
+    session_cookie_secure,
     tls_cert,
     tls_configured,
     tls_key,
     tls_minimum_version,
-    web_cfg,
+    trusted_hosts,
+    web_session_lifetime_seconds,
 )
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
 from src.image_import import WEBCAM_ENABLED
@@ -63,10 +67,8 @@ def create_app() -> Flask:
 
     # Initialize flask app
     app = Flask(__name__, template_folder="src/templates", static_folder=None)
-    app.secret_key = security_cfg["secret_key"]
-    app.config["MAX_CONTENT_LENGTH"] = (
-        app_cfg["max_upload_size_mb"] * 1024 * 1024
-    )  # MB -> bytes
+    app.secret_key = secret_key
+    app.config["MAX_CONTENT_LENGTH"] = max_upload_size_mb * 1024 * 1024  # MB -> bytes
 
     # Strip blank lines introduced by Jinja2 block tags in rendered HTML output.
     # trim_blocks:   removes the newline after a block tag ({% ... %})
@@ -92,24 +94,21 @@ def create_app() -> Flask:
     #   only when Flask's own built-in server has TLS configured.
     #   security.session_cookie_secure overrides this auto-detection when set explicitly.
     # Permanent + lifetime: enforce an absolute session expiry (default: 30 min).
-    _secure_override = security_cfg.get("session_cookie_secure", None)
     _secure_cookie_option = (
-        _secure_override
-        if _secure_override is not None
-        else app_cfg.get("public_base_url", "").startswith("https://")
+        session_cookie_secure
+        if session_cookie_secure is not None
+        else public_base_url.startswith("https://")
     )
     app.config["SESSION_COOKIE_NAME"] = "akvatar_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = _secure_cookie_option
-    app.config["PERMANENT_SESSION_LIFETIME"] = security_cfg.get(
-        "web_session_lifetime_seconds", 1800
-    )
+    app.config["PERMANENT_SESSION_LIFETIME"] = web_session_lifetime_seconds
 
     app.debug = debug_full
     app.config["TEMPLATES_AUTO_RELOAD"] = debug_full
 
-    log.debug("Flask app created (max upload = %d MB).", app_cfg["max_upload_size_mb"])
+    log.debug("Flask app created (max upload = %d MB).", max_upload_size_mb)
 
     # Ensure the avatar storage directory tree exists (root + all size sub-dirs + metadata).
     # ensure_size_directories_existence() creates AVATAR_ROOT, size sub-dirs, and METADATA_ROOT.
@@ -122,7 +121,7 @@ def create_app() -> Flask:
     # "https://portal.example.com/avatar-update").  Apply PrefixMiddleware as
     # the inner middleware so it only fires when the reverse proxy has NOT
     # already set SCRIPT_NAME via X-Forwarded-Prefix (handled by ProxyFix).
-    _public_path = urlparse(app_cfg.get("public_base_url", "")).path.rstrip("/")
+    _public_path = urlparse(public_base_url).path.rstrip("/")
     if _public_path:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
         log.info("PrefixMiddleware applied - app is served under %r.", _public_path)
@@ -134,7 +133,7 @@ def create_app() -> Flask:
     # IMPORTANT: must wrap PrefixMiddleware so that when X-Forwarded-Prefix is
     # present, ProxyFix sets SCRIPT_NAME before PrefixMiddleware checks it.
     # Disable via webserver.proxy_mode: false when running without a reverse proxy.
-    if web_cfg.get("proxy_mode", True):
+    if proxy_mode:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
         log.debug(
             "ProxyFix middleware applied (x_for=1, x_proto=1, x_host=1, x_prefix=1)."
@@ -187,7 +186,7 @@ def create_app() -> Flask:
     log.info("App initialized.")
 
     # Template context processor - inject shared variables into all templates
-    _brand_name = branding_cfg.get("name", "Avatar Updater")
+    _brand_name = branding_name
 
     @app.context_processor
     def _inject_globals():
@@ -212,15 +211,9 @@ def create_app() -> Flask:
     # Flask validates Request.host against this list and raises SecurityError
     # (HTTP 400) automatically when it does not match.  Port is stripped before
     # comparison; prefix an entry with "." to match all subdomains.
-    _trusted_hosts_raw = web_cfg.get("trusted_hosts", None)
-    _trusted_hosts = (
-        [h.lower().strip() for h in _trusted_hosts_raw if h]
-        if _trusted_hosts_raw
-        else None
-    )
-    if _trusted_hosts:
-        app.config["TRUSTED_HOSTS"] = _trusted_hosts
-        log.info("Trusted hosts restriction active: %s", _trusted_hosts)
+    if trusted_hosts:
+        app.config["TRUSTED_HOSTS"] = trusted_hosts
+        log.info("Trusted hosts restriction active: %s", trusted_hosts)
     else:
         log.warning(
             "No trusted_hosts restriction configured - any Host header is accepted."
@@ -344,8 +337,7 @@ if __name__ == "__main__":
     else:
         ssl_context = None
     scheme = "https" if ssl_context else "http"
-    host = web_cfg.get("host", "0.0.0.0")
-    port = web_cfg.get("port", 5000)
+    from src.config import web_host, web_port
 
-    log.info("Webserver starting on %s://%s:%s...", scheme, host, port)
-    app.run(host=host, port=port, debug=debug_full, ssl_context=ssl_context)
+    log.info("Webserver starting on %s://%s:%s...", scheme, web_host, web_port)
+    app.run(host=web_host, port=web_port, debug=debug_full, ssl_context=ssl_context)

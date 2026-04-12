@@ -31,7 +31,7 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import build_user_initials, login_required
-from src.config import img_cfg, security_cfg
+from src.config import img_formats, metadata_access
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, NEGOTIATION_PREFERENCE
 from src.image_import import (
@@ -49,8 +49,8 @@ from src.imaging import (
     load_metadata_file,
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
-from src.sec_csrf import validate_csrf_token
 from src.rate_limit import check_upload_cooldown
+from src.sec_csrf import validate_csrf_token
 from src.upload import (
     build_canonical_url,
     generate_sse,
@@ -129,9 +129,7 @@ _DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 
 # Build once at import time from the configured formats list.
 # NEGOTIATION_PREFERENCE (mime, ext) order is imported from image_formats.
-_CONFIGURED_EXTS: frozenset[str] = frozenset(
-    fmt.lower() for fmt in img_cfg.get("formats", [])
-)
+_CONFIGURED_EXTS: frozenset[str] = frozenset(fmt.lower() for fmt in img_formats)
 
 
 def _negotiate_avatar_format() -> str:
@@ -209,18 +207,8 @@ def serve_avatar(dimensions, filename):
 # Access control is governed by security.metadata_access in config.yml:
 #   "owner_only" (default) - only the authenticated user who owns the file may access it
 #   "public"               - no authentication required
-_METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
-
-_raw_metadata_access = security_cfg.get("metadata_access", None)
-if _raw_metadata_access not in _METADATA_ACCESS_MODES:
-    if _raw_metadata_access is not None:
-        log.warning(
-            "Unknown security.metadata_access value %r - falling back to owner_only.",
-            _raw_metadata_access,
-        )
-    _METADATA_ACCESS_MODE = "owner_only"
-else:
-    _METADATA_ACCESS_MODE = _raw_metadata_access
+# Validation and fallback are handled centrally in config.py at startup.
+_METADATA_ACCESS_MODE = metadata_access
 
 
 @routes_bp.route("/user-avatars/_metadata/<filename>", methods=["GET"])

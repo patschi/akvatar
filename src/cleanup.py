@@ -49,7 +49,16 @@ from datetime import UTC, datetime
 from croniter import croniter
 
 from src.authentik import list_active_user_pks, list_all_user_pks
-from src.config import cleanup_cfg, dry_run, img_cfg
+from src.config import (
+    cleanup_interval,
+    cleanup_on_startup,
+    cleanup_retention_count,
+    cleanup_when_deactivated,
+    cleanup_when_deleted,
+    dry_run,
+    img_formats,
+    img_sizes,
+)
 from src.image_formats import FORMAT_MAP
 from src.imaging import (
     AVATAR_ROOT,
@@ -73,16 +82,16 @@ _CLEANUP_LOCKFILE = AVATAR_ROOT / ".cleanup.lock"
 
 # Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
-_cron_expr = str(cleanup_cfg.get("interval", "0 2 * * *")).strip()
-_run_on_startup = bool(cleanup_cfg.get("on_startup", False))
-_retention_count = cleanup_cfg.get("avatar_retention_count", 2)
-_cleanup_when_deleted = bool(cleanup_cfg.get("when_user_deleted", True))
-_cleanup_when_deactivated = bool(cleanup_cfg.get("when_user_deactivated", False))
+_cron_expr = cleanup_interval
+_run_on_startup = cleanup_on_startup
+_retention_count = cleanup_retention_count
+_cleanup_when_deleted = cleanup_when_deleted
+_cleanup_when_deactivated = cleanup_when_deactivated
 
 # Currently configured sizes and on-disk file extensions (used to detect orphans).
 # Formats are resolved through FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
-_configured_sizes = {f"{s}x{s}" for s in img_cfg["sizes"]}
-_configured_formats = {FORMAT_MAP[f.lower()][1] for f in img_cfg["formats"]}
+_configured_sizes = {f"{s}x{s}" for s in img_sizes}
+_configured_formats = {FORMAT_MAP[f.lower()][1] for f in img_formats}
 
 # Regex to match size directory names like "128x128", "1024x1024"
 _SIZE_DIR_RE = re.compile(r"^\d+x\d+$")
@@ -109,7 +118,7 @@ def _try_unlink(path, label: str) -> tuple[int, int]:
 
 # Files per avatar set: one image per size x format combination, plus one metadata file.
 # Used in dry-run to estimate how many files would be removed for each targeted set.
-_FILES_PER_SET = len(img_cfg["sizes"]) * len(img_cfg["formats"]) + 1
+_FILES_PER_SET = len(img_sizes) * len(img_formats) + 1
 
 
 def _enforce_retention(
