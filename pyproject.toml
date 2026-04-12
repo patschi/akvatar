@@ -1,9 +1,9 @@
-# Akvatar is a self-hosted web app that lets authenticated users update their
-# profile picture. Users log in via OIDC, upload or import an image (Gravatar,
-# URL, or webcam), crop it client-side, and the backend processes it for 
-# multiple configurable sizes/formats. After this, it pushes it to Authentik
+# Akvatar is a self-hosted web app that lets users update their profile photo.
+# After login via OIDC, users can upload or import an image (Gravatar, URL,
+# or webcam), crop it client-side, and the backend processes it for multiple
+# configurable sizes and formats. After this, it pushes it to Authentik
 # via API and optionally to LDAP Server. A scheduled cleanup job handles
-# orphaned files and per-user retention.
+# orphaned files and retention.
 
 [build-system]
 requires = ["setuptools>=77"]
