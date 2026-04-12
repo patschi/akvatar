@@ -113,12 +113,11 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 ## Prerequisites
 
 - An **Authentik** instance with an OIDC provider and an Admin API token
-  (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and
-  [Authentik API Token](docs/authentik-api-token.md))
+  (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and [Authentik API Token](docs/authentik-api-token.md))
 - *(Optional)* An LDAP server reachable via LDAPS/LDAP - tested with Microsoft Active
   Directory; see [MS AD Service Account](docs/ms-ad-service-account.md)
 - **Container deployment:** Docker or any OCI-compatible runtime
-- **Manual deployment:** Python 3.11+, Linux (Debian, Ubuntu, RHEL, Alpine, etc.)
+- **Manual deployment:** Python 3.13+, Linux
 
 ## Running with Docker
 
@@ -137,7 +136,7 @@ docker run -d \
   ghcr.io/patschi/akvatar:latest
 ```
 
-- Runs as non-root (UID 65532) with a read-only root filesystem
+- Runs as non-root (UID `65532`) with a read-only root filesystem
 - `/tmp` is a tmpfs mount - required for gunicorn worker temp files
 - `/data/config` - read-only volume containing `config.yml`
 - `/data/user-avatars` - writable volume for persistent avatar storage
@@ -176,10 +175,9 @@ under a subfolder path (e.g. `https://example.com/avatar/`). It honors
 
 Relevant guides:
 
-- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS
-  termination, SSE support, and optional direct avatar file serving
-- **[Subfolder Deployment](docs/subfolder-deployment.md)**: hosting under a URL path
-  prefix (e.g. `/avatar/`)
+- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS termination, SSE support,
+  and optional direct avatar file serving
+- **[Subfolder Deployment](docs/subfolder-deployment.md)**: hosting under a URL path prefix (e.g. `/avatar/`)
 
 ## How it works
 
@@ -189,13 +187,13 @@ Relevant guides:
 └─────────┘                     │ (nginx/Caddy) │                   │   (Flask/gunicorn)   │
                                 └───────────────┘                   └──────────┬───────────┘
                                                                                │
-                        ┌──────────────────────────────────────────────────────┼────────┐
-                        │                                                      │        │
-                        ▼                                                      ▼        ▼
-               ┌─────────────────┐                                    ┌──────────┐  ┌──────────┐
-               │    Authentik    │                                    │   Disk   │  │   LDAP   │
-               │  (OIDC + API)   │                                    │ (avatars)│  │(optional)│
-               └─────────────────┘                                    └──────────┘  └──────────┘
+                        ┌──────────────────────────────────────────────────────┼──────┐
+                        │                                                │            │
+                        ▼                                                ▼            ▼
+               ┌─────────────────┐                                 ┌──────────┐  ┌──────────┐
+               │    Authentik    │                                 │   Disk   │  │   LDAP   │
+               │  (OIDC + API)   │                                 │ (avatars)│  │(optional)│
+               └─────────────────┘                                 └──────────┘  └──────────┘
 ```
 
 1. User visits the app and clicks **Sign in**
