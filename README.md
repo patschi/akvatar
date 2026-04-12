@@ -19,18 +19,25 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Avatar removal**: users can remove their current avatar and reset to the Authentik
   default via a one-click confirmation dialog
 - **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
-- **Multi-format output**: JPEG, PNG, WebP with configurable quality settings
-  (see [Configuration](docs/configuration.md#images_formats))
+- **Multi-format output**: JPEG, PNG, WebP, and AVIF with configurable quality
+  settings (see [Configuration](docs/configuration.md#imagesformats)).
 - **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
   (~740 bits of entropy)
+- **Configurable RGBA composite background**: transparent images are composited onto a
+  configurable solid background color before JPEG/WebP encoding instead of mapping to black
+  (see [`images.rgba_background_color`](docs/configuration.md#imagesrgba_background_color))
+- **HTTP content negotiation**: extension-less avatar URLs (e.g. `/user-avatars/256x256/abc`)
+  redirect to the best available format for the client based on the `Accept` header; CDN-friendly
+  via `Vary: Accept`
 - **Authentik Admin API**: sets a configurable user attribute (default: `avatar`) on
   the user object via `PATCH /api/v3/core/users/{pk}/`
 - **LDAP / Active Directory**: writes one or more photo attributes (binary bytes or URL
   string); optional, toggle in config
 - **Automatic cleanup**: cron-scheduled job removes avatars of deleted users, enforces
-  per-user retention limits, and clears orphaned files from obsolete sizes or formats
+  per-user retention limits, and clears orphaned files from obsolete sizes or formats;
+  concurrent runs are skipped (non-blocking lock guard)
 - **Real-time progress**: Server-Sent Events stream each processing step with
   success / failed / skipped / dry-run status
 - **Configurable branding**: customize the application name in the UI
@@ -46,8 +53,9 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   redirects to the login page with a clear "session expired" notice before form submission
 - **Rate limiting**: per-IP point budget on avatar and metadata endpoints, with CIDR
   whitelist support and a configurable 404 penalty
-- **Security response headers**: `Content-Security-Policy`, `X-Content-Type-Options`,
-  `X-Frame-Options` (HTML only), and `Referrer-Policy` set on every response
+- **Security response headers**: `Content-Security-Policy` (enforcing or report-only mode
+  with optional `report-uri`), `X-Content-Type-Options`, `X-Frame-Options` (HTML only),
+  and `Referrer-Policy` set on every response
 - **In-memory static file cache**: all static assets are read once at startup and served
   from RAM with ETag/304 support; no per-request disk I/O
 - **Health check endpoint**: `GET /healthz` returns `200 OK` for load-balancer probes
@@ -197,7 +205,8 @@ Relevant guides:
    square crop in the browser → compressed to WebP/JPEG via `canvas.toBlob()`
 5. Cropped image is uploaded to `POST /api/upload`
 6. Server validates (extension, magic bytes, Pillow decode, dimensions), strips all
-   metadata, then resizes to all configured sizes, and saves as JPEG + PNG + WebP
+   metadata, then resizes to all configured sizes, and saves in all configured formats
+   (JPEG, PNG, WebP, and optionally AVIF)
 7. Server `PATCH`es the `avatar` attribute on the Authentik user via the Admin API
 8. *(If LDAP enabled)* Server writes the photo into configured LDAP attributes (binary
    bytes or URL string)

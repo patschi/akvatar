@@ -35,6 +35,8 @@ effect.
 | [`security.web_session_lifetime_seconds`](#securityweb_session_lifetime_seconds) | Integer | Session cookie lifetime in seconds                  |
 | [`security.metadata_access`](#securitymetadata_access)                           | Enum    | Who may access avatar metadata JSON files           |
 | [`security.csp_enabled`](#securitycsp_enabled)                                   | Boolean | Send a Content-Security-Policy header on HTML pages |
+| [`security.csp_report_only`](#securitycsp_report_only)                           | Boolean | CSP report-only mode: log violations, not enforced  |
+| [`security.csp_report_uri`](#securitycsp_report_uri)                             | String  | URL where the browser sends CSP violation reports   |
 | [`cleanup.interval`](#cleanupinterval)                                           | Cron    | Cron schedule for the cleanup job                   |
 | [`cleanup.on_startup`](#cleanupon_startup)                                       | Boolean | Run cleanup once 60 s after startup                 |
 | [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)               | Integer | Avatar sets to keep per user (0 = unlimited)        |
@@ -98,6 +100,8 @@ effect.
 | [`images.jpeg_quality`](#imagesjpeg_quality)                                     | Integer | JPEG compression quality (1–100)                    |
 | [`images.webp_quality`](#imageswebp_quality)                                     | Integer | WebP compression quality (1–100)                    |
 | [`images.png_compress_level`](#imagespng_compress_level)                         | Integer | PNG compression level (0–9)                         |
+| [`images.avif_quality`](#imagesavif_quality)                                     | Integer | AVIF compression quality (1-100)                    |
+| [`images.rgba_background_color`](#imagesrgba_background_color)                   | List    | Background color used when converting RGBA to JPEG  |
 
 ---
 
@@ -311,6 +315,42 @@ When enabled, the policy:
 Set to `false` only when a reverse proxy or WAF upstream of this application is responsible for
 injecting its own CSP header and the two competing policies cause compatibility problems. **Do not
 disable CSP without replacing it elsewhere.**
+
+See [`security.csp_report_only`](#securitycsp_report_only) for testing a new policy without
+enforcing it, and [`security.csp_report_uri`](#securitycsp_report_uri) for collecting browser
+violation reports.
+
+### `security.csp_report_only`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+When `true`, the CSP header is sent as `Content-Security-Policy-Report-Only` instead of
+`Content-Security-Policy`. In report-only mode the browser logs violations to the developer
+console (or posts them to [`security.csp_report_uri`](#securitycsp_report_uri) when configured)
+but does **not** block any resources. This is useful for testing a new or modified policy on a
+live site without risking breakage.
+
+When `false` (the default), the policy is enforced - any resource not explicitly permitted is
+blocked.
+
+Has no effect when [`security.csp_enabled`](#securitycsp_enabled) is `false`.
+
+### `security.csp_report_uri`
+
+| Property    | Value        |
+|-------------|--------------|
+| **Type**    | String (URL) |
+| **Default** | `""` (empty) |
+
+A URL where the browser sends JSON violation reports when a CSP rule is violated. When empty
+(the default), violations are only logged to the browser's developer console and no report is
+sent.
+
+Only meaningful when [`security.csp_enabled`](#securitycsp_enabled) is `true`. Works in both
+enforcing and report-only mode (see [`security.csp_report_only`](#securitycsp_report_only)).
 
 ---
 
@@ -879,11 +919,12 @@ format key and the resolved file extension must be present in `images.formats` (
 actually be generated for it). The application validates this at startup and exits with an error
 if the format is not valid or not present in the generated formats list.
 
-Supported values: `jpg` (or `jpeg`), `png`, `webp`. Both `jpg` and `jpeg` are equivalent - they
-resolve to the `.jpg` file extension.
+Supported values: `jpg` (or `jpeg`), `png`, `webp`, `avif`. Both `jpg` and `jpeg` are equivalent
+- they resolve to the `.jpg` file extension. Using `avif` requires Pillow compiled with
+`libavif` support; see [`images.avif_quality`](#imagesavif_quality).
 
-Use `jpg` for maximum compatibility. Use `png` for lossless encoding or `webp` for
-high-efficiency encoding.
+Use `jpg` for maximum compatibility. Use `png` for lossless encoding, `webp` for
+high-efficiency encoding, or `avif` for modern clients where maximum compression matters.
 
 ### `authentik.avatar_attribute`
 
@@ -1057,7 +1098,7 @@ attribute and how to populate it.
 |-----------------|---------|-----------------------------------------------------------------------------------------------------|
 | `attribute`     | String  | LDAP attribute name (e.g. `thumbnailPhoto`, `jpegPhoto`)                                            |
 | `type`          | String  | `binary` (raw image bytes) or `url` (public URL string)                                             |
-| `image_type`    | String  | Image format: `jpeg`, `png`, or `webp`                                                              |
+| `image_type`    | String  | Image format: `jpeg`, `png`, `webp`, or `avif`                                                      |
 | `image_size`    | Integer | Square pixel dimension (e.g. `96` = 96×96 px)                                                       |
 | `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. Quality is reduced iteratively for JPEG/WebP. |
 
@@ -1197,7 +1238,10 @@ entries with `type: url` also require their `image_size` to be in this list.
 | **Default** | `["jpg", "png", "webp"]` |
 
 The output formats to save for each size. Each size x format combination produces one file.
-Supported values: `jpg` (JPEG), `png`, `webp`.
+Supported values: `jpg` (JPEG), `png`, `webp`, `avif`. Each entry is validated against the
+known format list at startup - an unrecognized value (e.g. `bmp`, `gif`) causes a FATAL error
+and prevents the application from starting. Adding `avif` additionally requires Pillow compiled
+with `libavif` support; a startup warning is logged if the codec is unavailable.
 
 ### `images.jpeg_quality`
 
@@ -1229,3 +1273,39 @@ the same visual quality.
 PNG compression level. Higher values produce smaller files but take longer to compress. 6 is the
 default balance. PNG compression is lossless, so this only affects file size and compression speed,
 not image quality.
+
+### `images.avif_quality`
+
+| Property    | Value            |
+|-------------|------------------|
+| **Type**    | Integer (1--100) |
+| **Default** | `80`             |
+
+AVIF compression quality. Higher values produce better quality but larger files. Only used when
+`avif` is included in [`images.formats`](#imagesformats).
+
+**Requires:** Pillow compiled with `libavif` support (available in Pillow 9.1+ when the system
+`libavif` library is present). The application logs a warning at startup if AVIF is listed in
+`images.formats` but the codec is unavailable, so the operator gets an early signal instead of a
+cryptic runtime error on the first upload.
+
+### `images.rgba_background_color`
+
+| Property    | Value            |
+|-------------|------------------|
+| **Type**    | List of integers |
+| **Default** | `[255, 255, 255]` |
+
+The solid RGB background color used when compositing RGBA images (those with an alpha channel)
+before encoding to JPEG or non-transparent WebP. Without compositing, transparent and
+semi-transparent pixels would appear black in the output; compositing onto this color produces
+the intended result for logos and images with transparent borders.
+
+Each element is an integer in the range `0-255` representing the Red, Green, and Blue channels
+respectively. The default `[255, 255, 255]` is white.
+
+Examples:
+
+- `[255, 255, 255]` - white (default)
+- `[0, 0, 0]` - black
+- `[128, 128, 128]` - medium grey

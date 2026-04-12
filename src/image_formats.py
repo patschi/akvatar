@@ -12,11 +12,13 @@ import from it without creating a circular dependency.
 
 # Maps each accepted format name (lower-case) to (Pillow save format, canonical file extension).
 # Both "jpeg" and "jpg" are accepted inputs; both resolve to the "jpg" extension.
+# AVIF requires libavif support compiled into Pillow (available in Pillow 9.1+ with libavif).
 FORMAT_MAP: dict[str, tuple[str, str]] = {
     "jpeg": ("JPEG", "jpg"),
     "jpg": ("JPEG", "jpg"),
     "png": ("PNG", "png"),
     "webp": ("WEBP", "webp"),
+    "avif": ("AVIF", "avif"),
 }
 
 # File extensions the upload endpoint accepts - derived from FORMAT_MAP so
@@ -35,8 +37,20 @@ MIME_TO_EXT: dict[str, str] = {
     "image/jpeg": "jpg",
     "image/png": "png",
     "image/webp": "webp",
+    "image/avif": "avif",
     "image/gif": "gif",
 }
+
+# Preference order for HTTP Accept header-based content negotiation.
+# Modern, more-efficient formats are listed first.  Only formats present in
+# the operator's images.formats config are eligible so we never redirect to
+# a format that was never generated.
+NEGOTIATION_PREFERENCE: list[tuple[str, str]] = [
+    ("image/avif", "avif"),
+    ("image/webp", "webp"),
+    ("image/png", "png"),
+    ("image/jpeg", "jpg"),
+]
 
 # Allowlist of MIME types accepted from remote servers - derived from
 # MIME_TO_EXT so both stay in sync automatically: adding a new MIME type to

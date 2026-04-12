@@ -37,6 +37,7 @@ This module is used in two ways:
   2. Manually via ``python run_cleanup.py`` at the project root.
 """
 
+import fcntl
 import logging
 import re
 import shutil
@@ -58,6 +59,17 @@ from src.imaging import (
 )
 
 log = logging.getLogger("cleanup")
+
+# In-process thread lock: prevents two threads in the same process from running
+# cleanup concurrently (e.g. startup cleanup racing with a scheduled run).
+# Non-blocking acquire: the second caller skips rather than waiting.
+_cleanup_lock = threading.Lock()
+
+# Filesystem advisory lock for cross-process protection: ensures that a manual
+# `python run_cleanup.py` invocation cannot run while the background thread in
+# the Flask process is already executing cleanup.  fcntl.flock() is enforced by
+# the OS kernel and is automatically released when the fd closes (even on crash).
+_CLEANUP_LOCKFILE = AVATAR_ROOT / ".cleanup.lock"
 
 # Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
@@ -258,8 +270,40 @@ def run_cleanup() -> int:
     is immutable - unlike usernames, it survives renames and reveals no PII.
 
     Returns the total number of files removed (or that would be removed
-    in dry-run mode).
+    in dry-run mode).  Returns 0 immediately if another run is already in
+    progress (concurrent runs are skipped, not queued).
     """
+    if not _cleanup_lock.acquire(blocking=False):
+        log.warning("Cleanup already in progress (same process) - skipping.")
+        return 0
+
+    try:
+        # Cross-process guard: open (or create) the lockfile and attempt a
+        # non-blocking exclusive lock.  A separate process running run_cleanup.py
+        # concurrently will fail here and exit cleanly rather than corrupting
+        # avatar files mid-cleanup.
+        try:
+            lockfile = open(_CLEANUP_LOCKFILE, "w")  # noqa: WPS515
+        except OSError as exc:
+            log.warning("Could not open cleanup lockfile %s: %s", _CLEANUP_LOCKFILE, exc)
+            return 0
+        try:
+            fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            lockfile.close()
+            log.warning("Cleanup already in progress (another process) - skipping.")
+            return 0
+        try:
+            return _run_cleanup_impl()
+        finally:
+            fcntl.flock(lockfile.fileno(), fcntl.LOCK_UN)
+            lockfile.close()
+    finally:
+        _cleanup_lock.release()
+
+
+def _run_cleanup_impl() -> int:
+    """Internal cleanup implementation called under _cleanup_lock."""
     log.info("Starting avatar cleanup...")
 
     all_metadata = get_all_avatar_metadata()

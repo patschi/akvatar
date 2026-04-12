@@ -44,6 +44,24 @@ _G_KEY = "csp_nonce"
 # Defaults to true; only disable when a reverse proxy or WAF owns the CSP header.
 _CSP_ENABLED = bool(security_cfg.get("csp_enabled", True))
 
+# Report-only mode: when true, the policy is sent as Content-Security-Policy-Report-Only
+# instead of Content-Security-Policy so violations are reported (browser console / report-uri)
+# but NOT enforced.  Useful for testing a new policy without breaking the live site.
+# Ignored when csp_enabled is false.
+_CSP_REPORT_ONLY = bool(security_cfg.get("csp_report_only", False))
+
+# Optional CSP report-uri directive - URL where the browser sends violation reports.
+# Leave empty to omit the directive (violations are logged to the browser console only).
+_CSP_REPORT_URI = security_cfg.get("csp_report_uri", "")
+
+# The header name to use: the standard enforcing header, or the report-only variant.
+# Exported so app.py can set the correct header without hard-coding the name.
+CSP_HEADER_NAME = (
+    "Content-Security-Policy-Report-Only"
+    if (_CSP_ENABLED and _CSP_REPORT_ONLY)
+    else "Content-Security-Policy"
+)
+
 # Extract the origin from public_avatar_url and add it to img-src so that
 # avatars hosted on a separate origin are not blocked by the policy.
 # Example: "https://cdn.example.com/user-avatars" → "https://cdn.example.com"
@@ -90,7 +108,15 @@ _CSP_TEMPLATE = (
 )
 
 if _CSP_ENABLED:
-    log.debug("CSP enabled. img-src: %s", _IMG_SRC)
+    _mode = "report-only" if _CSP_REPORT_ONLY else "enforcing"
+    log.debug("CSP enabled (%s, header=%s). img-src: %s", _mode, CSP_HEADER_NAME, _IMG_SRC)
+    if _CSP_REPORT_ONLY:
+        log.info(
+            "CSP is in report-only mode (%s) - violations are reported but NOT enforced.",
+            CSP_HEADER_NAME,
+        )
+    if _CSP_REPORT_URI:
+        log.debug("CSP report-uri: %s", _CSP_REPORT_URI)
 else:
     log.debug("CSP disabled via security.csp_enabled=false.")
 
@@ -103,11 +129,17 @@ def generate_csp_nonce() -> str:
 
 
 def build_csp_header(nonce: str) -> str | None:
-    """Return the full Content-Security-Policy header value for the current nonce.
+    """Return the Content-Security-Policy (or Report-Only) header value for the current nonce.
 
     Returns ``None`` when CSP is disabled via ``security.csp_enabled: false``,
     in which case the caller should omit the header entirely.
+    The caller must set the header under ``CSP_HEADER_NAME`` (not hardcoded) so
+    that report-only mode sends the correct header name.
     """
     if not _CSP_ENABLED:
         return None
-    return _CSP_TEMPLATE.format(nonce=nonce)
+    policy = _CSP_TEMPLATE.format(nonce=nonce)
+    # Append report-uri directive when configured
+    if _CSP_REPORT_URI:
+        policy += f"; report-uri {_CSP_REPORT_URI}"
+    return policy

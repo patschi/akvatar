@@ -72,6 +72,16 @@ security:
   # Set to false only when a reverse proxy or WAF injects its own CSP header
   # and two competing policies cause compatibility problems.
   csp_enabled: true
+  # CSP report-only mode: when true, the policy is sent as
+  # Content-Security-Policy-Report-Only instead of Content-Security-Policy.
+  # Violations are reported (browser console / report-uri) but NOT enforced,
+  # so the site still works while you test a policy change.
+  # Only takes effect when csp_enabled is true.
+  csp_report_only: false
+  # Optional URL where the browser sends CSP violation reports (report-uri directive).
+  # Leave empty to omit the directive (violations appear in the browser console only).
+  # Requires csp_enabled: true.  Works in both enforcing and report-only modes.
+  csp_report_uri: ""
 
 # --- Cleanup ---
 cleanup:
@@ -316,16 +326,29 @@ images:
     - 256
     - 128
     - 64
-  # Output formats to save for each size
+  # Output formats to save for each size.
+  # Supported values: jpg (or jpeg), png, webp, avif
+  # AVIF requires Pillow compiled with libavif support (Pillow 9.1+).
+  # A startup warning is logged if avif is listed but libavif is unavailable.
   formats:
     - "jpg"
     - "png"
     - "webp"
-  # JPEG / WebP quality (1-100)
+    # - "avif"
+  # JPEG / WebP / AVIF quality (1-100)
   jpeg_quality: 90
   webp_quality: 85
+  # AVIF quality (1-100).  AVIF achieves smaller files than WebP at equal
+  # perceived quality, but encoding is significantly slower.
+  # Requires Pillow compiled with libavif support (Pillow 9.1+).
+  avif_quality: 80
   # PNG compression level (0-9, higher = smaller but slower)
   png_compress_level: 6
+  # Background color applied when compositing an RGBA (transparent) image to
+  # JPEG (which has no alpha channel).  Must be three integers [R, G, B] in
+  # the range 0-255.  Defaults to white [255, 255, 255].
+  # Transparent areas in the source image will appear in this color in JPEG output.
+  rgba_background_color: [255, 255, 255]
 
 # --- Sentry Error Tracking (optional) ---
 # Sends unhandled exceptions and (optionally) performance data to Sentry.

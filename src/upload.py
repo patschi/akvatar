@@ -18,7 +18,6 @@ generator-return convention: they ``yield`` SSE strings and ``return`` data.
 The orchestrator collects results via ``yield from``.
 """
 
-import io
 import json
 import logging
 from datetime import UTC, datetime
@@ -28,13 +27,11 @@ from PIL import Image
 from src.authentik import revert_avatar_url, update_avatar_url
 from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_cfg
 from src.i18n import t
-from src.image_formats import ALLOWED_EXTENSIONS, ALLOWED_FORMATS, FORMAT_MAP
+from src.image_formats import FORMAT_MAP
+from src.image_validation import ValidationError, validate_upload
 from src.imaging import (
     AVATAR_BASE_URL,
-    MAX_DIMENSION,
     METADATA_ROOT,
-    MIN_DIMENSION,
-    check_magic_bytes,
     cleanup_avatar_files,
     normalize_image,
     prepare_ldap_image,
@@ -80,86 +77,6 @@ def build_canonical_url(filename_base: str) -> str:
 def _sse(data: dict) -> str:
     """Format a dict as a single Server-Sent Event frame."""
     return f"data: {json.dumps(data)}\n\n"
-
-
-# Upload validation (synchronous - called before switching to SSE stream)
-
-
-class ValidationError(Exception):
-    """Raised when the uploaded file fails a validation check."""
-
-
-def validate_upload(file) -> Image.Image:
-    """
-    Run all validation checks on the uploaded file and return the decoded PIL
-    Image.  Normalization (EXIF orientation, metadata stripping, color mode)
-    is deferred to the SSE pipeline so the client sees granular progress.
-
-    Raises ``ValidationError`` with a user-facing message on failure.
-    """
-    # Filename & extension check
-    if not file.filename:
-        raise ValidationError(t("error.empty_filename"))
-
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in ALLOWED_EXTENSIONS:
-        raise ValidationError(
-            t(
-                "error.invalid_type",
-                ext=ext,
-                accepted=", ".join(sorted(ALLOWED_EXTENSIONS)),
-            )
-        )
-
-    # Read raw bytes and verify magic signature
-    raw_bytes = file.read()
-    if not raw_bytes:
-        raise ValidationError(t("error.empty_file"))
-
-    # Check magic bytes to prevent fake extensions (e.g. .jpg that is actually a .exe).
-    # magic_err holds a technical description kept for the log - the user sees a
-    # generic translated message that does not expose internal format details.
-    magic_err = check_magic_bytes(raw_bytes)
-    if magic_err:
-        log.warning("Magic byte check failed: %s", magic_err)
-        raise ValidationError(t("error.invalid_signature"))
-    log.debug("Magic-byte signature check passed.")
-
-    # Decode with Pillow and verify format
-    try:
-        image = Image.open(io.BytesIO(raw_bytes))
-        # .load() forces full pixel decoding - catches truncated/corrupt files
-        # that Image.open() (header-only) would not detect.
-        image.load()
-    except Exception as exc:
-        log.warning("Pillow could not decode image: %s", exc)
-        raise ValidationError(t("error.decode_failed")) from exc
-
-    # Only allow formats we explicitly intend to handle (a .png could decode
-    # as TIFF if Pillow recognizes the actual content).
-    if image.format not in ALLOWED_FORMATS:
-        log.warning("Decoded image format %r is not in the allow-list.", image.format)
-        raise ValidationError(t("error.format_not_allowed"))
-    log.debug("Decoded format %s is in the allow-list.", image.format)
-
-    # Dimension checks
-    w, h = image.size
-    if w < MIN_DIMENSION or h < MIN_DIMENSION:
-        raise ValidationError(t("error.too_small", w=w, h=h, min_dim=MIN_DIMENSION))
-    if w > MAX_DIMENSION or h > MAX_DIMENSION:
-        raise ValidationError(t("error.too_large", w=w, h=h, max_dim=MAX_DIMENSION))
-
-    log.info(
-        "Upload accepted: content_type=%r, size=%d bytes, %dx%d, mode=%s, format=%s.",
-        file.content_type,
-        len(raw_bytes),
-        w,
-        h,
-        image.mode,
-        image.format,
-    )
-
-    return image
 
 
 # Pipeline steps
@@ -385,21 +302,21 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
             }
         )
 
-        # Step 1: Normalize image (EXIF orientation, metadata strip, color mode)
+        # Normalize image (EXIF orientation, metadata strip, color mode)
         image = yield from _step_prepare_image(image)
 
-        # Step 2: Resize & save all configured sizes/formats
+        # Resize and save all configured sizes and formats
         urls, total_bytes = yield from _step_process_image(image, filename_base)
 
-        # Step 4: Resolve canonical avatar URL for Authentik
+        # Resolve the canonical avatar URL (the single URL pushed to Authentik)
         canonical_url = _resolve_canonical_url(urls)
 
-        # Step 5: Push avatar URL to Authentik
+        # Push the avatar URL to Authentik
         ak_attrs, old_avatar_url, ak_failed = yield from _step_sync_authentik(
             user_pk, canonical_url
         )
 
-        # Step 6: Update LDAP photo attributes (if applicable)
+        # Update LDAP photo attributes (if applicable)
         ldap_failed = yield from _step_sync_ldap(
             image, urls, filename_base, ak_attrs, user_pk
         )

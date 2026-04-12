@@ -35,7 +35,7 @@ from src.image_import import WEBCAM_ENABLED, import_bp
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
 from src.reset_avatar import reset_avatar_bp
 from src.routes import routes_bp
-from src.sec_csp import build_csp_header, generate_csp_nonce
+from src.sec_csp import CSP_HEADER_NAME, build_csp_header, generate_csp_nonce
 from src.sec_csrf import generate_csrf_token
 
 log = logging.getLogger("app")
@@ -265,7 +265,9 @@ def create_app() -> Flask:
             nonce = generate_csp_nonce()
             csp = build_csp_header(nonce)
             if csp is not None:
-                response.headers["Content-Security-Policy"] = csp
+                # CSP_HEADER_NAME is "Content-Security-Policy" normally, or
+                # "Content-Security-Policy-Report-Only" when security.csp_report_only is true.
+                response.headers[CSP_HEADER_NAME] = csp
 
         # Limit referrer information sent to cross-origin destinations
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

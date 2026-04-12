@@ -21,6 +21,7 @@ The entire module is a no-op when ``ldap.enabled`` is ``false`` in config.yml.
 
 import logging
 import ssl
+import time
 from urllib.parse import urlparse
 
 import ldap3
@@ -250,7 +251,33 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
             )
         return
 
-    conn = _connect()
+    # Retry constants for transient connection failures only.
+    # _connect() itself tries each configured server in order; retrying the
+    # whole _connect() call handles brief network outages between the app and
+    # all configured LDAP servers.  ValueError (user not found) and
+    # RuntimeError (LDAP modify rejected) are not retried - those are
+    # definitive server responses.
+    _ldap_retry_max = 2
+    _ldap_retry_delays = (2.0,)
+
+    for attempt in range(_ldap_retry_max):
+        try:
+            conn = _connect()
+            break  # Connected - exit retry loop
+        except ConnectionError as exc:
+            if attempt < _ldap_retry_max - 1:
+                delay = _ldap_retry_delays[min(attempt, len(_ldap_retry_delays) - 1)]
+                log.warning(
+                    "LDAP connection failed (attempt %d/%d, retrying in %.1fs): %s",
+                    attempt + 1,
+                    _ldap_retry_max,
+                    delay,
+                    exc,
+                )
+                time.sleep(delay)
+            else:
+                raise
+
     try:
         user_dn = _find_user_dn(conn, ldap_uniq)
         _apply_modifications(conn, user_dn, updates)

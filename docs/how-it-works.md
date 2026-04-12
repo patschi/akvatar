@@ -114,7 +114,7 @@ sequenceDiagram
     A->>A: Generate unguessable filename
     A-->>B: SSE: filename generated ✓
 
-    A->>D: Resize to all sizes, save as JPEG/PNG/WebP
+    A->>D: Resize to all sizes, save in all configured formats
     A-->>B: SSE: processed ✓ (6 sizes, 3 formats, 1.2 MB)
 
     A->>K: GET /api/v3/core/users/{pk}/ (read current attributes)
@@ -153,14 +153,14 @@ The compressed blob is sent as `multipart/form-data` to `POST /api/upload`.
 Validation happens **synchronously** before the SSE stream begins. If any check fails the
 server returns a JSON error response with HTTP 400 and the browser shows the error inline.
 
-| Check                    | What it catches                                                        | Implementation                                                   |
-|--------------------------|------------------------------------------------------------------------|------------------------------------------------------------------|
-| File extension           | Blocks unexpected file types early                                     | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`                     |
-| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)      | Compares first 12 bytes against known JPEG, PNG, WebP signatures |
-| Pillow decode            | Catches corrupt, truncated, or crafted images                          | `Image.open()` + `.load()` (forces full pixel decode)            |
-| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP) | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP'}`          |
-| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)    | Min: 64 px, max: 10 000 px per side                              |
-| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory            | Pillow's `MAX_IMAGE_PIXELS` set to 50 megapixels                 |
+| Check                    | What it catches                                                        | Implementation                                                          |
+|--------------------------|------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| File extension           | Blocks unexpected file types early                                     | Allow-list: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`                   |
+| Magic bytes              | Detects files with fake extensions (e.g. a ZIP renamed to `.jpg`)      | Compares first 12 bytes against JPEG, PNG, WebP, and AVIF signatures    |
+| Pillow decode            | Catches corrupt, truncated, or crafted images                          | `Image.open()` + `.load()` (forces full pixel decode)                   |
+| Format allow-list        | Rejects formats Pillow can decode but we don't handle (e.g. TIFF, BMP) | Checks `image.format` against `{'JPEG', 'PNG', 'WEBP', 'AVIF'}`        |
+| Dimensions               | Prevents too-small images and too-large ones (excessive CPU/memory)    | Min: 64 px, max: 8 192 px per side                                      |
+| Decompression bomb limit | Blocks images that expand to extreme pixel counts in memory            | Pillow's `MAX_IMAGE_PIXELS` set to 25 megapixels                        |
 
 ## Server-side processing
 
@@ -181,9 +181,12 @@ After validation, the image is normalized and processed:
    (see [`images.sizes`](configuration.md#images_sizes)) using Lanczos resampling.
 
 5. **Multi-format save**: each size is saved in every configured format
-   (see [`images.formats`](configuration.md#images_formats)) with configurable quality settings. RGBA images are
-   converted to RGB before
-   JPEG encoding (JPEG does not support alpha).
+   (see [`images.formats`](configuration.md#imagesformats)) with configurable quality settings.
+   RGBA images (those with an alpha channel) are composited onto a solid background color
+   (see [`images.rgba_background_color`](configuration.md#imagesrgba_background_color), default
+   white) before JPEG or non-transparent WebP encoding. AVIF output preserves the alpha channel
+   natively. Simply calling `.convert("RGB")` would map transparent pixels to black - compositing
+   gives the correct result for logos and images with transparent borders.
 
 ## Filename generation
 
@@ -218,9 +221,14 @@ The app updates the user's avatar URL in Authentik via the Admin API:
 3. **Write** the updated dict: `PATCH /api/v3/core/users/{pk}/` with
    `{"attributes": {..., "avatar": "<url>"}}`
 
-The URL points to the JPEG at the configured size (see [
-`authentik.avatar_size`](configuration.md#authentik_avatar_size)). Authentik
-uses this URL to display the avatar in its UI (login portals, admin panel, etc.).
+The URL pushed to Authentik points to the image at the configured size and format (see
+[`authentik.avatar_size`](configuration.md#authentikavatar_size) and
+[`authentik.avatar_format`](configuration.md#authentikavatar_format)). Authentik uses this
+URL to display the avatar in its UI (login portals, admin panel, etc.).
+
+Transient connection errors and timeouts are retried with exponential backoff (up to three
+attempts). HTTP 4xx/5xx responses from Authentik are not retried - they indicate a deliberate
+server response and are surfaced to the user immediately.
 
 See [Authentik API Token](authentik-api-token.md) for setup instructions.
 
@@ -232,16 +240,19 @@ defined in the `ldap.photos` configuration:
 1. **Prepare** each configured photo attribute — reuse a pre-generated file if the exact
    size and format exists and fits within `max_file_size`; otherwise resize from the
    closest larger source and reduce JPEG/WebP quality iteratively until the output fits.
-   PNG cannot be quality-reduced (lossless) — a `ValueError` is raised if it exceeds the
-   limit.
-2. **Bind** to the LDAP server as the configured service account
-3. **Search** for the user under `search_base` using `search_filter` (default:
+   PNG and AVIF cannot be quality-reduced (lossless / codec limitation) — a `ValueError`
+   is raised if the output exceeds the limit.
+2. **Connect** to the first available LDAP server (multiple servers supported for failover;
+   see [`ldap.servers`](configuration.md#ldapservers)). Transient connection failures are
+   retried with a delay before giving up.
+3. **Bind** to the LDAP server as the configured service account
+4. **Search** for the user under `search_base` using `search_filter` (default:
    `(objectSid={ldap_uniq})` for Active Directory); the `{ldap_uniq}` placeholder is
    replaced with the value from the user's Authentik attributes and is properly
    LDAP-filter-escaped to prevent injection.
-4. **Modify** all configured attributes in a single LDAP operation — `binary` attributes
+5. **Modify** all configured attributes in a single LDAP operation — `binary` attributes
    receive raw image bytes, `url` attributes receive the public file URL as a string
-5. **Unbind**
+6. **Unbind**
 
 The `ldap_uniq` value comes from the user's Authentik attributes (read during the
 Authentik API call). Users without `ldap_uniq` are Authentik-only accounts and the LDAP
@@ -299,7 +310,8 @@ data/user-avatars/
 ├── 1024x1024/
 │   ├── {filename}.jpg
 │   ├── {filename}.png
-│   └── {filename}.webp
+│   ├── {filename}.webp
+│   └── {filename}.avif
 ├── 648x648/
 │   ├── ...
 ├── 512x512/
@@ -339,6 +351,14 @@ Before doing anything, the cleanup job calls the Authentik API to fetch all acti
 PKs. If the API returns **zero users** (possible if the token expired or the network is
 unreachable), the entire job is aborted. This prevents catastrophic mass deletion from an
 API outage being mistaken for "no users exist".
+
+### Concurrent run protection
+
+The cleanup job uses a non-blocking lock so that if two invocations overlap (e.g. a slow
+cron run is still in progress when the next schedule fires, or `run_cleanup.py` is run
+manually while the cron job is active), the second caller logs a warning and exits
+immediately rather than queuing or running in parallel. Running cleanup twice concurrently
+would produce no benefit and could cause redundant deletions.
 
 ### Cleanup phases
 
@@ -486,9 +506,9 @@ max-age=86400` header instructs browsers to cache assets locally.
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------|
 | Unguessable filenames            | Prevents URL enumeration of other users' avatars                                                                      |
 | Magic byte verification          | Blocks files with fake extensions before they reach the image decoder                                                 |
-| Decompression bomb limit (50 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images                                          |
-| Dimension limits (64–10 000 px)  | Guards against excessive CPU/memory use during resizing                                                               |
-| Format allow-list                | Only JPEG, PNG, WebP are processed — no TIFF, BMP, SVG, GIF, etc.                                                     |
+| Decompression bomb limit (25 MP) | Prevents memory exhaustion from crafted small-on-disk, huge-in-memory images                                          |
+| Dimension limits (64-8 192 px)   | Guards against excessive CPU/memory use during resizing                                                               |
+| Format allow-list                | Only JPEG, PNG, WebP, AVIF are processed - no TIFF, BMP, SVG, GIF, etc.                                              |
 | Metadata stripping               | Removes EXIF (GPS, device info), ICC profiles, XMP, and other embedded PII                                            |
 | CSRF protection                  | Per-session token validated via `X-CSRF-Token` header on all state-changing requests using `secrets.compare_digest()` |
 | SSRF protection                  | URL import (`import.url_enabled`) validates hosts against a configurable allow-list before fetching                   |

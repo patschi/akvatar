@@ -32,9 +32,9 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import login_required
-from src.config import security_cfg
+from src.config import img_cfg, security_cfg
 from src.i18n import t
-from src.image_formats import ALLOWED_EXTENSIONS
+from src.image_formats import ALLOWED_EXTENSIONS, NEGOTIATION_PREFERENCE
 from src.image_import import (
     GRAVATAR_ENABLED,
     GRAVATAR_RESTRICT_EMAIL,
@@ -49,11 +49,10 @@ from src.imaging import (
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.sec_csrf import validate_csrf_token
+from src.image_validation import ValidationError, validate_upload
 from src.upload import (
-    ValidationError,
     build_canonical_url,
     generate_sse,
-    validate_upload,
 )
 
 log = logging.getLogger("routes")
@@ -136,13 +135,73 @@ def dashboard():
 # Dimensions must be NxN (e.g. "256x256") - reject anything else before touching the filesystem
 _DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
 
+# Build once at import time from the configured formats list.
+# NEGOTIATION_PREFERENCE (mime, ext) order is imported from image_formats.
+_CONFIGURED_EXTS: frozenset[str] = frozenset(
+    fmt.lower() for fmt in img_cfg.get("formats", [])
+)
+
+
+def _negotiate_avatar_format() -> str:
+    """
+    Pick the best image format for the requesting client based on the Accept
+    header, constrained to formats present in images.formats config.
+
+    Returns the file extension string (e.g. "webp", "jpg").
+    Preference order: AVIF > WebP > PNG > JPEG.
+    Falls back to the first configured format in that preference order when
+    the Accept header does not match any supported format, or "jpg" as a last resort.
+    """
+    accept = request.headers.get("Accept", "")
+    # First pass: find the best format the client explicitly accepts
+    for mime, ext in NEGOTIATION_PREFERENCE:
+        if mime in accept and ext in _CONFIGURED_EXTS:
+            return ext
+    # Second pass: fall back to the best configured format regardless of Accept
+    for _, ext in NEGOTIATION_PREFERENCE:
+        if ext in _CONFIGURED_EXTS:
+            return ext
+    return "jpg"
+
 
 @routes_bp.route("/user-avatars/<dimensions>/<filename>", methods=["GET"])
 def serve_avatar(dimensions, filename):
-    """Serve avatar image files from the storage directory. `send_from_directory` prevents directory-traversal attacks."""
+    """Serve avatar image files from the storage directory.
+
+    Requests with an explicit extension (e.g. ``photo.jpg``) are served directly.
+    Requests with no extension (e.g. ``photo``) trigger content negotiation: the
+    server selects the best available format based on the Accept header and issues
+    a temporary redirect to the explicit URL.  This lets clients and CDNs use
+    extension-less canonical URLs while still receiving the optimal format.
+
+    ``send_from_directory`` prevents directory-traversal attacks.
+    """
     if not _DIMENSIONS_RE.match(dimensions):
         log.debug("Avatar request rejected - invalid dimensions: %r", dimensions)
         abort(404)
+
+    # Content negotiation: if no extension in the filename, pick the best format
+    # and redirect to the explicit URL.  "." is a reliable separator since the
+    # generated filename base never contains a dot.
+    if "." not in filename:
+        ext = _negotiate_avatar_format()
+        log.debug(
+            "Content negotiation for %s/%s -> .%s (Accept: %s).",
+            dimensions,
+            filename,
+            ext,
+            request.headers.get("Accept", ""),
+        )
+        target_url = url_for(
+            "routes.serve_avatar", dimensions=dimensions, filename=f"{filename}.{ext}"
+        )
+        resp = redirect(target_url, code=302)
+        # Vary: Accept tells CDNs and proxies that the redirect target depends on the
+        # Accept header, so they must not serve the same redirect to all clients.
+        resp.headers["Vary"] = "Accept"
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     filepath = f"{dimensions}/{filename}"
     log.debug("Serving avatar file: %s", filepath)
     # Avatar URLs are immutable: filenames are cryptographically random per upload

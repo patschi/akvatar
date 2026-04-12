@@ -7,6 +7,7 @@ the stable identifier (usernames can be renamed; PKs cannot).
 """
 
 import logging
+import time
 
 import requests as http_requests
 import urllib3
@@ -46,9 +47,47 @@ if _skip_cert_verify:
     _session.verify = False
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Pre-compute base URLs used in every call
+# Pre-compute base URLs used in every call.
 _base_url = ak_cfg["base_url"]
 _users_url = f"{_base_url}/api/v3/core/users/"
+log.debug("Authentik users API URL: %s", _users_url)
+
+# Retry configuration for transient network-layer failures (connection refused,
+# timeout).  Only these error classes are retried - an HTTP error response
+# (4xx/5xx) means the server processed the request and should not be retried.
+_RETRY_MAX = 3
+_RETRY_DELAYS = (1.0, 2.0)  # seconds before attempt 2 and attempt 3
+
+
+def _retry_request(fn):
+    """
+    Call fn() up to _RETRY_MAX times, retrying only on transient network errors.
+
+    Retries on ConnectionError and Timeout - these indicate the request did not
+    reach the server (or the response was lost), so repeating is safe.
+    HTTPError (raised after raise_for_status()) is NOT retried because the
+    server already processed the request and returned a deliberate error.
+    """
+    last_exc = None
+    for attempt in range(_RETRY_MAX):
+        try:
+            return fn()
+        except (
+            http_requests.exceptions.ConnectionError,
+            http_requests.exceptions.Timeout,
+        ) as exc:
+            last_exc = exc
+            if attempt < _RETRY_MAX - 1:
+                delay = _RETRY_DELAYS[min(attempt, len(_RETRY_DELAYS) - 1)]
+                log.warning(
+                    "Authentik API transient error (attempt %d/%d, retrying in %.1fs): %s",
+                    attempt + 1,
+                    _RETRY_MAX,
+                    delay,
+                    exc,
+                )
+                time.sleep(delay)
+    raise last_exc
 
 
 # Response helpers
@@ -94,7 +133,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
     # Fetch current user data (always performed - callers may rely on the
     # returned pre-patch dict even in dry-run mode).
     log.debug("GET %s - fetching current user data for patch.", url)
-    get_resp = _session.get(url, timeout=_TIMEOUT)
+    get_resp = _retry_request(lambda: _session.get(url, timeout=_TIMEOUT))
     get_resp.raise_for_status()
     current = _parse_json(get_resp)
 
@@ -115,7 +154,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
         log.info("[DRY-RUN] Would PATCH %s with: %s", url, payload)
         return current, current
 
-    patch_resp = _session.patch(url, json=payload, timeout=_TIMEOUT)
+    patch_resp = _retry_request(lambda: _session.patch(url, json=payload, timeout=_TIMEOUT))
     patch_resp.raise_for_status()
 
     result = _parse_json(patch_resp)
@@ -141,7 +180,9 @@ def retrieve_user(username: str) -> dict:
     avatar is used to display the current profile picture on the dashboard.
     """
     log.debug("GET %s?username=%s - retrieving user.", _users_url, username)
-    resp = _session.get(_users_url, params={"username": username}, timeout=_TIMEOUT)
+    resp = _retry_request(
+        lambda: _session.get(_users_url, params={"username": username}, timeout=_TIMEOUT)
+    )
     resp.raise_for_status()
 
     data = _parse_json(resp)
@@ -149,6 +190,17 @@ def retrieve_user(username: str) -> dict:
     if not isinstance(results, list) or not results:
         raise ValueError(
             f"User {username!r} not found in Authentik (got {len(results) if isinstance(results, list) else 0} result(s))."
+        )
+
+    if len(results) > 1:
+        # Authentik enforces unique usernames for its own users, but a custom
+        # username_claim (e.g. email or a non-unique attribute) can produce
+        # multiple matches.  Log a warning and continue with the first result.
+        log.warning(
+            "Authentik returned %d users for username %r - using the first result. "
+            "Check oidc.username_claim if this is unexpected.",
+            len(results),
+            username,
         )
 
     user = results[0]
@@ -276,7 +328,7 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     while url:
         page += 1
         log.debug("GET %s (page %d) - fetching user list.", url, page)
-        resp = _session.get(url, params=params, timeout=_TIMEOUT_LIST)
+        resp = _retry_request(lambda: _session.get(url, params=params, timeout=_TIMEOUT_LIST))
         resp.raise_for_status()
 
         data = _parse_json(resp)

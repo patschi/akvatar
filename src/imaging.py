@@ -2,7 +2,7 @@
 imaging.py - Image processing helpers.
 
 Handles secure, unguessable filename generation, resizing to all configured
-square sizes, and saving in every configured format (jpg, png, webp).
+square sizes, and saving in every configured format (jpg, png, webp, avif).
 """
 
 import io
@@ -20,16 +20,8 @@ from src.image_formats import FORMAT_MAP
 
 log = logging.getLogger("imaging")
 
-# Security: Pillow decompression bomb limit
-# A "decompression bomb" is a small file on disk (e.g. 1 MB) that expands to
-# an enormous bitmap in memory (e.g. 20 GB) when decoded.  Pillow's default
-# limit is ~178 megapixels, which is far too generous for an avatar uploader.
-# 25 MP at 4 bytes/pixel = ~100 MB of RAM - a practical ceiling that still
-# accepts very high-resolution source photos while blocking crafted inputs.
-Image.MAX_IMAGE_PIXELS = 25_000_000
-
 # Resolve the avatar storage root from config
-AVATAR_ROOT = Path(app_cfg.get("avatar_storage_path", "data/avatars"))
+AVATAR_ROOT = Path(app_cfg.get("avatar_storage_path", "/data/avatars"))
 
 # Metadata JSON files live in a dedicated subfolder so they don't clutter
 # the avatar root alongside the size subdirectories.
@@ -40,26 +32,17 @@ MAX_SIZE = max(img_cfg["sizes"])
 _avatar_base_url = app_cfg["public_avatar_url"]
 AVATAR_BASE_URL = _avatar_base_url
 
-# Magic byte signatures for each allowed format.
-# Checked before Pillow even touches the file so that crafted inputs with a
-# wrong extension never reach the decoder.
-MAGIC_SIGNATURES = {
-    "JPEG": (0, b"\xff\xd8\xff"),  # SOI + first marker
-    "PNG": (0, b"\x89PNG\r\n\x1a\n"),  # 8-byte PNG header
-    "WEBP_RIFF": (0, b"RIFF"),  # RIFF container …
-    "WEBP_SIG": (8, b"WEBP"),  # … with WEBP fourcc at offset 8
-}
-
-# Dimension guardrails.
-# MIN_DIMENSION is derived from the configured output sizes: uploading an image
-# smaller than the smallest output size is pointless and is rejected early.
-# If images.sizes changes, the floor moves with it automatically.
-# MAX_DIMENSION caps each side independently at 8192 px (8 K).  For square
-# images this limit fires first only when the side exceeds sqrt(MAX_IMAGE_PIXELS)
-# ≈ 5000 px; above that Pillow's DecompressionBombError fires during decode
-# instead.  Both paths are caught by the same except block in validate_upload.
-MIN_DIMENSION = min(img_cfg["sizes"])
-MAX_DIMENSION = 8192  # Each axis capped independently; Pillow caps total pixel area
+# Background color used when compositing RGBA images onto a solid fill before
+# encoding to JPEG (which has no alpha channel).  Without compositing, transparent
+# and semi-transparent pixels would map to black - compositing onto a configured
+# color produces the correct result for logos and photos with transparent borders.
+# Configured via images.rgba_background_color; defaults to white [255, 255, 255].
+_rgba_bg_raw = img_cfg.get("rgba_background_color", [255, 255, 255])
+_RGBA_BG_COLOR: tuple[int, int, int] = (
+    int(_rgba_bg_raw[0]),
+    int(_rgba_bg_raw[1]),
+    int(_rgba_bg_raw[2]),
+)
 
 
 def normalize_image(image: Image.Image) -> Image.Image:
@@ -97,29 +80,6 @@ def normalize_image(image: Image.Image) -> Image.Image:
         image = image.convert("RGBA")
 
     return image
-
-
-def check_magic_bytes(raw_bytes: bytes) -> str | None:
-    """
-    Verify that `raw_bytes` start with a recognized image signature.
-
-    Returns None on success or a human-readable error string on failure.
-    This runs *before* Pillow's parser, acting as a first gate against files
-    that are not real images (e.g. HTML, SVG, ZIP polyglots).
-    """
-    if len(raw_bytes) < 12:
-        return "File is too small to be a valid image (< 12 bytes)."
-
-    is_jpeg = raw_bytes[:3] == MAGIC_SIGNATURES["JPEG"][1]
-    is_png = raw_bytes[:8] == MAGIC_SIGNATURES["PNG"][1]
-    is_webp = (
-        raw_bytes[:4] == MAGIC_SIGNATURES["WEBP_RIFF"][1]
-        and raw_bytes[8:12] == MAGIC_SIGNATURES["WEBP_SIG"][1]
-    )
-
-    if not (is_jpeg or is_png or is_webp):
-        return "File does not start with a valid JPEG, PNG, or WebP signature."
-    return None
 
 
 def generate_filename() -> str:
@@ -170,6 +130,14 @@ def _save_image(
             quality=quality if quality is not None else img_cfg["webp_quality"],
             method=6,
         )
+    elif pillow_fmt == "AVIF":
+        # AVIF supports alpha natively, so RGBA images are passed as-is.
+        # quality follows the same 0-100 scale as JPEG/WebP.
+        image.save(
+            target,
+            format="AVIF",
+            quality=quality if quality is not None else img_cfg.get("avif_quality", 80),
+        )
     else:
         raise ValueError(f"Unsupported Pillow format: {pillow_fmt!r}")
 
@@ -198,8 +166,15 @@ def process_image(
 
         size_dir = AVATAR_ROOT / key
 
-        # Pre-convert RGB once per size if needed (for JPEG)
-        resized_rgb = resized.convert("RGB") if resized.mode == "RGBA" else resized
+        # Pre-composite RGBA onto the configured background color once per size,
+        # producing an RGB image for JPEG output.  A bare .convert("RGB") would
+        # map transparent pixels to black; compositing gives the intended result.
+        if resized.mode == "RGBA":
+            _bg = Image.new("RGB", resized.size, _RGBA_BG_COLOR)
+            _bg.paste(resized, mask=resized.split()[3])
+            resized_rgb = _bg
+        else:
+            resized_rgb = resized
 
         for fmt in formats:
             ext = fmt.lower()
@@ -290,14 +265,22 @@ def prepare_ldap_image(
         "Resizing to %dx%d %s for LDAP attribute.", target_size, target_size, pillow_fmt
     )
     resized = source_image.resize((target_size, target_size), Image.LANCZOS)
-    if pillow_fmt == "JPEG" and resized.mode != "RGB":
+    # Composite RGBA onto the background color for JPEG (same logic as process_image).
+    # For WebP and AVIF, alpha is preserved natively so no compositing is needed.
+    if pillow_fmt == "JPEG" and resized.mode == "RGBA":
+        _bg = Image.new("RGB", resized.size, _RGBA_BG_COLOR)
+        _bg.paste(resized, mask=resized.split()[3])
+        resized = _bg
+    elif pillow_fmt == "JPEG" and resized.mode != "RGB":
         resized = resized.convert("RGB")
 
-    # PNG is lossless (quality=None); JPEG/WebP use configured quality
+    # PNG is lossless (quality=None); JPEG/WebP/AVIF use a configurable quality level
     if pillow_fmt == "JPEG":
         quality = img_cfg["jpeg_quality"]
     elif pillow_fmt == "WEBP":
         quality = img_cfg["webp_quality"]
+    elif pillow_fmt == "AVIF":
+        quality = img_cfg.get("avif_quality", 80)
     else:
         quality = None
 
@@ -327,12 +310,12 @@ def prepare_ldap_image(
         )
         return data
 
-    # Quality reduction loop (JPEG / WebP only)
+    # Quality reduction loop (JPEG / WebP / AVIF only; PNG is lossless)
     if quality is None:
         raise ValueError(
             f"PNG image at {target_size}x{target_size} is {len(data)} bytes, "
             f"exceeding the {max_file_size_kb} KB limit. PNG is lossless and quality "
-            f"cannot be reduced. Use JPEG or WebP, or increase max_file_size."
+            f"cannot be reduced. Use JPEG, WebP, or AVIF, or increase max_file_size."
         )
 
     log.debug(

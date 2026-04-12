@@ -83,6 +83,8 @@ logging.basicConfig(
 
 # Suppress hpack's per-header DEBUG spam - it floods logs when HTTP/2 is active
 logging.getLogger("hpack").setLevel(logging.WARNING)
+# Suppress PIL.Image's plugin registration DEBUG spam ("Importing XxxImagePlugin")
+logging.getLogger("PIL").setLevel(logging.WARNING)
 
 log = logging.getLogger("config")
 log.info("Starting %s v%s...", APP_NAME, APP_VERSION)
@@ -170,6 +172,20 @@ if oidc_cfg.get("skip_cert_verify", False):
         "OIDC TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
 
+# Validate app.public_avatar_url - required for building avatar URLs pushed to Authentik/LDAP.
+# Caught here with a clear FATAL message rather than a KeyError deep in imaging.py.
+_public_avatar_url = app_cfg.get("public_avatar_url", "")
+_fatal_unless(
+    bool(_public_avatar_url),
+    "app.public_avatar_url is required but not set in config.yml.",
+)
+_parsed_pub_avatar = urlparse(_public_avatar_url)
+_fatal_unless(
+    bool(_parsed_pub_avatar.scheme and _parsed_pub_avatar.netloc),
+    f"app.public_avatar_url={_public_avatar_url!r} must be an absolute URL "
+    f"(e.g. 'https://example.com/user-avatars').",
+)
+
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get("sizes", [])
 
@@ -181,6 +197,17 @@ _fatal_unless(
 )
 
 _valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
+
+# Validate each entry in images.formats against known format keys.
+# Catches typos (e.g. "jpge") and unsupported formats (e.g. "bmp") at
+# startup rather than at runtime when the first upload triggers a KeyError
+# inside process_image().
+for _fmt in img_cfg.get("formats", []):
+    _fatal_unless(
+        _fmt.lower() in _FORMAT_MAP,
+        f"images.formats contains unsupported format {_fmt!r}. "
+        f"Supported values: {sorted(_FORMAT_MAP.keys())}.",
+    )
 
 _ak_avatar_format = ak_cfg.get("avatar_format", "jpg")
 _fatal_unless(
@@ -279,3 +306,40 @@ _fatal_unless(
 )
 
 log.debug("Secret key validation passed (length=%d).", len(_secret_key))
+
+# Validate images.rgba_background_color - must be a 3-element RGB list
+_rgba_bg = img_cfg.get("rgba_background_color", [255, 255, 255])
+_fatal_unless(
+    isinstance(_rgba_bg, list)
+    and len(_rgba_bg) == 3
+    and all(isinstance(v, int) and 0 <= v <= 255 for v in _rgba_bg),
+    "images.rgba_background_color must be a list of three integers [R, G, B] "
+    "each in the range 0-255 (e.g. [255, 255, 255] for white).",
+)
+
+# Verify Pillow runtime support for every configured format by attempting a
+# minimal encode.  A 1x1 RGB image is encoded to a BytesIO buffer for each
+# format - if the encoder raises, the codec is missing or broken.  This gives
+# a clear FATAL message at startup instead of a cryptic error on the first
+# upload (e.g. Pillow built without libwebp or libavif).
+try:
+    import io as _io
+    from PIL import Image as _PilImage
+
+    log.debug("Verifying Pillow runtime support for configured image formats...")
+    _test_img = _PilImage.new("RGB", (1, 1), (0, 0, 0))
+    for _fmt in img_cfg.get("formats", []):
+        _pillow_fmt = _FORMAT_MAP[_fmt.lower()][0]
+        try:
+            _buf = _io.BytesIO()
+            _test_img.save(_buf, format=_pillow_fmt)
+            log.debug("Pillow %s (%s) encode check passed.", _fmt, _pillow_fmt)
+        except Exception as _enc_exc:
+            _fatal(
+                f"images.formats includes {_fmt!r} but Pillow cannot encode "
+                f"{_pillow_fmt!r} on this system: {_enc_exc}. "
+                f"Install Pillow with the required library support or remove "
+                f"{_fmt!r} from images.formats."
+            )
+except ImportError:
+    pass  # Defensive: PIL is a required dependency and should always be present
