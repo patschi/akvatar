@@ -1,28 +1,25 @@
 """
-rate_limit.py - Application-wide, thread-safe, sliding-window rate limiter.
+rate_limit.py - Application-wide, thread-safe rate limiting.
 
-Tracks per-IP points using shared state across all gunicorn worker processes
-(via multiprocessing.Manager) and returns HTTP 429 when limits are exceeded.
-Because state is shared, the effective limit per client IP is exactly
-max_points per window period.
+Contains two independent limiters, both backed by multiprocessing.Manager for
+cross-worker shared state:
 
-Each request costs 1 point.  Certain responses incur additional penalty
-points (e.g. a 404 costs 5 points total) to penalise URL-guessing attempts.
-Points are recorded as (timestamp, cost) pairs in a sliding window.
+1. IP rate limiter (_RateLimitManager / _RateLimiter):
+   Sliding-window, per-IP point limiter for the /user-avatars/ serving
+   endpoints.  Toggled via rate_limiting.enabled in config.  Each request
+   costs 1 point; 404 responses incur an additional penalty.  Expired entries
+   are pruned by a dedicated eviction thread running in the master process.
 
-Worker request-handling threads only read totals and append new entries
-through the shared Manager proxy - they never prune or remove tracking
-entries.  A single eviction thread in the master process periodically prunes
-expired entries and removes empty tracking records, which is the only
-mechanism that unblocks rate-limited IPs.
+2. Upload cooldown (_UploadCooldown):
+   Simple per-user-PK cooldown for /api/upload - at most one upload per
+   rate_limiting.upload.cooldown seconds (default: 10) per logged-in user.
+   Governed by both rate_limiting.enabled and rate_limiting.upload.enabled.
 
-The eviction thread is started in init_rate_limiting(), which runs in the
-master process when gunicorn uses --preload.  It operates on the same shared
-Manager state that workers access, so eviction is truly application-wide.
-
-With gunicorn gthread workers, each request-handling thread establishes its
-own connection to the Manager server process (handled transparently by the
-Manager proxy), so forked workers do not share connections with the master.
+Both limiters use separate Manager server processes so they can be used
+independently.  With gunicorn gthread workers, each request-handling thread
+establishes its own connection to the Manager server process (handled
+transparently by the Manager proxy), so forked workers do not share
+connections with the master.
 """
 
 import ipaddress
@@ -37,7 +34,7 @@ from typing import NamedTuple
 
 from flask import Flask, Response, request
 
-from src.config import cfg
+from src.config import rate_limiting_cfg, upload_cooldown_enabled, upload_cooldown_secs
 
 log = logging.getLogger("ratelimit")
 
@@ -398,11 +395,94 @@ class _RateLimitManager:
 
 
 # ---------------------------------------------------------------------------
-# Module-level singleton (created once at import time / --preload)
+# Upload cooldown - per-user, cross-worker cooldown for /api/upload
 # ---------------------------------------------------------------------------
 
-_rate_cfg = cfg.get("rate_limiting", {})
-_manager = _RateLimitManager(_rate_cfg)
+
+class _UploadCooldown:
+    """
+    Per-user cooldown tracker for the /api/upload endpoint.
+
+    Tracks the last allowed upload timestamp per user_pk in shared state
+    across all gunicorn worker processes (via multiprocessing.Manager), so
+    the cooldown is enforced application-wide regardless of which worker
+    handles the request.
+
+    Only instantiated when both rate_limiting.enabled and
+    rate_limiting.upload.enabled are true (evaluated in config.py).
+    """
+
+    def __init__(self, window: int) -> None:
+        self._window = window
+        self._mp_manager = multiprocessing.Manager()
+
+        # Detach the Manager server from forked workers (same pattern as in
+        # _RateLimitManager) so workers do not attempt to join or terminate it.
+        _mgr = self._mp_manager
+
+        def _release_manager_in_child():
+            _mp_process._children.discard(_mgr._process)
+            try:
+                _mgr.finalizer.cancel()
+            except AttributeError:
+                pass
+
+        os.register_at_fork(after_in_child=_release_manager_in_child)
+
+        # {user_pk: monotonic_timestamp_of_last_allowed_upload}
+        self._last_upload = self._mp_manager.dict()
+        self._lock = self._mp_manager.Lock()
+        log.info("Upload cooldown initialized: %ds per-user window.", self._window)
+
+    def check_and_record(self, user_pk: int) -> tuple[bool, int]:
+        """
+        Check and record an upload attempt for *user_pk*.
+
+        Returns (allowed, retry_after):
+          - allowed:     True if the user is outside the cooldown window
+          - retry_after: seconds until the cooldown expires (0 when allowed)
+        """
+        now = time.monotonic()
+        with self._lock:
+            last = self._last_upload.get(user_pk, None)
+            if last is not None:
+                elapsed = now - last
+                if elapsed < self._window:
+                    retry_after = int(self._window - elapsed) + 1
+                    log.debug(
+                        "Upload cooldown: denied user_pk=%s (%.1fs elapsed, retry_after=%ds).",
+                        user_pk,
+                        elapsed,
+                        retry_after,
+                    )
+                    return False, retry_after
+            # Allowed - record this upload attempt
+            self._last_upload[user_pk] = now
+            return True, 0
+
+
+# ---------------------------------------------------------------------------
+# Module-level singletons (created once at import time / --preload)
+# ---------------------------------------------------------------------------
+
+_manager = _RateLimitManager(rate_limiting_cfg)
+
+if upload_cooldown_enabled:
+    _upload_cooldown: _UploadCooldown | None = _UploadCooldown(upload_cooldown_secs)
+else:
+    _upload_cooldown = None
+    log.info("Upload cooldown is disabled.")
+
+
+def check_upload_cooldown(user_pk: int) -> tuple[bool, int]:
+    """
+    Check and record the upload cooldown for *user_pk*.
+
+    Returns (allowed, retry_after).  Always allows when the cooldown is disabled.
+    """
+    if _upload_cooldown is None:
+        return True, 0
+    return _upload_cooldown.check_and_record(user_pk)
 
 
 def init_rate_limiting(app: Flask) -> None:

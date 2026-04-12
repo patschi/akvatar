@@ -128,6 +128,7 @@ error:
   too_small: "Image is too small ({w}×{h} px). The minimum is {min_dim}×{min_dim} px."
   too_large: "Image is too large ({w}×{h} px). The maximum is {max_dim}×{max_dim} px."
   no_file: "No image was received. Please select a file and try again."
+  rate_limited: "You are uploading too frequently. Please wait a moment before trying again."
   # Import-specific errors (Gravatar / URL proxy endpoints)
   import:
     gravatar_disabled: "Gravatar import is not enabled."

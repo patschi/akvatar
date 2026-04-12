@@ -126,6 +126,7 @@ error:
   too_small: "L'image est trop petite ({w}×{h} px). La taille minimale est {min_dim}×{min_dim} px."
   too_large: "L'image est trop grande ({w}×{h} px). La taille maximale est {max_dim}×{max_dim} px."
   no_file: "Aucune image n'a été reçue. Veuillez sélectionner un fichier et réessayer."
+  rate_limited: "Vous téléchargez trop fréquemment. Veuillez patienter un moment avant de réessayer."
   # Erreurs spécifiques à l'importation
   import:
     gravatar_disabled: "L'import Gravatar n'est pas activé."

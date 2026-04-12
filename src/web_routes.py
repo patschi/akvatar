@@ -50,6 +50,7 @@ from src.imaging import (
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.sec_csrf import validate_csrf_token
+from src.rate_limit import check_upload_cooldown
 from src.upload import (
     build_canonical_url,
     generate_sse,
@@ -296,6 +297,20 @@ def api_upload():
 
     user = session["user"]
     log.info("Upload request from user %r.", user["username"])
+
+    # Per-user upload rate limit - once every 10 seconds per user
+    allowed, retry_after = check_upload_cooldown(user["pk"])
+    if not allowed:
+        log.warning(
+            "Upload cooldown: denied for user %r (retry_after=%ds).",
+            user["username"],
+            retry_after,
+        )
+        return (
+            jsonify({"error": t("error.rate_limited"), "retry_after": retry_after}),
+            429,
+            {"Retry-After": str(retry_after)},
+        )
 
     # Synchronous validation (returns JSON 400 on failure)
     if "file" not in request.files:

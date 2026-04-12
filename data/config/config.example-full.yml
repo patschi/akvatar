@@ -109,7 +109,8 @@ cleanup:
 # Each request costs 1 point; a 404 response costs 5 points to penalise
 # URL-guessing attempts.
 rate_limiting:
-  # Master switch – set to false to disable all rate limiting.
+  # Master switch – set to false to disable all rate limiting, including
+  # the per-user upload cooldown below.
   enabled: false
   # IPs or CIDR ranges that are never rate-limited.
   # Supports individual IPs (e.g. "10.0.0.1") and CIDR notation
@@ -140,6 +141,14 @@ rate_limiting:
     enabled: true
     points: 50
     window: 60
+  # Per-user upload rate limit for /api/upload.
+  # Requires the master switch (enabled) to be true.
+  # Enforced across all gunicorn worker processes via shared state.
+  upload:
+    # Set to false to disable the per-user upload cooldown only.
+    enabled: true
+    # Minimum seconds a logged-in user must wait between consecutive uploads.
+    cooldown: 10
 
 # --- Webserver ---
 # These settings apply when running via run.py / gunicorn (production & Docker).

@@ -56,6 +56,20 @@ sentry_cfg = cfg.get("sentry", {})
 access_log = bool(web_cfg.get("access_log", False))
 http2_cfg = web_cfg.get("http2", {})
 
+# Rate limiting configuration (exported for use in rate_limit.py)
+# The full section dict is passed to _RateLimitManager as-is; the named
+# variables below are for the upload cooldown so rate_limit.py does not
+# need to repeat the default values or the master-switch logic.
+rate_limiting_cfg = cfg.get("rate_limiting", {})
+_upload_rate_cfg = rate_limiting_cfg.get("upload", {})
+# Master switch governs all rate limiting (IP limiter and upload cooldown).
+# upload_cooldown_enabled is False when either the master or upload.enabled is off.
+_rate_limiting_master = bool(rate_limiting_cfg.get("enabled", False))
+upload_cooldown_enabled = _rate_limiting_master and bool(
+    _upload_rate_cfg.get("enabled", True)
+)
+upload_cooldown_secs = int(_upload_rate_cfg.get("cooldown", 10))
+
 # Logging setup
 _LOG_LEVELS = {
     "DEBUG": logging.DEBUG,
