@@ -66,7 +66,7 @@ When submitting a pull request:
 ## Relevant resources
 
 - [Configuration reference](docs/configuration.md) - all `config.yml` settings
-- [How it works](docs/how-it-works.md) – application architecture and request flow
+- [How it works](docs/how-it-works.md) - application architecture and request flow
 - [Authentik OIDC Setup](docs/authentik-oidc-setup.md) / [API Token](docs/authentik-api-token.md) - Authentik
   integration guide
 - [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md) / [Subfolder Deployment](docs/subfolder-deployment.md) - deployment
@@ -86,7 +86,7 @@ When bumping the Python version (e.g., moving to Python 3.14 with a new distrole
 3. Update the `image: python:3.13-slim@sha256:...` line in `.gitlab-ci.yml` to the new version
 4. Update the `allowedVersions` regex in `renovate.json` from `/^3\.13/` to `/^3\.14/`
 
-All four must change together. Renovate is intentionally prevented from bumping the Python minor version automatically —
+All four must change together. Renovate is intentionally prevented from bumping the Python minor version automatically -
 the upgrade is a deliberate, coordinated change.
 
 ## License

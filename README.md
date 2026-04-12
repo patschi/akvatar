@@ -1,4 +1,4 @@
-# Akvatar – Authentik Avatar Updater
+# Akvatar - Authentik Avatar Updater
 
 <p align="center"><img src="static/images/favicon-192.png" alt="Akvatar logo" width="128" height="128"></p>
 

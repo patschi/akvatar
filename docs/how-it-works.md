@@ -72,18 +72,18 @@ sequenceDiagram
 
 - The **PK (primary key)** is resolved once at login and stored in the session. All
   downstream operations (API updates, cleanup matching) use this stable, immutable
-  identifier — usernames can change, PKs cannot.
+  identifier - usernames can change, PKs cannot.
 - The **locale** is read from the OIDC `locale` claim. If the user's Authentik profile
   has `locale: de_DE`, the UI switches to German automatically.
 - If the OIDC token exchange fails the user is redirected to `/login?error=oidc_failed`. If PK
   resolution fails the error is `/login?error=pk_failed`.
 - Adding `?autologin` to the login URL (`/login?autologin`) skips the landing page and
-  immediately initiates the OIDC redirect — useful for deep-linking from a portal.
+  immediately initiates the OIDC redirect - useful for deep-linking from a portal.
 
 ## Upload and processing flow
 
 Once authenticated, the user can upload an avatar. The process involves client-side
-preprocessing, server-side validation and processing, and backend synchronization — all
+preprocessing, server-side validation and processing, and backend synchronization - all
 streamed to the browser in real time via Server-Sent Events (SSE).
 
 ```mermaid
@@ -237,10 +237,10 @@ See [Authentik API Token](authentik-api-token.md) for setup instructions.
 When LDAP is enabled the app writes avatar data into one or more LDAP attributes as
 defined in the `ldap.photos` configuration:
 
-1. **Prepare** each configured photo attribute — reuse a pre-generated file if the exact
+1. **Prepare** each configured photo attribute - reuse a pre-generated file if the exact
    size and format exists and fits within `max_file_size`; otherwise resize from the
    closest larger source and reduce JPEG/WebP quality iteratively until the output fits.
-   PNG and AVIF cannot be quality-reduced (lossless / codec limitation) — a `ValueError`
+   PNG and AVIF cannot be quality-reduced (lossless / codec limitation) - a `ValueError`
    is raised if the output exceeds the limit.
 2. **Connect** to the first available LDAP server (multiple servers supported for failover;
    see [`ldap.servers`](configuration.md#ldapservers)). Transient connection failures are
@@ -250,7 +250,7 @@ defined in the `ldap.photos` configuration:
    `(objectSid={ldap_uniq})` for Active Directory); the `{ldap_uniq}` placeholder is
    replaced with the value from the user's Authentik attributes and is properly
    LDAP-filter-escaped to prevent injection.
-5. **Modify** all configured attributes in a single LDAP operation — `binary` attributes
+5. **Modify** all configured attributes in a single LDAP operation - `binary` attributes
    receive raw image bytes, `url` attributes receive the public file URL as a string
 6. **Unbind**
 
@@ -300,7 +300,7 @@ A JSON metadata file is saved alongside each avatar set in
 }
 ```
 
-The metadata is the authoritative source of ownership — the `user_pk` field links each
+The metadata is the authoritative source of ownership - the `user_pk` field links each
 avatar set to an Authentik user and is used by the cleanup job.
 
 ## Avatar storage layout
@@ -366,7 +366,7 @@ would produce no benefit and could cause redundant deletions.
 flowchart TD
     A[Start cleanup] --> B[Fetch user PKs from Authentik API]
     B --> C{API returned 0 users?}
-    C -- Yes --> ABORT[Abort — safety guard triggered]
+    C -- Yes --> ABORT[Abort - safety guard triggered]
     C -- No --> D[Load all .meta.json files from disk]
 
     D --> E[Phase 1: Stale users]
@@ -385,7 +385,7 @@ flowchart TD
     H --> DONE[Done]
 ```
 
-#### Phase 1 — Stale users
+#### Phase 1 - Stale users
 
 Reads the `user_pk` from every `.meta.json` file and compares it against user data
 fetched from Authentik. Which users trigger cleanup is controlled by two flags:
@@ -399,13 +399,13 @@ fetched from Authentik. Which users trigger cleanup is controlled by two flags:
 
 For every targeted user, all size × format image files and the metadata file are deleted.
 
-#### Phase 2 — Retention enforcement
+#### Phase 2 - Retention enforcement
 
 For each user not targeted by Phase 1, avatar sets are sorted newest-first by `uploaded_at`
 (ISO 8601 sorts lexicographically). Sets beyond the configured
 [`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count) are deleted.
 
-#### Phase 3 — Orphaned files
+#### Phase 3 - Orphaned files
 
 Handles leftovers from configuration changes:
 
@@ -423,7 +423,7 @@ Handles leftovers from configuration changes:
 At the end of each run, one summary line is logged:
 
 ```text
-# Normal run — everything succeeded
+# Normal run - everything succeeded
 Cleanup complete: 42 file(s) deleted.
 
 # Partial failures
@@ -436,7 +436,7 @@ Cleanup complete: would remove ~54 file(s) (3 avatar set(s), 0 orphan(s)).
 Cleanup complete: nothing to remove.
 ```
 
-In dry-run mode (`dry_run: true` in config), no files are touched — the job logs exactly
+In dry-run mode (`dry_run: true` in config), no files are touched - the job logs exactly
 what it would have done. The file count for avatar sets in dry-run is an estimate
 (`sets × (sizes × formats + 1)`).
 
@@ -449,7 +449,7 @@ what it would have done. The file count for avatar sets in dry-run is an estimat
 | [`cleanup.avatar_retention_count`](configuration.md#cleanup_avatar_retention_count) | How many avatar sets to keep per user          |
 | [`cleanup.when_user_deleted`](configuration.md#cleanup_when_user_deleted)           | Remove avatars of users deleted from Authentik |
 | [`cleanup.when_user_deactivated`](configuration.md#cleanup_when_user_deactivated)   | Remove avatars of deactivated Authentik users  |
-| [`dry_run`](configuration.md#dry_run)                                               | Log-only mode — no files are deleted           |
+| [`dry_run`](configuration.md#dry_run)                                               | Log-only mode - no files are deleted           |
 
 ## Server-Sent Events (SSE)
 
@@ -482,7 +482,7 @@ carries either `avatar_url` (success) or `error` (failure).
 ## Health check endpoint
 
 `GET /healthz` returns `200 OK` with body `OK`. It performs no authentication, no
-database access, and no external calls — it only confirms that the gunicorn worker
+database access, and no external calls - it only confirms that the gunicorn worker
 process is alive and accepting connections.
 
 Use it with Docker, Kubernetes, or any load balancer that needs a lightweight liveness
@@ -519,7 +519,7 @@ max-age=86400` header instructs browsers to cache assets locally.
 | Session cookie hardening         | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set                                      |
 | Security response headers        | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and                                                |
 |                                  | `Referrer-Policy: strict-origin-when-cross-origin` on every response                                                  |
-| Cleanup safety guard             | Aborts if Authentik returns zero users — prevents mass deletion on API failure                                        |
+| Cleanup safety guard             | Aborts if Authentik returns zero users - prevents mass deletion on API failure                                        |
 | Non-root Docker container        | Runs as UID 65532 with no shell in a distroless image                                                                 |
 | Read-only root filesystem        | Container filesystem is immutable; only data volumes are writable                                                     |
 | Dropped capabilities             | `cap_drop: ALL` removes all Linux capabilities from the container                                                     |

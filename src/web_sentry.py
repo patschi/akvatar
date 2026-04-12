@@ -43,7 +43,7 @@ if _SENTRY_TUNNEL_DSN:
     _SENTRY_INGEST_URL = (
         f"{_parsed_dsn.scheme}://{_dsn_host}/api/{_dsn_project_id}/envelope/"
     )
-    log.debug("Sentry tunnel active – forwarding to %s", _SENTRY_INGEST_URL)
+    log.debug("Sentry tunnel active - forwarding to %s", _SENTRY_INGEST_URL)
 
 # Maximum envelope size accepted by the tunnel (1 MB).  Larger payloads are
 # rejected before being forwarded to keep memory usage bounded.
@@ -75,7 +75,7 @@ def api_sentry_tunnel():
     if not envelope:
         abort(400)
 
-    # Secondary size guard – covers chunked requests where Content-Length is absent.
+    # Secondary size guard - covers chunked requests where Content-Length is absent.
     if len(envelope) > _SENTRY_TUNNEL_MAX_BYTES:
         log.debug(
             "Sentry tunnel: rejected oversized envelope (%d bytes).", len(envelope)

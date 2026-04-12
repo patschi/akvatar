@@ -1,5 +1,5 @@
 /**
- * dashboard-main.js – Avatar upload with client-side cropping and server-side
+ * dashboard-main.js - Avatar upload with client-side cropping and server-side
  * processing streamed back as Server-Sent Events (SSE).
  *
  * Depends on server-provided constants injected inline by the template
@@ -26,7 +26,7 @@ const resultMessage      = document.getElementById("resultMessage");
 // Import section element (hidden during upload processing)
 const importSection      = document.getElementById("importSection");
 
-// Cropper.js instance — created when user selects an image
+// Cropper.js instance - created when user selects an image
 let cropperInstance = null;
 
 // Progress step icons (SVGs using currentColor for theme adaptation)
@@ -79,7 +79,7 @@ function escapeHTML(s) {
 function buildStepHTML(label, status, detail) {
     var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
     // All dynamic values (label, detail) are escaped via escapeHTML() before
-    // insertion — only static SVG icon markup is injected unescaped.
+    // insertion - only static SVG icon markup is injected unescaped.
     return '<span class="step-icon">' + icon + '</span>'
         + '<span class="step-label">' + escapeHTML(label) + '</span>'
         + (detail ? '<span class="step-detail">' + escapeHTML(detail) + '</span>' : "");
@@ -105,7 +105,7 @@ function buildRetryButton() {
     var btn = document.createElement("button");
     btn.className = "btn btn-block btn-retry";
     btn.textContent = I18N.result_retry;
-    // Use addEventListener instead of an inline onclick attribute — inline handlers
+    // Use addEventListener instead of an inline onclick attribute - inline handlers
     // are blocked by the CSP script-src nonce directive.
     btn.addEventListener("click", function () { location.reload(); });
     return btn;
@@ -128,7 +128,7 @@ function showResultView() {
  */
 function showResult(cssClass, messageText) {
     showResultView();
-    // Use DOM methods with textContent for safe text insertion — no escaping needed.
+    // Use DOM methods with textContent for safe text insertion - no escaping needed.
     var para = document.createElement("p");
     para.className = cssClass;
     para.textContent = messageText;
@@ -407,7 +407,7 @@ uploadButton.addEventListener("click", async function () {
             logger.error("main", "upload rejected - server validation error", { error: errorData.error });
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
             // resultMessage.innerHTML only contains static I18N strings
-            // that are escaped via escapeHTML() – no untrusted data is interpolated.
+            // that are escaped via escapeHTML() - no untrusted data is interpolated.
             resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
             resetUploadButton();
             return;

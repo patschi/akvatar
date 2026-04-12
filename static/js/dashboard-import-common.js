@@ -16,7 +16,7 @@
 (function () {
     "use strict";
 
-    // Dialog overlay — backdrop click, .dialog-close button, and Escape key are
+    // Dialog overlay - backdrop click, .dialog-close button, and Escape key are
     // all wired by createDialog(); bail out early if the overlay is absent.
     var overlay = document.getElementById("importOverlay");
     if (!overlay) return;

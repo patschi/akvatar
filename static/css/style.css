@@ -1,8 +1,8 @@
 /*
-  * Akvatar – Stylesheet (Adaptive Light / Dark)
+  * Akvatar - Stylesheet (Adaptive Light / Dark)
 */
 
-/* Outfit font (variable, weights 100–900) */
+/* Outfit font (variable, weights 100-900) */
 @font-face {
     font-family: 'Outfit';
     font-style: normal;
@@ -1249,7 +1249,7 @@ a:focus-visible {
         font-size: 0.82rem;
     }
 
-    /* Drop zone – more generous touch area */
+    /* Drop zone - more generous touch area */
     .drop-zone {
         padding: 2rem 0.75rem;
     }

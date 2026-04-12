@@ -14,12 +14,12 @@ Browser request:   https://portal.example.com/avatar/dashboard
                    └───────────────────────────────┘└─────────┘
                          handled by reverse proxy     forwarded to app
 
-Option A — X-Forwarded-Prefix (nginx strips /avatar/ before forwarding):
+Option A - X-Forwarded-Prefix (nginx strips /avatar/ before forwarding):
   nginx → app sees:   GET /dashboard
   nginx sends header: X-Forwarded-Prefix: /avatar
   ProxyFix sets SCRIPT_NAME=/avatar → Flask generates correct /avatar/... URLs
 
-Option B — derive from public_base_url (nginx keeps /avatar/ in the path):
+Option B - derive from public_base_url (nginx keeps /avatar/ in the path):
   nginx → app sees:   GET /avatar/dashboard
   PrefixMiddleware strips /avatar → Flask receives /dashboard
   SCRIPT_NAME=/avatar set internally → Flask generates correct /avatar/... URLs
@@ -132,7 +132,7 @@ The application uses two middleware layers (applied during startup in `app.py`):
    incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
 
 The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_base_url` are configured, the
-proxy header takes precedence — ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is
+proxy header takes precedence - ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is
 already set.
 
 ## Verifying the setup

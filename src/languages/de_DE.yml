@@ -30,7 +30,7 @@ login:
   subtitle: "Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten."
   button: "Anmelden"
   error_oidc_failed: "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
-  error_pk_failed: "Anmeldung konnte nicht abgeschlossen werden – Ihr Konto konnte nicht abgerufen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
+  error_pk_failed: "Anmeldung konnte nicht abgeschlossen werden - Ihr Konto konnte nicht abgerufen werden. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
   error_session_expired: "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
 
 # Abmeldeseite

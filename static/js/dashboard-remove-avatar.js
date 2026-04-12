@@ -1,5 +1,5 @@
 /**
- * dashboard-remove-avatar.js – Avatar removal with custom confirmation dialog.
+ * dashboard-remove-avatar.js - Avatar removal with custom confirmation dialog.
  *
  * Handles the "Remove current avatar" button in the profile header.
  * Opens a themed confirmation dialog, sends a POST to the server on confirm,

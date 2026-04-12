@@ -1,12 +1,12 @@
 /**
- * dashboard-session-check.js – Periodically probe /api/heartbeat and redirect
+ * dashboard-session-check.js - Periodically probe /api/heartbeat and redirect
  * to the login page with a session-expired notice if the server-side session
  * has expired.
  *
  * This prevents users from filling in the upload form only to discover their
  * session is gone at submit time.
  *
- * A 401 response means the session is definitively expired – redirect immediately.
+ * A 401 response means the session is definitively expired - redirect immediately.
  * Network errors are treated as transient and silently ignored so a momentary
  * connectivity blip does not log the user out.
  *
@@ -112,7 +112,7 @@ if (typeof SESSION_CHECK_ENDPOINT !== "undefined" && typeof LOGIN_URL !== "undef
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     // Start polling on page load if the tab is already visible.
-    // No immediate probe on load – the server already validated the session to render the page.
+    // No immediate probe on load - the server already validated the session to render the page.
     if (document.visibilityState !== "hidden") {
         startSessionCheck(false);
     }

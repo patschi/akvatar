@@ -30,7 +30,7 @@ login:
   subtitle: "Connectez-vous avec votre compte d'organisation pour télécharger et gérer votre photo de profil."
   button: "Se connecter"
   error_oidc_failed: "Échec de l'authentification. Veuillez réessayer ou contacter votre administrateur."
-  error_pk_failed: "La connexion n'a pas pu être finalisée — impossible de récupérer votre compte. Veuillez réessayer ou contacter votre administrateur."
+  error_pk_failed: "La connexion n'a pas pu être finalisée - impossible de récupérer votre compte. Veuillez réessayer ou contacter votre administrateur."
   error_session_expired: "Votre session a expiré. Veuillez vous reconnecter."
 
 # Page de déconnexion

@@ -1,7 +1,7 @@
 # Updating Dependencies
 
 `pyproject.toml` pins each package to an exact version (e.g. `Flask==3.1.3`) so builds are
-reproducible. Bump versions deliberately — Renovate opens PRs automatically for patch and
+reproducible. Bump versions deliberately - Renovate opens PRs automatically for patch and
 minor updates, so manual bumps are mostly for urgent fixes or major version jumps.
 
 ## Patch / minor bumps (via Renovate)
@@ -20,7 +20,7 @@ them like any other dependency PR.
    pip index versions flask
    ```
 
-2. Edit `pyproject.toml` — bump the version pin in the `dependencies` list, e.g.:
+2. Edit `pyproject.toml` - bump the version pin in the `dependencies` list, e.g.:
 
    ```toml
    "Flask==3.2.0",
@@ -44,7 +44,7 @@ If the app runs clean, commit `pyproject.toml`.
 ## CI / Dockerfile pins
 
 The `Dockerfile` base images (`python:3.13-slim-trixie`, `gcr.io/distroless/python3-debian13`)
-and the Kaniko image in `.gitlab-ci.yml` are managed by **Renovate** — open PRs are created
+and the Kaniko image in `.gitlab-ci.yml` are managed by **Renovate** - open PRs are created
 automatically. Review and merge them like any other dependency update.
 
-The `microcheck` binary in the Dockerfile is also pinned by digest — Renovate handles it.
+The `microcheck` binary in the Dockerfile is also pinned by digest - Renovate handles it.

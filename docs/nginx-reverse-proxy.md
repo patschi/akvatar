@@ -68,7 +68,7 @@ seconds is a safe default for large images with LDAP updates.
 ## Health check probe
 
 The application exposes `GET /healthz` which returns `200 OK` with body `OK`. Use this
-as a liveness probe for load balancers or container health checks — it requires no
+as a liveness probe for load balancers or container health checks - it requires no
 authentication and performs no external calls.
 
 ```nginx

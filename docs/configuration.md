@@ -57,15 +57,15 @@ effect.
 | [`sentry.dsn`](#sentrydsn)                                                       | String  | Sentry project DSN (ingest URL)                     |
 | [`sentry.capture_errors`](#sentrycapture_errors)                                 | Boolean | Send unhandled exceptions to Sentry                 |
 | [`sentry.capture_performance`](#sentrycapture_performance)                       | Boolean | Enable transaction / performance tracing            |
-| [`sentry.sample_rate`](#sentrysample_rate)                                       | Float   | Error event sample rate (0.0–1.0)                   |
-| [`sentry.traces_sample_rate`](#sentrytraces_sample_rate)                         | Float   | Performance trace sample rate (0.0–1.0)             |
+| [`sentry.sample_rate`](#sentrysample_rate)                                       | Float   | Error event sample rate (0.0-1.0)                   |
+| [`sentry.traces_sample_rate`](#sentrytraces_sample_rate)                         | Float   | Performance trace sample rate (0.0-1.0)             |
 | [`sentry.environment`](#sentryenvironment)                                       | String  | Sentry environment tag (auto-detected if empty)     |
 | [`sentry.send_default_pii`](#sentrysend_default_pii)                             | Boolean | Include IP addresses and user details in events     |
 | [`sentry.browser.enabled`](#sentrybrowserenabled)                                | Boolean | Master switch for browser-side Sentry               |
 | [`sentry.browser.js_sdk_url`](#sentrybrowserjs_sdk_url)                          | String  | URL of the self-hosted Sentry JS SDK bundle         |
 | [`sentry.browser.dsn`](#sentrybrowserdsn)                                        | String  | Browser-side Sentry DSN (falls back to sentry.dsn)  |
-| [`sentry.browser.sample_rate`](#sentrybrowsersample_rate)                        | Float   | Browser error event sample rate (0.0–1.0)           |
-| [`sentry.browser.traces_sample_rate`](#sentrybrowsertraces_sample_rate)          | Float   | Browser performance trace sample rate (0.0–1.0)     |
+| [`sentry.browser.sample_rate`](#sentrybrowsersample_rate)                        | Float   | Browser error event sample rate (0.0-1.0)           |
+| [`sentry.browser.traces_sample_rate`](#sentrybrowsertraces_sample_rate)          | Float   | Browser performance trace sample rate (0.0-1.0)     |
 | [`sentry.browser.tunnel_enabled`](#sentrybrowsertunnel_enabled)                  | Boolean | Forward browser events via /api/sentry-event tunnel |
 | [`app.log_level`](#applog_level)                                                 | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#appdebug_full)                                               | Boolean | Full debug mode - never enable in production        |
@@ -103,9 +103,9 @@ effect.
 | [`ldap.photos`](#ldapphotos)                                                     | List    | LDAP photo attributes to update (see details below) |
 | [`images.sizes`](#imagessizes)                                                   | List    | Square output sizes to generate (px)                |
 | [`images.formats`](#imagesformats)                                               | List    | Output formats to save for each size                |
-| [`images.jpeg_quality`](#imagesjpeg_quality)                                     | Integer | JPEG compression quality (1–100)                    |
-| [`images.webp_quality`](#imageswebp_quality)                                     | Integer | WebP compression quality (1–100)                    |
-| [`images.png_compress_level`](#imagespng_compress_level)                         | Integer | PNG compression level (0–9)                         |
+| [`images.jpeg_quality`](#imagesjpeg_quality)                                     | Integer | JPEG compression quality (1-100)                    |
+| [`images.webp_quality`](#imageswebp_quality)                                     | Integer | WebP compression quality (1-100)                    |
+| [`images.png_compress_level`](#imagespng_compress_level)                         | Integer | PNG compression level (0-9)                         |
 | [`images.avif_quality`](#imagesavif_quality)                                     | Integer | AVIF compression quality (1-100)                    |
 | [`images.rgba_background_color`](#imagesrgba_background_color)                   | List    | Background color used when converting RGBA to JPEG  |
 
@@ -583,7 +583,7 @@ data than error tracking.
 
 | Property    | Value           |
 |-------------|-----------------|
-| **Type**    | Float (0.0–1.0) |
+| **Type**    | Float (0.0-1.0) |
 | **Default** | `1.0`           |
 
 Fraction of error events to send. `1.0` sends every error, `0.5` sends roughly half, `0.0` sends
@@ -597,7 +597,7 @@ if you have a high-traffic deployment generating excessive duplicate errors.
 
 | Property    | Value           |
 |-------------|-----------------|
-| **Type**    | Float (0.0–1.0) |
+| **Type**    | Float (0.0-1.0) |
 | **Default** | `0.2`           |
 
 Fraction of requests to trace for performance monitoring. `1.0` traces every request, `0.2` traces
@@ -652,9 +652,9 @@ self-hosted Sentry installation - no third-party CDN is involved.
 (`/api/sentry-event`) instead of being sent directly from the browser to the Sentry ingest host.
 This has two advantages:
 
-1. **CSP compatibility** – the tunnel is same-origin (`'self'`), so no Sentry-specific host needs
+1. **CSP compatibility** - the tunnel is same-origin (`'self'`), so no Sentry-specific host needs
    to be added to the `connect-src` directive.
-2. **Ad-blocker bypass** – browser-based ad blockers that block requests to known Sentry domains
+2. **Ad-blocker bypass** - browser-based ad blockers that block requests to known Sentry domains
    cannot intercept events sent to a first-party endpoint.
 
 The tunnel validates that the DSN in each incoming envelope matches the configured browser DSN
@@ -708,7 +708,7 @@ exposure).
 
 | Property    | Value           |
 |-------------|-----------------|
-| **Type**    | Float (0.0–1.0) |
+| **Type**    | Float (0.0-1.0) |
 | **Default** | `1.0`           |
 
 Fraction of browser error events to send. `1.0` sends every error, `0.0` sends none. This
@@ -718,7 +718,7 @@ controls the JavaScript SDK's `sampleRate` option.
 
 | Property    | Value           |
 |-------------|-----------------|
-| **Type**    | Float (0.0–1.0) |
+| **Type**    | Float (0.0-1.0) |
 | **Default** | `0.2`           |
 
 Fraction of browser page loads to trace for performance monitoring. `1.0` traces every page load,

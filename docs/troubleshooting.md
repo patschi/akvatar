@@ -7,7 +7,7 @@ General tips, common issues, and known problems with their solutions.
 ### Enable debug logging
 
 Set [`app.log_level`](configuration.md#applog_level) to `DEBUG` in `config.yml` and restart the application. This logs
-every OIDC step, API call, image processing action, and HTTP request — usually enough to pinpoint the problem.
+every OIDC step, API call, image processing action, and HTTP request - usually enough to pinpoint the problem.
 
 ```yaml
 app:
@@ -39,9 +39,9 @@ cookies, cached redirects, or browser extensions interfering with the flow.
 
 Open the browser's Network tab before clicking **Sign in**. Watch for:
 
-- **`Set-Cookie` header** in the response from `GET /login-start` — confirms the session cookie is being set.
-- **`Cookie` header** in the request to `GET /callback` — confirms the browser is sending the session cookie back.
-- **HTTP status codes** on each redirect — `302` is expected for the OIDC flow; `500` indicates a server-side error.
+- **`Set-Cookie` header** in the response from `GET /login-start` - confirms the session cookie is being set.
+- **`Cookie` header** in the request to `GET /callback` - confirms the browser is sending the session cookie back.
+- **HTTP status codes** on each redirect - `302` is expected for the OIDC flow; `500` indicates a server-side error.
 
 ### Check reverse proxy headers
 

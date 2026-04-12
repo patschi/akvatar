@@ -1,5 +1,5 @@
 /**
- * Settings overlay – manages theme and language preferences.
+ * Settings overlay - manages theme and language preferences.
  *
  * Theme preference is applied instantly via data-theme attribute.
  * Language preference requires a page reload so the server re-renders.
@@ -18,7 +18,7 @@
         return match ? match[1] : null;
     }
 
-    /** Set a persistent cookie (400 days — maximum allowed by browsers). */
+    /** Set a persistent cookie (400 days - maximum allowed by browsers). */
     function setCookie(cookieName, cookieValue) {
         var expiryDate = new Date(Date.now() + 400 * 86400000).toUTCString();
         document.cookie = cookieName + "=" + cookieValue
@@ -148,7 +148,7 @@
         });
     });
 
-    // Reset settings button – removes all preference cookies and reloads with defaults
+    // Reset settings button - removes all preference cookies and reloads with defaults
 
     var resetButton = document.getElementById("settingsReset");
     if (resetButton) {
