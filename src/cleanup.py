@@ -49,9 +49,9 @@ from croniter import croniter
 
 from src.authentik import list_active_user_pks, list_all_user_pks
 from src.config import cleanup_cfg, dry_run, img_cfg
+from src.image_formats import FORMAT_MAP
 from src.imaging import (
     AVATAR_ROOT,
-    FORMAT_MAP,
     METADATA_ROOT,
     cleanup_avatar_files,
     get_all_avatar_metadata,

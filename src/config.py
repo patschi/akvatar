@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 import yaml
 
 from src import APP_NAME, APP_VERSION
+from src.image_formats import FORMAT_MAP as _FORMAT_MAP
 
 
 def _fatal(msg: str) -> None:
@@ -176,9 +177,6 @@ _fatal_unless(
     _ak_avatar_size in _valid_sizes,
     f"authentik.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.",
 )
-
-# FORMAT_MAP needed here for avatar_format validation; also reused for LDAP validation below
-from src.imaging import FORMAT_MAP as _FORMAT_MAP
 
 _valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
 

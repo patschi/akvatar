@@ -24,6 +24,7 @@ from src import USER_AGENT
 from src.auth import login_required
 from src.config import app_cfg, import_cfg
 from src.i18n import t
+from src.image_formats import ALLOWED_PROXY_MIMETYPES, MIME_TO_EXT
 from src.sec_csrf import validate_csrf_token
 
 log = logging.getLogger("img_import")
@@ -35,23 +36,6 @@ _MAX_FETCH_SIZE = app_cfg.get("max_upload_size_mb", 10) * 1024 * 1024  # MB -> b
 _MAX_FETCH_SIZE_MB = app_cfg.get("max_upload_size_mb", 10)
 _FETCH_TIMEOUT = 15  # seconds
 _MAX_REDIRECTS = 5  # maximum redirect hops to follow during URL import
-
-# Content-Type to file extension mapping (for Gravatar filenames)
-_MIME_TO_EXT: dict[str, str] = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-}
-
-# Allowlist of MIME types accepted from remote servers - derived from _MIME_TO_EXT
-# so both stay in sync automatically: adding a new MIME type to _MIME_TO_EXT
-# automatically permits it here too.  Types absent from _MIME_TO_EXT (e.g.
-# image/svg+xml, which can carry embedded JavaScript) are excluded by design.
-# The upload pipeline's magic-byte check and Pillow decode are the definitive
-# gate; this is a first layer that prevents obviously wrong content from being
-# proxied to the browser at all.
-_ALLOWED_PROXY_MIMETYPES = frozenset(_MIME_TO_EXT.keys())
 
 # Config: per-source enable flags and URL security settings
 GRAVATAR_ENABLED = import_cfg.get("gravatar", {}).get("enabled", True)
@@ -283,7 +267,7 @@ def api_fetch_gravatar():
 
         # Only proxy MIME types we explicitly accept - image/svg+xml and
         # others that can carry scripts are rejected at this layer.
-        if content_type not in _ALLOWED_PROXY_MIMETYPES:
+        if content_type not in ALLOWED_PROXY_MIMETYPES:
             resp.close()
             log.warning(
                 "Gravatar returned unexpected Content-Type %r - rejecting.",
@@ -299,7 +283,7 @@ def api_fetch_gravatar():
 
         # Build a filename from the hash + content-type extension so the
         # client can display a meaningful name (e.g. "d41d8cd9…f00d.jpg")
-        ext = _MIME_TO_EXT.get(content_type, "jpg")
+        ext = MIME_TO_EXT.get(content_type, "jpg")
         filename = f"{md5_hash}.{ext}"
 
         return Response(
@@ -374,7 +358,7 @@ def api_fetch_url():
         # excluded because SVG can contain embedded JavaScript; accepting any
         # image/* would allow an attacker to craft a server that returns
         # malicious SVG with a spoofed content-type prefix.
-        if content_type not in _ALLOWED_PROXY_MIMETYPES:
+        if content_type not in ALLOWED_PROXY_MIMETYPES:
             resp.close()
             return jsonify({"error": t("error.import.unsupported_type")}), 400
 

@@ -34,6 +34,7 @@ from src.app_static import serve_static_file
 from src.auth import login_required
 from src.config import security_cfg
 from src.i18n import t
+from src.image_formats import ALLOWED_EXTENSIONS
 from src.image_import import (
     GRAVATAR_ENABLED,
     GRAVATAR_RESTRICT_EMAIL,
@@ -41,7 +42,6 @@ from src.image_import import (
     WEBCAM_ENABLED,
 )
 from src.imaging import (
-    ALLOWED_EXTENSIONS,
     AVATAR_ROOT,
     MAX_SIZE,
     METADATA_ROOT,

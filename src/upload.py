@@ -28,11 +28,9 @@ from PIL import Image
 from src.authentik import revert_avatar_url, update_avatar_url
 from src.config import ak_cfg, dry_run, img_cfg
 from src.i18n import t
+from src.image_formats import ALLOWED_EXTENSIONS, ALLOWED_FORMATS, FORMAT_MAP
 from src.imaging import (
-    ALLOWED_EXTENSIONS,
-    ALLOWED_FORMATS,
     AVATAR_BASE_URL,
-    FORMAT_MAP,
     MAX_DIMENSION,
     METADATA_ROOT,
     MIN_DIMENSION,

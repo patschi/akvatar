@@ -16,6 +16,7 @@ from uuid import uuid4
 from PIL import Image, ImageOps
 
 from src.config import app_cfg, img_cfg
+from src.image_formats import FORMAT_MAP
 
 log = logging.getLogger("imaging")
 
@@ -38,12 +39,6 @@ METADATA_ROOT = AVATAR_ROOT / "_metadata"
 MAX_SIZE = max(img_cfg["sizes"])
 _avatar_base_url = app_cfg["public_avatar_url"]
 AVATAR_BASE_URL = _avatar_base_url
-
-# File extensions the upload endpoint will accept
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
-
-# Pillow format strings we consider legitimate (what `image.format` returns)
-ALLOWED_FORMATS = {"JPEG", "PNG", "WEBP"}
 
 # Magic byte signatures for each allowed format.
 # Checked before Pillow even touches the file so that crafted inputs with a
@@ -144,14 +139,6 @@ def ensure_size_directories_existence() -> None:
     METADATA_ROOT.mkdir(parents=True, exist_ok=True)
     log.debug("Ensured size and metadata directories under %s.", AVATAR_ROOT)
 
-
-# Shared format mapping and save helper
-FORMAT_MAP = {
-    "jpeg": ("JPEG", "jpg"),
-    "jpg": ("JPEG", "jpg"),
-    "png": ("PNG", "png"),
-    "webp": ("WEBP", "webp"),
-}
 
 _QUALITY_STEP = 5
 _MIN_QUALITY = 10
