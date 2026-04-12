@@ -165,9 +165,7 @@ def safe_fetch(url: str) -> http_requests.Response:
                 raise ValueError("Redirect response missing Location header.")
             resp.close()
             url = location
-            log.debug(
-                "Following redirect (hop %d/%d): %r", hop + 1, MAX_REDIRECTS, url
-            )
+            log.debug("Following redirect (hop %d/%d): %r", hop + 1, MAX_REDIRECTS, url)
             continue
 
         # Non-redirect response - return it to the caller
