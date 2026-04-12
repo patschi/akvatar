@@ -24,6 +24,9 @@ from src.config import (
     branding_cfg,
     debug_full,
     security_cfg,
+    tls_cert,
+    tls_configured,
+    tls_key,
     tls_minimum_version,
     web_cfg,
 )
@@ -106,9 +109,8 @@ def create_app() -> Flask:
 
     log.debug("Flask app created (max upload = %d MB).", app_cfg["max_upload_size_mb"])
 
-    # Ensure the avatar storage directory tree exists (root + all size sub-dirs)
-    AVATAR_ROOT.mkdir(parents=True, exist_ok=True)
-    METADATA_ROOT.mkdir(parents=True, exist_ok=True)
+    # Ensure the avatar storage directory tree exists (root + all size sub-dirs + metadata).
+    # ensure_size_directories_existence() creates AVATAR_ROOT, size sub-dirs, and METADATA_ROOT.
     ensure_size_directories_existence()
     log.debug("Avatar storage root: %s", AVATAR_ROOT.resolve())
     log.debug("Metadata storage root: %s", METADATA_ROOT.resolve())
@@ -145,10 +147,7 @@ def create_app() -> Flask:
     # header is consulted.  ProxyFix (when enabled) runs inside this wrapper and
     # overwrites wsgi.url_scheme on a per-request basis from X-Forwarded-Proto,
     # so proxy-terminated HTTPS is handled correctly without relying on the seed.
-    _tls_active = bool(
-        web_cfg.get("tls", {}).get("cert", "") and web_cfg.get("tls", {}).get("key", "")
-    )
-    _url_scheme = "https" if _tls_active else "http"
+    _url_scheme = "https" if tls_configured else "http"
     _inner_wsgi = app.wsgi_app
 
     def _set_url_scheme(environ, start_response):
@@ -274,7 +273,7 @@ def create_app() -> Flask:
         # HSTS - instruct browsers to always use HTTPS for this origin.
         # Only set when TLS is active so plain-HTTP deployments are not broken.
         # 63072000 s = 2 years (recommended minimum for preload eligibility).
-        if _tls_active:
+        if tls_configured:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=63072000; includeSubDomains"
             )
@@ -332,10 +331,7 @@ if __name__ == "__main__":
     # TLS support
     import ssl as _ssl
 
-    _tls_cfg = web_cfg.get("tls", {})
-    tls_cert = _tls_cfg.get("cert", "")
-    tls_key = _tls_cfg.get("key", "")
-    if tls_cert and tls_key:
+    if tls_configured:
         # Build a full SSLContext so minimum_version can be enforced;
         # Werkzeug accepts either a (cert, key) tuple or an SSLContext instance.
         ssl_context = _ssl.SSLContext(_ssl.PROTOCOL_TLS_SERVER)

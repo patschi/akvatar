@@ -35,22 +35,25 @@ os.environ.setdefault("PYTHONUNBUFFERED", "1")
 os.environ["HOME"] = "/tmp"
 
 from src.cleanup import start_cleanup_thread  # noqa: E402
-from src.config import http2_cfg, tls_minimum_version, web_cfg  # noqa: E402
+from src.config import (  # noqa: E402
+    http2_cfg,
+    tls_cert,
+    tls_configured,
+    tls_key,
+    tls_minimum_version,
+    web_cfg,
+)
 
 log = logging.getLogger("run_app")
 
 host = web_cfg.get("host", "0.0.0.0")
 port = web_cfg.get("port", 5000)
-_tls_cfg = web_cfg.get("tls", {})
-tls_cert = _tls_cfg.get("cert", "")
-tls_key = _tls_cfg.get("key", "")
-scheme = "https" if tls_cert and tls_key else "http"
+scheme = "https" if tls_configured else "http"
 
 # HTTP/2 is active when both the config option is enabled and TLS is configured.
 # gunicorn negotiates HTTP/2 via ALPN during the TLS handshake when h2 is installed.
 _http2_configured = bool(http2_cfg.get("enabled", True))
-_tls_active = bool(tls_cert and tls_key)
-http2_active = _http2_configured and _tls_active
+http2_active = _http2_configured and tls_configured
 
 # Start the cleanup thread in the master process before gunicorn forks
 start_cleanup_thread()
@@ -81,7 +84,7 @@ if tls_cert and tls_key:
 if http2_active:
     # Advertise h2 alongside http/1.1 via ALPN so clients can negotiate HTTP/2
     args.extend(["--http-protocols", "h2,h1"])
-elif _http2_configured and not _tls_active:
+elif _http2_configured and not tls_configured:
     log.warning(
         "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS."
     )
@@ -123,7 +126,7 @@ def _when_ready(server):
 gunicorn_app = WSGIApplication("%(prog)s [OPTIONS] [APP_MODULE]")
 gunicorn_app.cfg.set("when_ready", _when_ready)
 
-if _tls_active:
+if tls_configured:
     # Enforce the configured minimum TLS version on the server SSL context.
     # The default factory is called first (it loads cert/key and applies gunicorn's
     # standard options), then minimum_version is set before returning.

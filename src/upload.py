@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from PIL import Image
 
 from src.authentik import revert_avatar_url, update_avatar_url
-from src.config import ak_cfg, dry_run, img_cfg
+from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_cfg
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, ALLOWED_FORMATS, FORMAT_MAP
 from src.imaging import (
@@ -49,7 +49,6 @@ log = logging.getLogger("upload")
 # Module-level config (immutable after startup)
 _ldap_enabled = ldap_is_enabled()
 _ldap_photos = ldap_photos_config()
-_ak_avatar_size = ak_cfg.get("avatar_size", 512)
 
 
 # SSE helper
@@ -65,9 +64,10 @@ _ak_avatar_size = ak_cfg.get("avatar_size", 512)
 #     to Authentik.
 # Both go through the same size/format constants so they cannot diverge.
 
-_CANONICAL_SIZE_KEY = f"{_ak_avatar_size}x{_ak_avatar_size}"
-# Resolve the canonical file extension from config; "jpeg" and "jpg" both resolve to "jpg"
-_CANONICAL_FORMAT = FORMAT_MAP[ak_cfg.get("avatar_format", "jpg").lower()][1]
+_CANONICAL_SIZE_KEY = f"{ak_avatar_size}x{ak_avatar_size}"
+# Canonical file extension comes from config validation (config.py resolves
+# "jpeg"/"jpg" to the canonical "jpg" extension via FORMAT_MAP).
+_CANONICAL_FORMAT = ak_avatar_ext
 
 
 def build_canonical_url(filename_base: str) -> str:
@@ -213,7 +213,7 @@ def _resolve_canonical_url(urls: dict) -> str:
     if not canonical:
         raise RuntimeError(
             f"Canonical avatar URL not found: size={_CANONICAL_SIZE_KEY}, "
-            f"format={_CANONICAL_FORMAT}. Ensure {_ak_avatar_size} is in "
+            f"format={_CANONICAL_FORMAT}. Ensure {ak_avatar_size} is in "
             f'images.sizes and "{_CANONICAL_FORMAT}" is in images.formats.'
         )
     log.debug("Canonical Authentik avatar URL: %s", canonical)

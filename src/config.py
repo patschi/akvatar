@@ -99,27 +99,28 @@ if dry_run:
     )
 
 # Startup SSL warnings (logged once at import time)
-_tls_cfg = web_cfg.get("tls", {})
-_tls_cert = _tls_cfg.get("cert", "")
-_tls_key = _tls_cfg.get("key", "")
-_tls_configured = bool(_tls_cert and _tls_key)
+# TLS configuration (exported for use by app.py and run_app.py)
+tls_cfg = web_cfg.get("tls", {})
+tls_cert = tls_cfg.get("cert", "")
+tls_key = tls_cfg.get("key", "")
+tls_configured = bool(tls_cert and tls_key)
 
 # Validate that configured TLS file paths actually exist on disk
-if _tls_cert:
+if tls_cert:
     _fatal_unless(
-        os.path.isfile(_tls_cert),
-        f"webserver.tls.cert={_tls_cert!r} does not exist or is not a file.",
+        os.path.isfile(tls_cert),
+        f"webserver.tls.cert={tls_cert!r} does not exist or is not a file.",
     )
-if _tls_key:
+if tls_key:
     _fatal_unless(
-        os.path.isfile(_tls_key),
-        f"webserver.tls.key={_tls_key!r} does not exist or is not a file.",
+        os.path.isfile(tls_key),
+        f"webserver.tls.key={tls_key!r} does not exist or is not a file.",
     )
 
 # Minimum TLS version: dynamically resolved against ssl.TLSVersion by name so
 # any TLS version added to Python's ssl module in the future is valid without
 # requiring code changes.
-_tls_min_ver_str = _tls_cfg.get("min_version", "TLSv1_2")
+_tls_min_ver_str = tls_cfg.get("min_version", "TLSv1_2")
 _valid_tls_versions = [v.name for v in ssl.TLSVersion]
 _fatal_unless(
     _tls_min_ver_str in _valid_tls_versions,
@@ -128,7 +129,7 @@ _fatal_unless(
 )
 tls_minimum_version: ssl.TLSVersion = ssl.TLSVersion[_tls_min_ver_str]
 
-if not _tls_configured:
+if not tls_configured:
     log.warning(
         "Server TLS is NOT configured - the built-in server will run over plain HTTP."
     )
@@ -136,11 +137,11 @@ log.debug("TLS minimum version: %s.", tls_minimum_version.name)
 
 # HTTP/2 startup status
 _http2_enabled = bool(http2_cfg.get("enabled", True))
-if _http2_enabled and _tls_configured:
+if _http2_enabled and tls_configured:
     log.info(
         "HTTP/2 support enabled (TLS configured, ALPN negotiation will advertise h2)."
     )
-elif _http2_enabled and not _tls_configured:
+elif _http2_enabled and not tls_configured:
     log.warning(
         "HTTP/2 is enabled in config but TLS is not configured - HTTP/2 requires TLS and will not be used."
     )
@@ -172,10 +173,11 @@ if oidc_cfg.get("skip_cert_verify", False):
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get("sizes", [])
 
-_ak_avatar_size = ak_cfg.get("avatar_size", 1024)
+# Validated Authentik avatar settings (exported for use by upload.py)
+ak_avatar_size = ak_cfg.get("avatar_size", 1024)
 _fatal_unless(
-    _ak_avatar_size in _valid_sizes,
-    f"authentik.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.",
+    ak_avatar_size in _valid_sizes,
+    f"authentik.avatar_size={ak_avatar_size} is not in images.sizes={_valid_sizes}.",
 )
 
 _valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
@@ -187,17 +189,17 @@ _fatal_unless(
     f"Valid values: {sorted(_FORMAT_MAP.keys())}.",
 )
 # Resolve the canonical file extension ("jpeg" and "jpg" both resolve to "jpg")
-_ak_avatar_ext = _FORMAT_MAP[_ak_avatar_format.lower()][1]
+ak_avatar_ext = _FORMAT_MAP[_ak_avatar_format.lower()][1]
 _fatal_unless(
-    _ak_avatar_ext in _valid_formats_lower,
-    f"authentik.avatar_format={_ak_avatar_format!r} (ext={_ak_avatar_ext!r}) is not in "
+    ak_avatar_ext in _valid_formats_lower,
+    f"authentik.avatar_format={_ak_avatar_format!r} (ext={ak_avatar_ext!r}) is not in "
     f"images.formats={list(img_cfg.get('formats', []))}.",
 )
 log.debug(
     "Authentik API will use %dx%d %s for avatar URL.",
-    _ak_avatar_size,
-    _ak_avatar_size,
-    _ak_avatar_ext.upper(),
+    ak_avatar_size,
+    ak_avatar_size,
+    ak_avatar_ext.upper(),
 )
 
 if ldap_cfg.get("enabled", False):

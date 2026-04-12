@@ -32,8 +32,8 @@ log = logging.getLogger("img_import")
 import_bp = Blueprint("import", __name__)
 
 # Remote image fetch limits (derived from the same config as direct uploads)
-_MAX_FETCH_SIZE = app_cfg.get("max_upload_size_mb", 10) * 1024 * 1024  # MB -> bytes
 _MAX_FETCH_SIZE_MB = app_cfg.get("max_upload_size_mb", 10)
+_MAX_FETCH_SIZE = _MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
 _FETCH_TIMEOUT = 15  # seconds
 _MAX_REDIRECTS = 5  # maximum redirect hops to follow during URL import
 
