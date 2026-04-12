@@ -368,4 +368,3 @@ def api_upload_commit():
         "Session avatar committed for user %r.", session["user"].get("username", "?")
     )
     return "", 204
-

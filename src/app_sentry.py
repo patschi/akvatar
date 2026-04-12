@@ -115,4 +115,3 @@ def get_browser_sentry_config() -> dict | None:
         "on" if sentry_browser_tunnel_enabled else "off",
     )
     return config
-

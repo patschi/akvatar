@@ -115,4 +115,3 @@ def api_sentry_tunnel():
     except http_requests.RequestException as exc:
         log.warning("Sentry tunnel: upstream request failed: %s", exc)
         return Response("", status=502)
-

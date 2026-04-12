@@ -99,9 +99,7 @@ _sentry_js_origin: str | None = None
 if sentry_browser_enabled and sentry_browser_js_sdk_url:
     _parsed_sentry_js = urlparse(sentry_browser_js_sdk_url)
     if _parsed_sentry_js.scheme and _parsed_sentry_js.netloc:
-        _sentry_js_origin = (
-            f"{_parsed_sentry_js.scheme}://{_parsed_sentry_js.netloc}"
-        )
+        _sentry_js_origin = f"{_parsed_sentry_js.scheme}://{_parsed_sentry_js.netloc}"
 
 # Build script-src value - 'self' is always present; the Sentry JS origin is
 # appended only when browser-side Sentry is configured.
@@ -122,9 +120,7 @@ if sentry_browser_enabled and sentry_browser_dsn and not sentry_browser_tunnel_e
         _sentry_ingest_host = _parsed_sentry_dsn.hostname
         if _parsed_sentry_dsn.port:
             _sentry_ingest_host = f"{_sentry_ingest_host}:{_parsed_sentry_dsn.port}"
-        _sentry_ingest_origin = (
-            f"{_parsed_sentry_dsn.scheme}://{_sentry_ingest_host}"
-        )
+        _sentry_ingest_origin = f"{_parsed_sentry_dsn.scheme}://{_sentry_ingest_host}"
 
 # Build connect-src value once at startup.
 # 'self'    - API endpoints (upload, heartbeat, sentry tunnel when enabled).
