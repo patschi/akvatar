@@ -209,6 +209,10 @@ authentik:
   # Which generated image size (px) to use for the Authentik avatar URL.
   # Must be one of the values in images.sizes below.
   avatar_size: 512
+  # Which image format to use for the Authentik avatar URL.
+  # Must be one of the values in images.formats below.
+  # Supported formats: jpg (or jpeg), png, webp
+  avatar_format: "jpg"
   # Authentik user attribute to store the avatar URL in
   avatar_attribute: "avatar"
   # Skip TLS certificate verification (set to true for self-signed certificates)

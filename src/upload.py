@@ -68,7 +68,8 @@ _ak_avatar_size = ak_cfg.get("avatar_size", 512)
 # Both go through the same size/format constants so they cannot diverge.
 
 _CANONICAL_SIZE_KEY = f"{_ak_avatar_size}x{_ak_avatar_size}"
-_CANONICAL_FORMAT = "jpg"
+# Resolve the canonical file extension from config; "jpeg" and "jpg" both resolve to "jpg"
+_CANONICAL_FORMAT = FORMAT_MAP[ak_cfg.get("avatar_format", "jpg").lower()][1]
 
 
 def build_canonical_url(filename_base: str) -> str:

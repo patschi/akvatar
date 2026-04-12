@@ -176,8 +176,30 @@ _fatal_unless(
     _ak_avatar_size in _valid_sizes,
     f"authentik.avatar_size={_ak_avatar_size} is not in images.sizes={_valid_sizes}.",
 )
+
+# FORMAT_MAP needed here for avatar_format validation; also reused for LDAP validation below
+from src.imaging import FORMAT_MAP as _FORMAT_MAP
+
+_valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
+
+_ak_avatar_format = ak_cfg.get("avatar_format", "jpg")
+_fatal_unless(
+    _ak_avatar_format.lower() in _FORMAT_MAP,
+    f"authentik.avatar_format={_ak_avatar_format!r} is not a valid format. "
+    f"Valid values: {sorted(_FORMAT_MAP.keys())}.",
+)
+# Resolve the canonical file extension ("jpeg" and "jpg" both resolve to "jpg")
+_ak_avatar_ext = _FORMAT_MAP[_ak_avatar_format.lower()][1]
+_fatal_unless(
+    _ak_avatar_ext in _valid_formats_lower,
+    f"authentik.avatar_format={_ak_avatar_format!r} (ext={_ak_avatar_ext!r}) is not in "
+    f"images.formats={list(img_cfg.get('formats', []))}.",
+)
 log.debug(
-    "Authentik API will use %dx%d JPG for avatar URL.", _ak_avatar_size, _ak_avatar_size
+    "Authentik API will use %dx%d %s for avatar URL.",
+    _ak_avatar_size,
+    _ak_avatar_size,
+    _ak_avatar_ext.upper(),
 )
 
 if ldap_cfg.get("enabled", False):
@@ -187,10 +209,7 @@ if ldap_cfg.get("enabled", False):
             "LDAP is enabled but no photo attributes are configured (ldap.photos is empty)."
         )
 
-    from src.imaging import FORMAT_MAP
-
-    _valid_image_types = set(FORMAT_MAP.keys())
-    _valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
+    _valid_image_types = set(_FORMAT_MAP.keys())
     _REQUIRED_PHOTO_KEYS = ("attribute", "type", "image_type", "image_size")
 
     for _i, _photo in enumerate(_ldap_photos):
@@ -218,7 +237,7 @@ if ldap_cfg.get("enabled", False):
                 _photo["image_size"] in _valid_sizes,
                 f"{_pfx}.image_size={_photo['image_size']} is not in images.sizes={_valid_sizes} (required for type=url).",
             )
-            _ext = FORMAT_MAP[_photo["image_type"]][1]
+            _ext = _FORMAT_MAP[_photo["image_type"]][1]
             _fatal_unless(
                 _ext in _valid_formats_lower,
                 f"{_pfx}.image_type={_photo['image_type']!r} (ext={_ext}) is not in images.formats (required for type=url).",

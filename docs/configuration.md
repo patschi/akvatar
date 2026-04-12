@@ -80,6 +80,7 @@ effect.
 | [`authentik.base_url`](#authentikbase_url)                                       | URL     | Authentik instance base URL                         |
 | [`authentik.api_token`](#authentikapi_token)                                     | String  | Authentik Admin API token                           |
 | [`authentik.avatar_size`](#authentikavatar_size)                                 | Integer | Image size (px) used for the Authentik avatar URL   |
+| [`authentik.avatar_format`](#authentikavatar_format)                             | String  | Image format used for the Authentik avatar URL      |
 | [`authentik.avatar_attribute`](#authentikavatar_attribute)                       | String  | Authentik user attribute to store the avatar URL    |
 | [`authentik.skip_cert_verify`](#authentikskip_cert_verify)                       | Boolean | Skip TLS certificate verification for API requests  |
 | [`ldap.enabled`](#ldapenabled)                                                   | Boolean | Enable LDAP photo attribute updates                 |
@@ -865,6 +866,24 @@ An API token with permissions to read and write user attributes. See
 Which generated image size (in pixels) to use for the avatar URL pushed to Authentik. This value
 **must** be one of the entries in `images.sizes`. The application validates this at startup and
 exits with an error if the size is not found.
+
+### `authentik.avatar_format`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | String  |
+| **Default** | `"jpg"` |
+
+Which image format to use for the avatar URL pushed to Authentik. The value must be a recognized
+format key and the resolved file extension must be present in `images.formats` (a file must
+actually be generated for it). The application validates this at startup and exits with an error
+if the format is not valid or not present in the generated formats list.
+
+Supported values: `jpg` (or `jpeg`), `png`, `webp`. Both `jpg` and `jpeg` are equivalent - they
+resolve to the `.jpg` file extension.
+
+Use `jpg` for maximum compatibility. Use `png` for lossless encoding or `webp` for
+high-efficiency encoding.
 
 ### `authentik.avatar_attribute`
 

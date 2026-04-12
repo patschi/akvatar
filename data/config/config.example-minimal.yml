@@ -63,6 +63,7 @@ ldap: {}
 
 # Output image sizes and formats generated for each upload.
 # authentik.avatar_size (default: 1024) must be present in sizes.
+# authentik.avatar_format (default: "jpg") must be present in formats.
 # Add or remove sizes and formats to match your storage and bandwidth needs.
 images:
   sizes:
