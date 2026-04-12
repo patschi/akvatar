@@ -16,4 +16,4 @@ services:
       - "5000:5000"
     volumes:
       - ./data/config:/data/config:ro
-      - ./data/user-avatars:/app/data/user-avatars
+      - ./data/user-avatars:/data/user-avatars

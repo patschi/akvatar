@@ -14,7 +14,7 @@ services:
       - "5000:5000"
     volumes:
       - akvatar-conf:/data/config:ro
-      - akvatar-data:/app/data/user-avatars
+      - akvatar-data:/data/user-avatars
 
 volumes:
   akvatar-data:

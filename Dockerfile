@@ -92,7 +92,7 @@ COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4d
 
 # Data directories - ownership inherited from builder skeletons so the
 # nonroot user can write when Docker initialises the volumes.
-COPY --from=builder --chown=65532:65532 /data-skel/ /app/data/
+COPY --from=builder --chown=65532:65532 /data-skel/ /data/
 COPY --from=builder --chown=65532:65532 /config-skel/ /data/config/
 
 VOLUME ["/data/user-avatars", "/data/config"]
