@@ -1,6 +1,13 @@
 services:
   akvatar:
-    build: .
+    build:
+      context: .
+      args:
+        # BASE_VERSION is parsed from src/__init__.py by CI automatically.
+        # For local builds, export both vars or they fall back to the placeholders shown.
+        # Usage: BASE_VERSION=$(awk -F'"' '/^APP_BASE_VERSION[[:space:]]*=/{print $2}' src/__init__.py) GIT_HASH=$(git rev-parse --short HEAD) docker compose -f compose.dev.yml up --build
+        BASE_VERSION: ${BASE_VERSION:-0.0.0}
+        GIT_HASH: ${GIT_HASH:-dev}
     container_name: akvatar
     restart: no
     read_only: true

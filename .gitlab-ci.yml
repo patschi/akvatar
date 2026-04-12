@@ -161,6 +161,9 @@ push-container-gitlab:
   before_script: []
   script:
     - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"},\"$(echo -n $CI_DEPENDENCY_PROXY_SERVER | awk -F[:] '{print $1}')\":{\"auth\":\"$(printf "%s:%s" ${CI_DEPENDENCY_PROXY_USER} "${CI_DEPENDENCY_PROXY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    # Parse APP_BASE_VERSION from __init__.py - the single source of truth for the version number.
+    # awk splits on " and prints the second field from the matching line, e.g. "0.1.0" -> 0.1.0.
+    - BASE_VERSION=$(awk -F'"' '/^APP_BASE_VERSION[[:space:]]*=/{print $2}' src/__init__.py)
     - >
       /kaniko/executor
       --cache=false
@@ -170,12 +173,14 @@ push-container-gitlab:
       --compressed-caching=true
       --single-snapshot
       --annotation="org.opencontainers.image.title=$CI_PROJECT_NAME"
-      --annotation="org.opencontainers.image.version=${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+      --annotation="org.opencontainers.image.version=${BASE_VERSION}+${CI_COMMIT_SHORT_SHA}"
       --annotation="org.opencontainers.image.source=$CI_PROJECT_URL"
       --annotation="org.opencontainers.image.revision=$CI_COMMIT_SHA"
       --annotation="org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
       --annotation="org.opencontainers.image.description=$CI_PROJECT_DESCRIPTION"
       --annotation="org.opencontainers.image.licenses=GPLv3"
+      --build-arg="BASE_VERSION=${BASE_VERSION}"
+      --build-arg="GIT_HASH=${CI_COMMIT_SHORT_SHA}"
       --context="$CI_PROJECT_DIR"
       --dockerfile="$CI_PROJECT_DIR/Dockerfile"
       --destination="$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"

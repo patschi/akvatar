@@ -71,6 +71,14 @@ RUN mkdir -p /data-skel/user-avatars && \
 # The :nonroot tag sets the default user to 65532 (nonroot).
 FROM gcr.io/distroless/python3-debian13:nonroot@sha256:51b1acc177d535f20fa30a175a657079ee7dce6e326541cfd83a474d9928e123
 
+# Base version and Git commit short hash passed at build time via --build-arg.
+# BASE_VERSION is parsed from src/__init__.py by the CI / build scripts so
+# __init__.py stays the single source of truth for the version number.
+# Both default to safe placeholders for plain `docker build` without explicit args.
+ARG GIT_HASH=unknown
+ARG BASE_VERSION=0.0.0
+LABEL org.opencontainers.image.version="${BASE_VERSION}+${GIT_HASH}"
+
 WORKDIR /app
 
 # Copy installed packages into the version-independent dist-packages
@@ -82,7 +90,8 @@ COPY --from=builder /lib-staging/ /usr/lib/x86_64-linux-gnu/
 
 ENV PYTHONDONTWRITEBYTECODE="1" \
     PYTHONUNBUFFERED="1" \
-    CONFIG_PATH="/data/config/config.yml"
+    CONFIG_PATH="/data/config/config.yml" \
+    APP_GIT_HASH="${GIT_HASH}"
 
 # Copy application code and healthcheck binary (explicit files only)
 COPY app.py run_app.py run_cleanup.py ./
