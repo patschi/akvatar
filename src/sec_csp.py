@@ -29,7 +29,16 @@ from urllib.parse import urlparse
 
 from flask import g
 
-from src.config import csp_enabled, csp_report_only, csp_report_uri, public_avatar_url
+from src.config import (
+    csp_enabled,
+    csp_report_only,
+    csp_report_uri,
+    public_avatar_url,
+    sentry_browser_dsn,
+    sentry_browser_enabled,
+    sentry_browser_js_sdk_url,
+    sentry_browser_tunnel_enabled,
+)
 
 log = logging.getLogger("csp")
 
@@ -83,6 +92,49 @@ if _avatar_origin:
 
 _IMG_SRC = " ".join(_img_src_parts)
 
+# Derive the origin of the Sentry Browser JS SDK URL so it can be added to
+# script-src.  When browser Sentry is disabled or no URL is configured the
+# script-src stays at "'self'" (plus the per-request nonce).
+_sentry_js_origin: str | None = None
+if sentry_browser_enabled and sentry_browser_js_sdk_url:
+    _parsed_sentry_js = urlparse(sentry_browser_js_sdk_url)
+    if _parsed_sentry_js.scheme and _parsed_sentry_js.netloc:
+        _sentry_js_origin = (
+            f"{_parsed_sentry_js.scheme}://{_parsed_sentry_js.netloc}"
+        )
+
+# Build script-src value - 'self' is always present; the Sentry JS origin is
+# appended only when browser-side Sentry is configured.
+_script_src_parts = ["'self'"]
+if _sentry_js_origin:
+    _script_src_parts.append(_sentry_js_origin)
+_SCRIPT_SRC = " ".join(_script_src_parts)
+
+# Derive the Sentry ingest origin for connect-src.  This is only needed when
+# browser-side Sentry is enabled but the tunnel is DISABLED, because the
+# browser SDK sends envelopes directly to the Sentry host and CSP must allow
+# that connection.  When the tunnel IS enabled the browser only talks to 'self'
+# (/api/sentry-event) so no extra connect-src entry is required.
+_sentry_ingest_origin: str | None = None
+if sentry_browser_enabled and sentry_browser_dsn and not sentry_browser_tunnel_enabled:
+    _parsed_sentry_dsn = urlparse(sentry_browser_dsn)
+    if _parsed_sentry_dsn.scheme and _parsed_sentry_dsn.hostname:
+        _sentry_ingest_host = _parsed_sentry_dsn.hostname
+        if _parsed_sentry_dsn.port:
+            _sentry_ingest_host = f"{_sentry_ingest_host}:{_parsed_sentry_dsn.port}"
+        _sentry_ingest_origin = (
+            f"{_parsed_sentry_dsn.scheme}://{_sentry_ingest_host}"
+        )
+
+# Build connect-src value once at startup.
+# 'self'    - API endpoints (upload, heartbeat, sentry tunnel when enabled).
+# blob:     - Cropper.js calls fetch(blobUrl) to read the cropped canvas.
+# <origin>  - Sentry ingest host (only when tunnel is disabled).
+_connect_src_parts = ["'self'", "blob:"]
+if _sentry_ingest_origin:
+    _connect_src_parts.append(_sentry_ingest_origin)
+_CONNECT_SRC = " ".join(_connect_src_parts)
+
 # Pre-built CSP directive string.  The nonce placeholder is substituted per
 # request in build_csp_header() to keep allocation minimal.
 #
@@ -96,11 +148,11 @@ _IMG_SRC = " ".join(_img_src_parts)
 #                          by modern browsers that ignore the legacy header.
 _CSP_TEMPLATE = (
     "default-src 'none'; "
-    "script-src 'self' 'nonce-{nonce}'; "
+    f"script-src {_SCRIPT_SRC} 'nonce-{{nonce}}'; "
     "style-src 'self'; "
     f"img-src {_IMG_SRC}; "
     "font-src 'self'; "
-    "connect-src 'self' blob:; "
+    f"connect-src {_CONNECT_SRC}; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"

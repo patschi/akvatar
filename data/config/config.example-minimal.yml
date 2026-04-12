@@ -79,4 +79,7 @@ images:
 # --- Sentry Error Tracking (optional) ---
 # Sends unhandled exceptions and (optionally) performance data to Sentry.
 # Requires a valid DSN from your Sentry project settings.
+# Add a "browser:" sub-key to configure client-side tracking via the self-hosted
+# Sentry JS SDK (events are tunnelled through /api/sentry-event).
+# See config.example-full.yml for all browser-side options.
 sentry: {}

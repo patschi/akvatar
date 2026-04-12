@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from src import APP_VERSION
 from src.app_middleware import MinifyingTemplateLoader, PrefixMiddleware
 from src.app_monitor import start_memory_monitor
-from src.app_sentry import init_sentry
+from src.app_sentry import get_browser_sentry_config, init_sentry
 from src.app_static import serve_static_file
 from src.auth import init_oauth
 from src.cleanup import start_cleanup_thread
@@ -43,6 +43,7 @@ from src.web_auth import auth_bp
 from src.web_image_import import import_bp
 from src.web_reset_avatar import reset_avatar_bp
 from src.web_routes import routes_bp
+from src.web_sentry import sentry_bp
 
 log = logging.getLogger("app")
 
@@ -169,6 +170,7 @@ def create_app() -> Flask:
     app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
     app.register_blueprint(reset_avatar_bp)  # /api/remove-avatar
     app.register_blueprint(import_bp)  # /api/fetch-gravatar, /api/fetch-url
+    app.register_blueprint(sentry_bp)  # /api/sentry-event (browser Sentry tunnel)
 
     # Rate limiting on avatar/metadata serving endpoints (before_request hook).
     # Deferred import: rate_limit imports src.config at module level which triggers
@@ -187,6 +189,7 @@ def create_app() -> Flask:
 
     # Template context processor - inject shared variables into all templates
     _brand_name = branding_name
+    _browser_sentry = get_browser_sentry_config()
 
     @app.context_processor
     def _inject_globals():
@@ -205,6 +208,9 @@ def create_app() -> Flask:
             # same value appears in both inline <script nonce="…"> tags and
             # the Content-Security-Policy response header.
             "csp_nonce": generate_csp_nonce,
+            # Browser-side Sentry config dict (None when disabled).
+            # Templates guard with {% if sentry_browser %}.
+            "sentry_browser": _browser_sentry,
         }
 
     # Trusted host restriction

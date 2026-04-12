@@ -159,6 +159,19 @@ sentry_capture_errors: bool = bool(sentry_cfg.get("capture_errors", True))
 sentry_sample_rate: float = float(sentry_cfg.get("sample_rate", 1.0))
 sentry_send_default_pii: bool = bool(sentry_cfg.get("send_default_pii", False))
 
+# Sentry - Browser (client-side)
+_sentry_browser_cfg = sentry_cfg.get("browser", {})
+sentry_browser_enabled: bool = bool(_sentry_browser_cfg.get("enabled", False))
+sentry_browser_js_sdk_url: str = _sentry_browser_cfg.get("js_sdk_url", "")
+sentry_browser_dsn: str = _sentry_browser_cfg.get("dsn", "") or sentry_dsn
+sentry_browser_sample_rate: float = float(_sentry_browser_cfg.get("sample_rate", 1.0))
+sentry_browser_traces_sample_rate: float = float(
+    _sentry_browser_cfg.get("traces_sample_rate", 0.2)
+)
+sentry_browser_tunnel_enabled: bool = bool(
+    _sentry_browser_cfg.get("tunnel_enabled", True)
+)
+
 # Rate limiting configuration (exported for use in rate_limit.py)
 # The full section dict is passed to _RateLimitManager as-is; the named
 # variables below are for the upload cooldown so rate_limit.py does not

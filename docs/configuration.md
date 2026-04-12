@@ -61,6 +61,12 @@ effect.
 | [`sentry.traces_sample_rate`](#sentrytraces_sample_rate)                         | Float   | Performance trace sample rate (0.0–1.0)             |
 | [`sentry.environment`](#sentryenvironment)                                       | String  | Sentry environment tag (auto-detected if empty)     |
 | [`sentry.send_default_pii`](#sentrysend_default_pii)                             | Boolean | Include IP addresses and user details in events     |
+| [`sentry.browser.enabled`](#sentrybrowserenabled)                                | Boolean | Master switch for browser-side Sentry               |
+| [`sentry.browser.js_sdk_url`](#sentrybrowserjs_sdk_url)                          | String  | URL of the self-hosted Sentry JS SDK bundle         |
+| [`sentry.browser.dsn`](#sentrybrowserdsn)                                        | String  | Browser-side Sentry DSN (falls back to sentry.dsn)  |
+| [`sentry.browser.sample_rate`](#sentrybrowsersample_rate)                        | Float   | Browser error event sample rate (0.0–1.0)           |
+| [`sentry.browser.traces_sample_rate`](#sentrybrowsertraces_sample_rate)          | Float   | Browser performance trace sample rate (0.0–1.0)     |
+| [`sentry.browser.tunnel_enabled`](#sentrybrowsertunnel_enabled)                  | Boolean | Forward browser events via /api/sentry-event tunnel |
 | [`app.log_level`](#applog_level)                                                 | Enum    | Log verbosity                                       |
 | [`app.debug_full`](#appdebug_full)                                               | Boolean | Full debug mode - never enable in production        |
 | [`webserver.proxy_mode`](#webserverproxy_mode)                                   | Boolean | Enable reverse-proxy header support (ProxyFix)      |
@@ -635,6 +641,103 @@ request bodies from events before they are stored.
 Set to `true` only if your Sentry instance is self-hosted or your data processing agreement with
 Sentry allows PII storage. This can be helpful for debugging user-specific issues but has privacy
 implications.
+
+### Browser-Side Sentry (optional)
+
+Loads the Sentry JavaScript SDK in the browser so client-side errors and (optionally) performance
+data are captured and forwarded to your Sentry project. The SDK bundle is served from your
+self-hosted Sentry installation - no third-party CDN is involved.
+
+**Sentry Tunnel:** By default, browser events are routed through a server-side tunnel endpoint
+(`/api/sentry-event`) instead of being sent directly from the browser to the Sentry ingest host.
+This has two advantages:
+
+1. **CSP compatibility** – the tunnel is same-origin (`'self'`), so no Sentry-specific host needs
+   to be added to the `connect-src` directive.
+2. **Ad-blocker bypass** – browser-based ad blockers that block requests to known Sentry domains
+   cannot intercept events sent to a first-party endpoint.
+
+The tunnel validates that the DSN in each incoming envelope matches the configured browser DSN
+before forwarding, so it cannot be abused as an open relay.
+
+**DSN exposure:** The browser DSN is visible in the page source. Using a separate Sentry project
+(and therefore a different DSN) for browser events is recommended so the server-side DSN is never
+exposed. If both use the same DSN, only the write-only public key is revealed - reading events
+still requires separate authentication.
+
+### `sentry.browser.enabled`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+Master switch for browser-side Sentry. Set to `true` and provide a valid
+[`js_sdk_url`](#sentrybrowserjs_sdk_url) and [`dsn`](#sentrybrowserdsn) to start capturing
+client-side events. When disabled (the default), no Sentry JavaScript is loaded and no tunnel
+endpoint is registered.
+
+### `sentry.browser.js_sdk_url`
+
+| Property    | Value        |
+|-------------|--------------|
+| **Type**    | String (URL) |
+| **Default** | `""` (empty) |
+
+Full URL of the Sentry JavaScript SDK bundle served by your self-hosted Sentry installation.
+Typically follows the pattern `https://sentry.example.com/js-sdk-loader/<loader-key>.min.js`.
+
+The script is loaded via `<script src="...">` with the per-request CSP nonce. The **origin** of
+this URL (scheme + host) is automatically added to the CSP `script-src` directive at startup, so
+no manual CSP configuration is required.
+
+A warning is logged at startup if browser Sentry is enabled but this value is empty.
+
+### `sentry.browser.dsn`
+
+| Property    | Value                               |
+|-------------|-------------------------------------|
+| **Type**    | String (URL)                        |
+| **Default** | `""` (falls back to `sentry.dsn`)   |
+
+The Sentry DSN used by the browser SDK. When empty, the top-level [`sentry.dsn`](#sentrydsn) is
+used as a fallback. A dedicated browser project DSN is recommended (see note above about DSN
+exposure).
+
+### `sentry.browser.sample_rate`
+
+| Property    | Value           |
+|-------------|-----------------|
+| **Type**    | Float (0.0–1.0) |
+| **Default** | `1.0`           |
+
+Fraction of browser error events to send. `1.0` sends every error, `0.0` sends none. This
+controls the JavaScript SDK's `sampleRate` option.
+
+### `sentry.browser.traces_sample_rate`
+
+| Property    | Value           |
+|-------------|-----------------|
+| **Type**    | Float (0.0–1.0) |
+| **Default** | `0.2`           |
+
+Fraction of browser page loads to trace for performance monitoring. `1.0` traces every page load,
+`0.2` traces roughly 20%. This controls the JavaScript SDK's `tracesSampleRate` option.
+
+### `sentry.browser.tunnel_enabled`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled (the default), the browser Sentry SDK sends envelopes to the server-side tunnel
+endpoint (`/api/sentry-event`) instead of directly to the Sentry ingest host. The server validates
+the envelope DSN and forwards the request to the real Sentry API.
+
+Disable this only if you have added the Sentry ingest host to your CSP `connect-src` manually
+(or CSP is disabled) and do not need ad-blocker bypass. When disabled, the SDK's `tunnel` option
+is omitted and events are sent directly from the browser.
 
 ---
 

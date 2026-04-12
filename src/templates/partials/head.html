@@ -30,6 +30,23 @@
     })();
   </script>
 
+  {% if sentry_browser %}
+  <!-- Sentry Browser SDK – loaded from the self-hosted Sentry installation -->
+  <script src="{{ sentry_browser.js_sdk_url }}" nonce="{{ csp_nonce() }}" crossorigin="anonymous"></script>
+  <script nonce="{{ csp_nonce() }}">
+    if (typeof Sentry !== "undefined") {
+      Sentry.init({
+        dsn: {{ sentry_browser.dsn | tojson }},
+        environment: {{ sentry_browser.environment | tojson }},
+        release: {{ sentry_browser.release | tojson }},
+        sampleRate: {{ sentry_browser.sample_rate }},
+        tracesSampleRate: {{ sentry_browser.traces_sample_rate }},
+        {% if sentry_browser.tunnel_enabled %}tunnel: {{ url_for('sentry.api_sentry_tunnel') | tojson }},{% endif %}
+      });
+    }
+  </script>
+  {% endif %}
+
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}" />
   <link rel="icon" type="image/x-icon"  href="{{ url_for('static', filename='images/favicon.ico') }}" />

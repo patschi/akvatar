@@ -11,6 +11,12 @@ import logging
 from src import APP_NAME, APP_VERSION
 from src.config import (
     debug_full,
+    sentry_browser_dsn,
+    sentry_browser_enabled,
+    sentry_browser_js_sdk_url,
+    sentry_browser_sample_rate,
+    sentry_browser_traces_sample_rate,
+    sentry_browser_tunnel_enabled,
     sentry_capture_errors,
     sentry_capture_performance,
     sentry_dsn,
@@ -65,3 +71,48 @@ def init_sentry() -> None:
         sentry_capture_errors,
         sentry_capture_performance,
     )
+
+
+def get_browser_sentry_config() -> dict | None:
+    """Return a JSON-serializable dict of browser Sentry settings for templates.
+
+    Returns ``None`` when browser-side Sentry is disabled so templates can
+    use a simple ``{% if sentry_browser %}`` guard.
+    """
+    if not sentry_browser_enabled:
+        return None
+
+    if not sentry_browser_js_sdk_url:
+        log.warning(
+            "Browser Sentry is enabled but no JS SDK URL is configured "
+            "(sentry.browser.js_sdk_url) - skipping browser integration."
+        )
+        return None
+
+    if not sentry_browser_dsn:
+        log.warning(
+            "Browser Sentry is enabled but no DSN is configured "
+            "(sentry.browser.dsn / sentry.dsn) - skipping browser integration."
+        )
+        return None
+
+    environment = sentry_environment or ("development" if debug_full else "production")
+
+    config = {
+        "enabled": True,
+        "js_sdk_url": sentry_browser_js_sdk_url,
+        "dsn": sentry_browser_dsn,
+        "environment": environment,
+        "release": f"{APP_NAME}@{APP_VERSION}",
+        "sample_rate": sentry_browser_sample_rate,
+        "traces_sample_rate": sentry_browser_traces_sample_rate,
+        "tunnel_enabled": sentry_browser_tunnel_enabled,
+    }
+
+    log.info(
+        "Browser Sentry enabled (env=%s, tunnel=%s).",
+        environment,
+        "on" if sentry_browser_tunnel_enabled else "off",
+    )
+    return config
+

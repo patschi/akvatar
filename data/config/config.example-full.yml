@@ -382,3 +382,29 @@ sentry:
   # Send default PII (IP addresses, user details) with events.
   # When false, Sentry scrubs personally identifiable information automatically.
   send_default_pii: false
+  # --- Browser-Side Sentry (client-side error tracking) ---
+  # Loads the Sentry JavaScript SDK in the browser and forwards events through
+  # a server-side tunnel (/api/sentry-event) to avoid CSP and ad-blocker issues.
+  browser:
+    # Master switch – set to true to enable browser-side Sentry
+    enabled: false
+    # URL of the Sentry JavaScript SDK bundle served by your self-hosted Sentry
+    # installation.  Example: "https://sentry.example.com/js-sdk-loader/<key>.min.js"
+    # The script is loaded via <script src="..."> with the CSP nonce, so the
+    # origin of this URL is automatically added to the CSP script-src directive.
+    js_sdk_url: ""
+    # Browser-side DSN.  Falls back to the top-level sentry.dsn when empty.
+    # Using a separate browser DSN (from a dedicated Sentry project) is
+    # recommended so the server-side DSN is never exposed in page source.
+    dsn: ""
+    # Sample rate for browser error events (0.0 to 1.0)
+    sample_rate: 1.0
+    # Sample rate for browser performance traces (0.0 to 1.0)
+    traces_sample_rate: 0.2
+    # Route browser Sentry events through the server-side tunnel endpoint
+    # (/api/sentry-event) instead of sending them directly to the Sentry host.
+    # Recommended when CSP is enabled (the default) because the tunnel is
+    # same-origin and does not require adding the Sentry ingest host to
+    # connect-src.  Also bypasses browser-based ad blockers that block
+    # requests to known Sentry domains.
+    tunnel_enabled: true
