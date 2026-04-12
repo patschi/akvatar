@@ -390,6 +390,14 @@ def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
     return deleted, failed
 
 
+def _read_meta(path: Path) -> dict | None:
+    """Read and parse a single metadata JSON file. Returns the dict, or None on any read or parse error."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def get_all_avatar_metadata() -> list[dict]:
     """
     Read and return every .meta.json file from AVATAR_ROOT.
@@ -399,10 +407,24 @@ def get_all_avatar_metadata() -> list[dict]:
     """
     entries = []
     for meta_path in METADATA_ROOT.glob("*.meta.json"):
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta = _read_meta(meta_path)
+        if meta is not None:
             entries.append(meta)
-        except (OSError, json.JSONDecodeError) as exc:
-            log.warning("Skipping unreadable metadata file %s: %s", meta_path, exc)
+        else:
+            log.warning("Skipping unreadable metadata file %s.", meta_path)
     log.debug("Loaded %d metadata file(s) from %s.", len(entries), METADATA_ROOT)
     return entries
+
+
+def load_metadata_file(filename: str) -> dict | None:
+    """
+    Read and parse a single metadata JSON file from METADATA_ROOT.
+
+    Returns the parsed dict, or None if the file is missing or unreadable.
+    Used by the metadata serve endpoint for ownership checks before serving.
+    """
+    meta_path = METADATA_ROOT / filename
+    meta = _read_meta(meta_path)
+    if meta is None:
+        log.debug("Could not read metadata file %s.", filename)
+    return meta

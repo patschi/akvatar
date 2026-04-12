@@ -16,7 +16,7 @@ from src.app_middleware import MinifyingTemplateLoader, PrefixMiddleware
 from src.app_monitor import start_memory_monitor
 from src.app_sentry import init_sentry
 from src.app_static import serve_static_file
-from src.auth import auth_bp, init_oauth
+from src.auth import init_oauth
 from src.cleanup import start_cleanup_thread
 from src.config import (
     access_log,
@@ -31,12 +31,14 @@ from src.config import (
     web_cfg,
 )
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
-from src.image_import import WEBCAM_ENABLED, import_bp
+from src.image_import import WEBCAM_ENABLED
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
-from src.reset_avatar import reset_avatar_bp
-from src.routes import routes_bp
 from src.sec_csp import CSP_HEADER_NAME, build_csp_header, generate_csp_nonce
 from src.sec_csrf import generate_csrf_token
+from src.web_auth import auth_bp
+from src.web_image_import import import_bp
+from src.web_reset_avatar import reset_avatar_bp
+from src.web_routes import routes_bp
 
 log = logging.getLogger("app")
 

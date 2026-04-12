@@ -109,7 +109,9 @@ _CSP_TEMPLATE = (
 
 if _CSP_ENABLED:
     _mode = "report-only" if _CSP_REPORT_ONLY else "enforcing"
-    log.debug("CSP enabled (%s, header=%s). img-src: %s", _mode, CSP_HEADER_NAME, _IMG_SRC)
+    log.debug(
+        "CSP enabled (%s, header=%s). img-src: %s", _mode, CSP_HEADER_NAME, _IMG_SRC
+    )
     if _CSP_REPORT_ONLY:
         log.info(
             "CSP is in report-only mode (%s) - violations are reported but NOT enforced.",

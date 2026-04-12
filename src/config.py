@@ -324,6 +324,7 @@ _fatal_unless(
 # upload (e.g. Pillow built without libwebp or libavif).
 try:
     import io as _io
+
     from PIL import Image as _PilImage
 
     log.debug("Verifying Pillow runtime support for configured image formats...")

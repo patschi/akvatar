@@ -283,9 +283,11 @@ def run_cleanup() -> int:
         # concurrently will fail here and exit cleanly rather than corrupting
         # avatar files mid-cleanup.
         try:
-            lockfile = open(_CLEANUP_LOCKFILE, "w")  # noqa: WPS515
+            lockfile = open(_CLEANUP_LOCKFILE, "w")
         except OSError as exc:
-            log.warning("Could not open cleanup lockfile %s: %s", _CLEANUP_LOCKFILE, exc)
+            log.warning(
+                "Could not open cleanup lockfile %s: %s", _CLEANUP_LOCKFILE, exc
+            )
             return 0
         try:
             fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)

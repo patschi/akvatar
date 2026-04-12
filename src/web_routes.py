@@ -12,7 +12,6 @@ Contains:
   - POST /api/upload/commit             -> commit pending avatar URL into the session cookie
 """
 
-import json
 import logging
 import re
 
@@ -31,7 +30,7 @@ from flask import (
 )
 
 from src.app_static import serve_static_file
-from src.auth import login_required
+from src.auth import build_user_initials, login_required
 from src.config import img_cfg, security_cfg
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, NEGOTIATION_PREFERENCE
@@ -41,15 +40,16 @@ from src.image_import import (
     URL_ENABLED,
     WEBCAM_ENABLED,
 )
+from src.image_validation import ValidationError, validate_upload
 from src.imaging import (
     AVATAR_ROOT,
     MAX_SIZE,
     METADATA_ROOT,
     generate_filename,
+    load_metadata_file,
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.sec_csrf import validate_csrf_token
-from src.image_validation import ValidationError, validate_upload
 from src.upload import (
     build_canonical_url,
     generate_sse,
@@ -108,19 +108,10 @@ def dashboard():
     """Serve the authenticated avatar upload / crop page."""
     user = session["user"]
     log.debug("Serving dashboard for user %r.", user["username"])
-
-    # Build user initials: first letter of first name + first letter of last name.
-    # Falls back to the first letter of the username if name parts are unavailable.
-    name_parts = user.get("name", "").split()
-    if len(name_parts) >= 2:
-        initials = (name_parts[0][0] + name_parts[-1][0]).upper()
-    else:
-        initials = (user.get("username", "") or "?")[0].upper()
-
     return render_template(
         "dashboard.html",
         user=user,
-        user_initials=initials,
+        user_initials=build_user_initials(user),
         ldap_enabled=ldap_is_enabled(),
         max_size=MAX_SIZE,
         allowed_extensions=sorted(ALLOWED_EXTENSIONS),
@@ -219,6 +210,17 @@ def serve_avatar(dimensions, filename):
 #   "public"               - no authentication required
 _METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
 
+_raw_metadata_access = security_cfg.get("metadata_access", None)
+if _raw_metadata_access not in _METADATA_ACCESS_MODES:
+    if _raw_metadata_access is not None:
+        log.warning(
+            "Unknown security.metadata_access value %r - falling back to owner_only.",
+            _raw_metadata_access,
+        )
+    _METADATA_ACCESS_MODE = "owner_only"
+else:
+    _METADATA_ACCESS_MODE = _raw_metadata_access
+
 
 @routes_bp.route("/user-avatars/_metadata/<filename>", methods=["GET"])
 def serve_avatar_metadata(filename):
@@ -228,17 +230,7 @@ def serve_avatar_metadata(filename):
     inside the metadata file.  A 404 is returned for both missing files and
     ownership mismatches so callers cannot distinguish the two cases.
     """
-    metadata_access = security_cfg.get("metadata_access", None)
-    if metadata_access not in _METADATA_ACCESS_MODES:
-        if metadata_access is not None:
-            log.warning(
-                "Unknown security.metadata_access value %r - falling back to owner_only.",
-                metadata_access,
-            )
-        metadata_access = "owner_only"
-
-    if metadata_access == "owner_only":
-        # Must be authenticated first
+    if _METADATA_ACCESS_MODE == "owner_only":
         if "user" not in session:
             log.debug(
                 "Unauthenticated metadata request for %r - redirecting to login.",
@@ -246,25 +238,25 @@ def serve_avatar_metadata(filename):
             )
             return redirect(url_for("routes.login_page"))
 
-        # Read the metadata to verify that the requesting user owns this file
-        meta_path = METADATA_ROOT / filename
-        try:
-            meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            # File not found or unreadable - return 404 without leaking details
+        # Load and verify ownership - 404 for both missing files and pk mismatches
+        # so callers cannot distinguish "not found" from "not yours".
+        meta = load_metadata_file(filename)
+        if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
+            if meta is not None:
+                log.debug(
+                    "Metadata access denied for %r - user pk mismatch (session pk=%r).",
+                    filename,
+                    session["user"].get("pk", None),
+                )
             abort(404)
 
-        # Reject access when the session user is not the file owner.
-        # Return 404 (not 403) so callers cannot distinguish "not found" from "not yours".
-        if meta.get("user_pk", None) != session["user"].get("pk", None):
-            log.debug(
-                "Metadata access denied for %r - user pk mismatch (session pk=%r).",
-                filename,
-                session["user"].get("pk", None),
-            )
-            abort(404)
+        # Serve the already-loaded dict directly - avoids a second disk read.
+        log.debug("Serving metadata file: %s (access=owner_only)", filename)
+        resp = jsonify(meta)
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
-    log.debug("Serving metadata file: %s (access=%s)", filename, metadata_access)
+    log.debug("Serving metadata file: %s (access=public)", filename)
     resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
     resp.headers["Cache-Control"] = "no-store"
     return resp

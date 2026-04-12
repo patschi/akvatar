@@ -1,14 +1,13 @@
 """
-image_import.py - Remote image import routes (Gravatar and URL).
+image_import.py - Remote image import helpers.
 
-Provides proxy endpoints that fetch images from external sources on behalf
-of the authenticated user.  Proxying is required so that fetched images are
-served from the same origin as the app - without this, the browser marks
-cross-origin images drawn on an HTML canvas as "tainted", which prevents
-Cropper.js from reading pixel data via ``getCroppedCanvas().toBlob()``.
+Provides HTTP fetch utilities and configuration constants used by the
+remote image import routes (web_image_import.py).
 
-Both endpoints require authentication (``@login_required``) and CSRF
-validation to prevent abuse and cross-site request forgery.
+Handles:
+  - Remote image fetch size limiting
+  - SSRF protection (private IP blocking, per-hop redirect validation)
+  - Configuration flags for Gravatar, URL, and webcam import sources
 """
 
 import hashlib
@@ -18,23 +17,18 @@ import socket
 from urllib.parse import urlparse
 
 import requests as http_requests
-from flask import Blueprint, Response, jsonify, request, session
 
 from src import USER_AGENT
-from src.auth import login_required
 from src.config import app_cfg, import_cfg
 from src.i18n import t
 from src.image_formats import ALLOWED_PROXY_MIMETYPES, MIME_TO_EXT
-from src.sec_csrf import validate_csrf_token
 
 log = logging.getLogger("img_import")
 
-import_bp = Blueprint("import", __name__)
-
 # Remote image fetch limits (derived from the same config as direct uploads)
-_MAX_FETCH_SIZE_MB = app_cfg.get("max_upload_size_mb", 10)
-_MAX_FETCH_SIZE = _MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
-_FETCH_TIMEOUT = 15  # seconds
+MAX_FETCH_SIZE_MB = app_cfg.get("max_upload_size_mb", 10)
+_MAX_FETCH_SIZE = MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
+FETCH_TIMEOUT = 15  # seconds
 _MAX_REDIRECTS = 5  # maximum redirect hops to follow during URL import
 
 # Config: per-source enable flags and URL security settings
@@ -50,10 +44,7 @@ WEBCAM_ENABLED = import_cfg.get("webcam", {}).get("enabled", True)
 RESTRICT_PRIVATE_IPS = import_cfg.get("url", {}).get("restrict_private_ips", True)
 
 
-# Helpers
-
-
-def _read_with_limit(resp: http_requests.Response) -> bytes | None:
+def read_with_limit(resp: http_requests.Response) -> bytes | None:
     """
     Read a streamed response up to ``_MAX_FETCH_SIZE`` bytes.
 
@@ -80,7 +71,7 @@ def _read_with_limit(resp: http_requests.Response) -> bytes | None:
     return bytes(buf)
 
 
-def _resolves_to_private_ip(hostname: str) -> bool:
+def resolves_to_private_ip(hostname: str) -> bool:
     """
     Check if a hostname resolves to any non-globally-routable IP address.
 
@@ -88,7 +79,7 @@ def _resolves_to_private_ip(hostname: str) -> bool:
     (e.g. 127.0.0.1, 10.x.x.x, 192.168.x.x, link-local, loopback).
 
     Note: DNS rebinding is a known limitation of pre-request checks.  The
-    caller (``_safe_fetch``) performs this check on every redirect hop and
+    caller (``safe_fetch``) performs this check on every redirect hop and
     uses ``allow_redirects=False`` so each hop's hostname is validated before
     the next connection is opened, which eliminates the TOCTOU window that
     would exist if redirects were followed automatically.
@@ -114,7 +105,7 @@ def _resolves_to_private_ip(hostname: str) -> bool:
     return False
 
 
-def _safe_fetch(url: str) -> http_requests.Response:
+def safe_fetch(url: str) -> http_requests.Response:
     """
     Fetch *url* with manual redirect following and per-hop SSRF validation.
 
@@ -142,14 +133,14 @@ def _safe_fetch(url: str) -> http_requests.Response:
             raise ValueError("Redirect target has no hostname.")
 
         # SSRF check on this hop's hostname
-        if RESTRICT_PRIVATE_IPS and _resolves_to_private_ip(parsed.hostname):
+        if RESTRICT_PRIVATE_IPS and resolves_to_private_ip(parsed.hostname):
             raise ValueError(
                 f"Redirect to private/internal address blocked: {parsed.hostname!r}"
             )
 
         resp = http_requests.get(
             url,
-            timeout=_FETCH_TIMEOUT,
+            timeout=FETCH_TIMEOUT,
             stream=True,
             allow_redirects=False,  # Manual redirect following for per-hop SSRF checks
             headers={"User-Agent": USER_AGENT},
@@ -178,203 +169,195 @@ def _safe_fetch(url: str) -> http_requests.Response:
     raise ValueError(f"Too many redirects (max {_MAX_REDIRECTS}).")
 
 
-# Gravatar import
+# Exceptions raised by fetch helpers - allow route handlers to pattern-match
+# on error type rather than inspecting strings.
 
 
-@import_bp.route("/api/fetch-gravatar", methods=["POST"])
-@login_required
-def api_fetch_gravatar():
+class ImageFetchError(Exception):
+    """Base class for remote image fetch errors."""
+
+
+class GravatarNotFound(ImageFetchError):
+    """Gravatar returned HTTP 404 - no avatar exists for this email."""
+
+
+class FetchFailed(ImageFetchError):
+    """Network-level failure during a remote image fetch."""
+
+
+class ImageTooLarge(ImageFetchError):
+    """Response body exceeds the configured per-request size limit."""
+
+
+class UnsupportedContentType(ImageFetchError):
+    """Remote server returned a MIME type outside the allowed set."""
+
+    def __init__(self, content_type: str) -> None:
+        self.content_type = content_type
+        super().__init__(f"Unsupported content type: {content_type!r}")
+
+
+# Validation helpers
+
+
+def validate_gravatar_email(
+    email: str, session_email: str, username: str
+) -> str | None:
     """
-    Fetch a Gravatar image for the authenticated user's email address.
+    Validate a submitted email for Gravatar lookup against the session user's email.
 
-    Expects JSON body: ``{"email": "user@example.com"}``.
-    The provided email must match the session user's email to prevent this
-    endpoint from being used as a Gravatar account-existence oracle for
-    arbitrary email addresses.
+    Enforces oracle-prevention: prevents using the endpoint to probe whether
+    arbitrary email addresses have a Gravatar.
 
-    The email is hashed with MD5 (Gravatar's lookup key) and the image
-    is fetched at 1024px.  Returns the raw image bytes on success, or
-    JSON error on failure.
+    Returns None if the email is acceptable, or a raw error key string if
+    rejected ("email_mismatch").  The caller maps the key to a JSON 403 response.
     """
-    if not GRAVATAR_ENABLED:
-        return jsonify({"error": t("error.import.gravatar_disabled")}), 403
-
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
-    body = request.get_json(silent=True) or {}
-    email = (body.get("email", None) or "").strip().lower()
-    if not email:
-        return jsonify({"error": t("error.import.no_email")}), 400
-
-    # Validate the submitted email against the session user's email.
-    # Two modes depending on the restrict_email config flag:
-    #
-    # restrict_email=True (strict): session email is required and must match exactly.
-    #   Enforces that the UI-locked email was not tampered with client-side.
-    #   Also covers the edge case where the OIDC token provided no email.
-    #
-    # restrict_email=False (default): best-effort oracle prevention - only enforce
-    #   when the session happens to carry an email (covers most deployments without
-    #   breaking setups where OIDC tokens omit the email claim).
-    session_email = (session.get("user", {}).get("email", None) or "").strip().lower()
-    if GRAVATAR_RESTRICT_EMAIL:
-        if not session_email:
-            log.warning(
-                "Gravatar fetch rejected: restrict_email is enabled but session has no email for user %r.",
-                session.get("user", {}).get("username", "unknown"),
-            )
-            return jsonify({"error": "email_mismatch"}), 403
-        if email != session_email:
-            log.warning(
-                "Gravatar fetch rejected: provided email does not match session email for user %r.",
-                session.get("user", {}).get("username", "unknown"),
-            )
-            return jsonify({"error": "email_mismatch"}), 403
-    elif session_email and email != session_email:
+    session_email = session_email.strip().lower()
+    if GRAVATAR_RESTRICT_EMAIL and not session_email:
+        log.warning(
+            "Gravatar fetch rejected: restrict_email is enabled but session has no email for user %r.",
+            username,
+        )
+        return "email_mismatch"
+    if session_email and email != session_email:
         log.warning(
             "Gravatar fetch rejected: provided email does not match session email for user %r.",
-            session.get("user", {}).get("username", "unknown"),
+            username,
         )
-        return jsonify({"error": "email_mismatch"}), 403
+        return "email_mismatch"
+    return None
 
-    # Gravatar keys images by the MD5 hash of the lowercase, trimmed email.
-    # usedforsecurity=False signals this is not a cryptographic use (required
-    # on FIPS-enabled systems where MD5 is otherwise blocked).
+
+def build_gravatar_url(email: str, size: int = 1024) -> tuple[str, str]:
+    """
+    Build the Gravatar image URL and MD5 lookup hash for a given email.
+
+    Gravatar keys images by the MD5 hash of the lowercase, trimmed email.
+    ``usedforsecurity=False`` signals this is not a cryptographic use (required
+    on FIPS-enabled systems where MD5 is otherwise blocked).
+
+    Returns (gravatar_url, md5_hash).
+    """
     md5_hash = hashlib.md5(email.encode("utf-8"), usedforsecurity=False).hexdigest()
-    gravatar_url = f"https://www.gravatar.com/avatar/{md5_hash}?s=1024&d=404"
+    return f"https://www.gravatar.com/avatar/{md5_hash}?s={size}&d=404", md5_hash
 
+
+def validate_import_url(url: str) -> str | None:
+    """
+    Validate a user-supplied URL before remote image fetch.
+
+    Checks scheme (HTTP/HTTPS only), hostname presence, and optional SSRF
+    protection (private IP block).
+
+    Returns None if the URL is acceptable, or the error value to put in the
+    JSON response body if rejected (translated for user-facing errors,
+    raw machine key for security-sensitive rejections).
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return t("error.import.https_only")
+    if not parsed.hostname:
+        return t("error.import.invalid_url")
+    if RESTRICT_PRIVATE_IPS and resolves_to_private_ip(parsed.hostname):
+        return "url_not_allowed"
+    return None
+
+
+# Fetch helpers
+
+
+def _validate_and_read(resp: http_requests.Response) -> tuple[bytes, str]:
+    """
+    Normalize the response Content-Type, check it against the proxy allowlist,
+    and read the body up to the configured size limit.
+
+    Returns (body_bytes, normalized_content_type).
+
+    Raises:
+      UnsupportedContentType - MIME type is not in ALLOWED_PROXY_MIMETYPES.
+      ImageTooLarge          - body exceeds MAX_FETCH_SIZE_MB.
+    """
+    raw_ct = resp.headers.get("Content-Type", "")
+    content_type = raw_ct.split(";")[0].strip().lower()
+    if content_type not in ALLOWED_PROXY_MIMETYPES:
+        resp.close()
+        log.warning(
+            "Proxy response has unsupported Content-Type %r - rejecting.", content_type
+        )
+        raise UnsupportedContentType(content_type)
+    data = read_with_limit(resp)
+    if data is None:
+        raise ImageTooLarge()
+    return data, content_type
+
+
+def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
+    """
+    Fetch the Gravatar image for a given email address.
+
+    Returns (image_bytes, content_type, filename).
+
+    Raises:
+      GravatarNotFound   - Gravatar returned HTTP 404 (no avatar for this email).
+      ImageTooLarge      - response body exceeds MAX_FETCH_SIZE_MB.
+      UnsupportedContentType - Content-Type is not in the proxy allowlist.
+      FetchFailed        - network or HTTP error during the fetch.
+    """
+    gravatar_url, md5_hash = build_gravatar_url(email)
     log.debug("Fetching Gravatar: %s", gravatar_url)
+
     try:
         resp = http_requests.get(
             gravatar_url,
-            timeout=_FETCH_TIMEOUT,
+            timeout=FETCH_TIMEOUT,
             stream=True,
             headers={"User-Agent": USER_AGENT},
         )
         # d=404 tells Gravatar to return HTTP 404 when no avatar exists
         # for this email, instead of serving a generic default image.
         if resp.status_code == 404:
-            log.debug("No Gravatar found for the requested email.")
             resp.close()
-            return jsonify({"error": "not_found"}), 404
+            log.debug("No Gravatar found for the requested email.")
+            raise GravatarNotFound()
         resp.raise_for_status()
 
-        # Normalize content-type to the bare MIME type (strip parameters)
-        raw_ct = resp.headers.get("Content-Type", "image/jpeg")
-        content_type = raw_ct.split(";")[0].strip().lower()
-
-        # Only proxy MIME types we explicitly accept - image/svg+xml and
-        # others that can carry scripts are rejected at this layer.
-        if content_type not in ALLOWED_PROXY_MIMETYPES:
-            resp.close()
-            log.warning(
-                "Gravatar returned unexpected Content-Type %r - rejecting.",
-                content_type,
-            )
-            return jsonify({"error": t("error.import.unsupported_type")}), 400
-
-        data = _read_with_limit(resp)
-        if data is None:
-            return jsonify(
-                {"error": "image_too_large", "max_size_mb": _MAX_FETCH_SIZE_MB}
-            ), 400
+        data, content_type = _validate_and_read(resp)
 
         # Build a filename from the hash + content-type extension so the
-        # client can display a meaningful name (e.g. "d41d8cd9…f00d.jpg")
+        # client can display a meaningful name (e.g. "d41d8cd9...f00d.jpg")
         ext = MIME_TO_EXT.get(content_type, "jpg")
-        filename = f"{md5_hash}.{ext}"
+        return data, content_type, f"{md5_hash}.{ext}"
 
-        return Response(
-            data,
-            mimetype=content_type,
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Disposition": f'inline; filename="{filename}"',
-            },
-        )
+    except (GravatarNotFound, ImageTooLarge, UnsupportedContentType):
+        raise
     except http_requests.RequestException as exc:
         log.warning("Gravatar fetch failed: %s", exc)
-        return jsonify({"error": "fetch_failed"}), 502
+        raise FetchFailed(str(exc)) from exc
 
 
-# Remote URL import
-
-
-@import_bp.route("/api/fetch-url", methods=["POST"])
-@login_required
-def api_fetch_url():
+def fetch_remote_image(url: str) -> tuple[bytes, str]:
     """
-    Fetch an image from a user-provided remote URL.
+    Fetch an image from a remote URL with per-hop SSRF protection.
 
-    Expects JSON body: ``{"url": "https://example.com/photo.jpg"}``.
-    Validates the URL scheme (HTTP/HTTPS only), optionally blocks private
-    IP ranges (SSRF protection), and checks Content-Type (allowlisted MIME
-    types only) before proxying the response.
+    Uses safe_fetch() to follow redirects manually, re-checking each hop
+    against the private-IP filter to prevent DNS rebinding attacks.
 
-    Each redirect hop is validated against the SSRF filter before following,
-    preventing DNS rebinding and server-controlled redirect attacks.
+    Returns (image_bytes, content_type).
+
+    Raises:
+      ValueError          - redirect target failed SSRF/scheme validation (from safe_fetch).
+      ImageTooLarge       - response body exceeds MAX_FETCH_SIZE_MB.
+      UnsupportedContentType - Content-Type is not in the proxy allowlist.
+      FetchFailed         - network or HTTP error during the fetch.
     """
-    if not URL_ENABLED:
-        return jsonify({"error": t("error.import.url_disabled")}), 403
-
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
-    body = request.get_json(silent=True) or {}
-    url = (body.get("url", None) or "").strip()
-
-    if not url:
-        return jsonify({"error": t("error.import.no_url")}), 400
-
-    # Only allow HTTP(S) to prevent file:// or other scheme abuse
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        return jsonify({"error": t("error.import.https_only")}), 400
-    if not parsed.hostname:
-        return jsonify({"error": t("error.import.invalid_url")}), 400
-
-    # SSRF protection: block URLs that resolve to private/internal IP ranges.
-    # The actual fetch uses _safe_fetch() which re-checks each redirect hop,
-    # but we validate here first for an early, user-facing error.
-    if RESTRICT_PRIVATE_IPS and _resolves_to_private_ip(parsed.hostname):
-        return jsonify({"error": "url_not_allowed"}), 400
-
-    log.debug("Fetching remote image from: %r", url)
     try:
-        # _safe_fetch follows redirects manually, re-applying the SSRF filter
-        # at every hop to prevent DNS rebinding and redirect-based bypasses.
-        resp = _safe_fetch(url)
+        resp = safe_fetch(url)
         resp.raise_for_status()
+        data, content_type = _validate_and_read(resp)
+        return data, content_type
 
-        # Normalize content-type to the bare MIME type (strip parameters)
-        content_type = (
-            resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
-        )
-
-        # Only proxy explicitly allowlisted MIME types.  image/svg+xml is
-        # excluded because SVG can contain embedded JavaScript; accepting any
-        # image/* would allow an attacker to craft a server that returns
-        # malicious SVG with a spoofed content-type prefix.
-        if content_type not in ALLOWED_PROXY_MIMETYPES:
-            resp.close()
-            return jsonify({"error": t("error.import.unsupported_type")}), 400
-
-        data = _read_with_limit(resp)
-        if data is None:
-            return jsonify(
-                {"error": "image_too_large", "max_size_mb": _MAX_FETCH_SIZE_MB}
-            ), 400
-
-        return Response(
-            data, mimetype=content_type, headers={"Cache-Control": "no-store"}
-        )
-    except ValueError as exc:
-        # Raised by _safe_fetch when a redirect target is blocked or invalid
-        log.warning("URL fetch blocked: %s", exc)
-        return jsonify({"error": "url_not_allowed"}), 400
+    except (ValueError, ImageTooLarge, UnsupportedContentType):
+        raise
     except http_requests.RequestException as exc:
         log.warning("Remote image fetch failed for URL: %s", exc)
-        return jsonify({"error": "fetch_failed"}), 502
+        raise FetchFailed(str(exc)) from exc

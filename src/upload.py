@@ -28,7 +28,6 @@ from src.authentik import revert_avatar_url, update_avatar_url
 from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_cfg
 from src.i18n import t
 from src.image_formats import FORMAT_MAP
-from src.image_validation import ValidationError, validate_upload
 from src.imaging import (
     AVATAR_BASE_URL,
     METADATA_ROOT,

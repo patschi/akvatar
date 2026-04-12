@@ -1,8 +1,9 @@
 """
-auth.py - OpenID Connect authentication via Authentik.
+auth.py - OpenID Connect authentication core.
 
-Registers the Authlib OAuth client, provides a `login_required` decorator,
-and exposes the auth routes: /login, /callback, /logout, /logged-out.
+Registers the Authlib OAuth client, provides the login_required decorator,
+and exposes init_oauth() for application startup.
+Route handlers for /login-start, /callback, /logout, and /logged-out are in web_auth.py.
 
 OIDC scopes are hardcoded to `openid profile email` and cannot be changed via config.
 """
@@ -12,7 +13,7 @@ from functools import wraps
 from urllib.parse import urlencode
 
 from authlib.integrations.flask_client import OAuth
-from flask import Blueprint, redirect, render_template, session, url_for
+from flask import redirect, session, url_for
 
 from src.authentik import retrieve_user
 from src.config import app_cfg, oidc_cfg
@@ -22,9 +23,6 @@ log = logging.getLogger("auth")
 
 # Hardcoded OIDC scopes - always request identity, profile, and email claims
 OIDC_SCOPES = "openid profile email"
-
-# Blueprint so auth routes can be registered cleanly on the app
-auth_bp = Blueprint("auth", __name__)
 
 # OAuth / OIDC client (initialized later via init_oauth)
 oauth = OAuth()
@@ -83,47 +81,21 @@ def login_required(f):
     return decorated
 
 
-@auth_bp.route("/login-start", methods=["GET"])
-def login():
-    """Redirect the browser to Authentik's authorization endpoint."""
-    redirect_uri = url_for("auth.auth_callback", _external=True)
-    log.debug(
-        "OIDC authorization redirect - redirect_uri sent to Authentik: %s", redirect_uri
-    )
-    return oauth.authentik.authorize_redirect(redirect_uri)
+def process_oidc_callback(token: dict, userinfo: dict) -> tuple[dict, str | None, str]:
+    """
+    Build session data from a completed OIDC token exchange and userinfo payload.
 
+    Looks up the Authentik user to get the PK and current avatar URL, builds
+    the session user dict, extracts the ID token when RP-Initiated Logout is
+    configured, and resolves the locale from the OIDC claim.
 
-@auth_bp.route("/callback", methods=["GET"])
-def auth_callback():
-    """OIDC callback - exchange the authorization code for tokens and store the user profile in the session."""
-    log.debug("Received OIDC callback. Exchanging code for token...")
-    try:
-        token = oauth.authentik.authorize_access_token()
-    except Exception:
-        log.exception("Failed to exchange OIDC authorization code.")
-        return redirect(url_for("routes.login_page", error="oidc_failed"))
-
-    userinfo = token.get("userinfo")
-    if userinfo is None:
-        log.debug("userinfo not in token response - calling userinfo endpoint.")
-        userinfo = oauth.authentik.userinfo()
-
+    Returns (user_dict, id_token_or_None, locale).
+    Raises on Authentik user lookup failure - caller should redirect to login.
+    """
     username = userinfo.get(oidc_cfg["username_claim"], userinfo["sub"])
+    ak_user = retrieve_user(username)  # raises on failure
 
-    # Retrieve the Authentik user at login time so that the PK (stable,
-    # opaque identifier) and the current avatar URL are available in the
-    # session without additional API calls.
-    try:
-        ak_user = retrieve_user(username)
-    except Exception:
-        log.exception("Failed to retrieve Authentik user %r - login aborted.", username)
-        return redirect(url_for("routes.login_page", error="pk_failed"))
-
-    # Mark session as permanent so PERMANENT_SESSION_LIFETIME is enforced.
-    # Without this Flask uses a browser-session cookie with no server-side expiry.
-    session.permanent = True
-
-    session["user"] = {
+    user_dict = {
         "pk": ak_user["pk"],
         "username": username,
         "name": userinfo.get("name", ""),
@@ -131,54 +103,30 @@ def auth_callback():
         "avatar": ak_user.get("avatar", ""),
     }
 
-    # Store the raw ID token for RP-Initiated Logout (id_token_hint parameter)
-    # Only store the ID token when end_provider_session is enabled; it is only
+    # Only extract the ID token when RP-Initiated Logout is enabled; it is only
     # used as id_token_hint in RP-Initiated Logout and is dead weight otherwise.
+    id_token = None
     if oidc_cfg.get("end_provider_session", False):
-        _raw_id_token = token.get("id_token", None)
-        if _raw_id_token:
-            session["id_token"] = _raw_id_token
-            log.debug(
-                "ID token stored (stored=%d bytes).",
-                len(_raw_id_token),
-                len(session["id_token"]),
-            )
+        id_token = token.get("id_token", None)
 
-    # Resolve locale from OIDC claim
-    oidc_locale_raw = userinfo.get("locale", "")
-    session["locale"] = resolve_oidc_locale(oidc_locale_raw)
-    log.debug(
-        "OIDC locale claim: %r -> resolved to %r.", oidc_locale_raw, session["locale"]
-    )
-
+    locale = resolve_oidc_locale(userinfo.get("locale", ""))
     log.info("User %r (pk=%s) logged in successfully.", username, ak_user["pk"])
-    # Redact sensitive session values (id_token, csrf_token) before logging
-    _redacted_session = {
-        k: ("[REDACTED]" if k in ("id_token", "csrf_token") else v)
-        for k, v in session.items()
-    }
-    log.debug("User session data: %s", _redacted_session)
-    return redirect(url_for("routes.dashboard"))
+    return user_dict, id_token, locale
 
 
-@auth_bp.route("/logout", methods=["GET"])
-def logout():
-    """Clear the local session and optionally redirect to Authentik's end_session_endpoint (RP-Initiated Logout)."""
-    username = session.get("user", {}).get("username", "unknown")
-    id_token = session.get("id_token", None)
-    session.clear()
-    log.info("User %r logged out.", username)
+def build_provider_logout_url(id_token: str | None) -> str | None:
+    """
+    Build the provider end_session_endpoint URL for RP-Initiated Logout.
 
-    # When oidc.end_provider_session is enabled, perform RP-Initiated Logout by
-    # redirecting to the provider's end_session_endpoint. This terminates the
-    # Authentik SSO session as well (i.e. the user is logged out of all apps).
+    Reads OIDC discovery metadata (cached for the process lifetime by Authlib) to
+    resolve the endpoint, then constructs the redirect URL with
+    post_logout_redirect_uri and optional id_token_hint.
+    Returns None when RP-Initiated Logout is disabled or the endpoint is unavailable.
+    """
     if not oidc_cfg.get("end_provider_session", False):
-        log.debug(
-            "oidc.end_provider_session is disabled - skipping provider logout, showing local logged-out page."
-        )
-        return redirect(url_for("auth.logged_out"))
+        log.debug("oidc.end_provider_session is disabled - skipping provider logout.")
+        return None
 
-    # Fetch the end_session_endpoint from OIDC discovery metadata
     try:
         metadata = oauth.authentik.load_server_metadata()
         end_session_endpoint = metadata.get("end_session_endpoint", None)
@@ -186,25 +134,20 @@ def logout():
         log.warning(
             "Failed to load OIDC server metadata for logout redirect - falling back to local logout page."
         )
-        end_session_endpoint = None
+        return None
 
     if not end_session_endpoint:
         log.debug(
             "No end_session_endpoint in OIDC metadata - showing local logged-out page."
         )
-        return redirect(url_for("auth.logged_out"))
+        return None
 
-    # Build the full logout redirect URL with post_logout_redirect_uri and id_token_hint.
-    # Use the configured public_base_url to build the redirect URI, ensuring it
-    # matches exactly what the admin registered in Authentik's redirect URIs.
-    # url_for(_external=True) can produce a wrong scheme/host behind a reverse proxy.
     post_logout_uri = app_cfg.get("public_base_url", "").rstrip("/") + "/logged-out"
-    params = {
-        "post_logout_redirect_uri": post_logout_uri,
-    }
+    params = {"post_logout_redirect_uri": post_logout_uri}
     # id_token_hint lets the provider skip the "are you sure?" confirmation page
     if id_token:
         params["id_token_hint"] = id_token
+
     logout_url = end_session_endpoint + "?" + urlencode(params)
     log.debug(
         "OIDC RP-Initiated Logout - end_session_endpoint: %s", end_session_endpoint
@@ -213,10 +156,17 @@ def logout():
         "OIDC RP-Initiated Logout - post_logout_redirect_uri: %s", post_logout_uri
     )
     log.debug("OIDC RP-Initiated Logout - id_token_hint present: %s", bool(id_token))
-    return redirect(logout_url)
+    return logout_url
 
 
-@auth_bp.route("/logged-out", methods=["GET"])
-def logged_out():
-    """Post-logout landing page. Authentik redirects here after ending the SSO session."""
-    return render_template("logged_out.html")
+def build_user_initials(user: dict) -> str:
+    """
+    Build a 1-2 character initials string from a user session dict.
+
+    Uses the first letter of the first and last name parts when two or more
+    name parts are present, falling back to the first letter of the username.
+    """
+    name_parts = user.get("name", "").split()
+    if len(name_parts) >= 2:
+        return (name_parts[0][0] + name_parts[-1][0]).upper()
+    return (user.get("username", "") or "?")[0].upper()

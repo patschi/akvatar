@@ -154,7 +154,9 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
         log.info("[DRY-RUN] Would PATCH %s with: %s", url, payload)
         return current, current
 
-    patch_resp = _retry_request(lambda: _session.patch(url, json=payload, timeout=_TIMEOUT))
+    patch_resp = _retry_request(
+        lambda: _session.patch(url, json=payload, timeout=_TIMEOUT)
+    )
     patch_resp.raise_for_status()
 
     result = _parse_json(patch_resp)
@@ -181,7 +183,9 @@ def retrieve_user(username: str) -> dict:
     """
     log.debug("GET %s?username=%s - retrieving user.", _users_url, username)
     resp = _retry_request(
-        lambda: _session.get(_users_url, params={"username": username}, timeout=_TIMEOUT)
+        lambda: _session.get(
+            _users_url, params={"username": username}, timeout=_TIMEOUT
+        )
     )
     resp.raise_for_status()
 
@@ -328,7 +332,9 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     while url:
         page += 1
         log.debug("GET %s (page %d) - fetching user list.", url, page)
-        resp = _retry_request(lambda: _session.get(url, params=params, timeout=_TIMEOUT_LIST))
+        resp = _retry_request(
+            lambda: _session.get(url, params=params, timeout=_TIMEOUT_LIST)
+        )
         resp.raise_for_status()
 
         data = _parse_json(resp)

@@ -36,12 +36,12 @@ Image.MAX_IMAGE_PIXELS = 25_000_000
 # Checked before Pillow touches the file so that crafted inputs with a fake
 # extension never reach the decoder.
 MAGIC_SIGNATURES = {
-    "JPEG": (0, b"\xff\xd8\xff"),      # SOI + first marker
+    "JPEG": (0, b"\xff\xd8\xff"),  # SOI + first marker
     "PNG": (0, b"\x89PNG\r\n\x1a\n"),  # 8-byte PNG header
-    "WEBP_RIFF": (0, b"RIFF"),         # RIFF container ...
-    "WEBP_SIG": (8, b"WEBP"),          # ... with WEBP fourcc at offset 8
-    "AVIF_FTYP": (4, b"ftyp"),         # ISO Base Media file type box (AVIF/HEIF/MP4)
-    "AVIF_BRAND": (8, b"avif"),        # AVIF major brand ("avis" also valid for sequences)
+    "WEBP_RIFF": (0, b"RIFF"),  # RIFF container ...
+    "WEBP_SIG": (8, b"WEBP"),  # ... with WEBP fourcc at offset 8
+    "AVIF_FTYP": (4, b"ftyp"),  # ISO Base Media file type box (AVIF/HEIF/MP4)
+    "AVIF_BRAND": (8, b"avif"),  # AVIF major brand ("avis" also valid for sequences)
 }
 
 # Dimension guardrails.
