@@ -70,47 +70,21 @@
 
     // Overlay open/close
 
-    var settingsOverlay = document.getElementById("settingsOverlay");
     var settingsOpenButtons = document.querySelectorAll(".settings-btn");
 
-    // Bail out if the overlay or buttons aren't present on this page
-    if (!settingsOverlay || !settingsOpenButtons.length) return;
+    // Backdrop click, .dialog-close button click, and Escape key are all wired
+    // by createDialog(); bail out early if the overlay or open buttons are absent.
+    var settingsDialog = createDialog("settingsOverlay", {
+        onOpen:  function () { logger.debug("settings", "settings overlay opened"); },
+        onClose: function () { logger.debug("settings", "settings overlay closed"); },
+    });
+    if (!settingsDialog || !settingsOpenButtons.length) return;
 
-    var settingsPanel = settingsOverlay.querySelector(".dialog-panel");
-
-    function openSettingsOverlay() {
-        logger.debug("settings", "settings overlay opened");
-        settingsOverlay.classList.remove("hidden");
-    }
-
-    function closeSettingsOverlay() {
-        logger.debug("settings", "settings overlay closed");
-        settingsOverlay.classList.add("hidden");
-    }
+    var settingsOverlay = document.getElementById("settingsOverlay");
 
     // Open when any settings cog button is clicked
     settingsOpenButtons.forEach(function (button) {
-        button.addEventListener("click", openSettingsOverlay);
-    });
-
-    // Close when clicking the backdrop area (outside the panel)
-    settingsOverlay.addEventListener("click", function (event) {
-        if (!settingsPanel.contains(event.target)) {
-            closeSettingsOverlay();
-        }
-    });
-
-    // Close when clicking the explicit X button
-    var settingsCloseButton = settingsOverlay.querySelector(".dialog-close");
-    if (settingsCloseButton) {
-        settingsCloseButton.addEventListener("click", closeSettingsOverlay);
-    }
-
-    // Close on Escape key
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && !settingsOverlay.classList.contains("hidden")) {
-            closeSettingsOverlay();
-        }
+        button.addEventListener("click", settingsDialog.open);
     });
 
     // Button state helpers

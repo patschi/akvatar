@@ -163,6 +163,7 @@
     const LDAP_ENABLED            = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS      = new Set({{ allowed_extensions | tojson }});
   </script>
+  <script src="{{ url_for('static', filename='js/dialog.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard-main.js') }}"></script>
   {% if user.avatar %}
   <script src="{{ url_for('static', filename='js/dashboard-remove-avatar.js') }}"></script>

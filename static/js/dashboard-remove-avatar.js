@@ -12,13 +12,18 @@
 (function () {
     "use strict";
 
-    var removeAvatarBtn     = document.getElementById("removeAvatarBtn");
-    var removeAvatarOverlay = document.getElementById("removeAvatarOverlay");
-    if (!removeAvatarBtn || !removeAvatarOverlay) return;
+    var removeAvatarBtn = document.getElementById("removeAvatarBtn");
+    if (!removeAvatarBtn) return;
+
+    // Backdrop click, .dialog-close button, and Escape key are all wired by createDialog()
+    var removeDialog = createDialog("removeAvatarOverlay", {
+        onOpen:  function () { logger.info("remove-avatar", "remove avatar dialog opened"); },
+        onClose: function () { logger.debug("remove-avatar", "remove avatar dialog closed"); },
+    });
+    if (!removeDialog) return;
 
     var removeAvatarTitle      = document.getElementById("removeAvatarTitle");
     var removeAvatarMessage    = document.getElementById("removeAvatarMessage");
-    var removeAvatarCloseBtn   = document.getElementById("removeAvatarCloseBtn");
     var removeAvatarCancelBtn  = document.getElementById("removeAvatarCancelBtn");
     var removeAvatarConfirmBtn = document.getElementById("removeAvatarConfirmBtn");
 
@@ -28,32 +33,11 @@
     removeAvatarCancelBtn.textContent  = I18N.reset_avatar_confirm_no;
     removeAvatarConfirmBtn.textContent = I18N.reset_avatar_confirm_yes;
 
-    // Escape key handler (attached only while dialog is open)
-    function onEscapeKey(event) {
-        if (event.key === "Escape") closeRemoveDialog();
-    }
-
-    function openRemoveDialog() {
-        logger.info("remove-avatar", "remove avatar dialog opened");
-        removeAvatarOverlay.classList.remove("hidden");
-        document.addEventListener("keydown", onEscapeKey);
-    }
-
-    function closeRemoveDialog() {
-        logger.debug("remove-avatar", "remove avatar dialog closed");
-        removeAvatarOverlay.classList.add("hidden");
-        document.removeEventListener("keydown", onEscapeKey);
-    }
-
     // Open dialog when remove button is clicked
-    removeAvatarBtn.addEventListener("click", openRemoveDialog);
+    removeAvatarBtn.addEventListener("click", removeDialog.open);
 
-    // Close handlers: X button, Cancel button, backdrop click
-    removeAvatarCloseBtn.addEventListener("click", closeRemoveDialog);
-    removeAvatarCancelBtn.addEventListener("click", closeRemoveDialog);
-    removeAvatarOverlay.addEventListener("click", function (event) {
-        if (!event.target.closest(".dialog-panel")) closeRemoveDialog();
-    });
+    // Cancel button closes the dialog (X button, backdrop, and Escape handled by createDialog)
+    removeAvatarCancelBtn.addEventListener("click", removeDialog.close);
 
     // Show an error message inside the dialog (keeps it open so user can dismiss)
     function showDialogError(message) {
@@ -86,7 +70,7 @@
             }
 
             logger.info("remove-avatar", "avatar removed successfully");
-            closeRemoveDialog();
+            removeDialog.close();
 
             // Revert the profile avatar in the header to the placeholder circle
             setProfileAvatar(null);

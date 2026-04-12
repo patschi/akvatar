@@ -16,11 +16,19 @@
 (function () {
     "use strict";
 
-    // Dialog overlay and panel
+    // Dialog overlay — backdrop click, .dialog-close button, and Escape key are
+    // all wired by createDialog(); bail out early if the overlay is absent.
     var overlay = document.getElementById("importOverlay");
     if (!overlay) return;
-    var panel    = overlay.querySelector(".dialog-panel");
-    var closeBtn = overlay.querySelector(".dialog-close");
+    var importDialog = createDialog("importOverlay", {
+        onClose: function () {
+            // Notify the webcam module (if loaded) so it can stop the camera stream
+            if (ImportDialog.onDialogClose) {
+                ImportDialog.onDialogClose();
+            }
+            resetPreview();
+        },
+    });
 
     // Tab buttons inside the dialog (only present when multiple sources are enabled)
     var dialogTabBtns = overlay.querySelectorAll("[data-import-tab]");
@@ -67,17 +75,13 @@
         logger.info("import", "import dialog opened", { tab: tab || "gravatar" });
         switchTab(tab || "gravatar");
         resetPreview();
-        overlay.classList.remove("hidden");
+        importDialog.open();
     }
 
     function closeDialog() {
         logger.debug("import", "import dialog closed");
-        overlay.classList.add("hidden");
-        // Notify the webcam module (if loaded) so it can stop the camera stream
-        if (ImportDialog.onDialogClose) {
-            ImportDialog.onDialogClose();
-        }
-        resetPreview();
+        // importDialog.close() hides the overlay then fires onClose (webcam cleanup + resetPreview)
+        importDialog.close();
     }
 
     // ── Tab switching ────────────────────────────────────────────────
@@ -116,25 +120,8 @@
 
     // ── Close handlers ───────────────────────────────────────────────
 
-    // Close button (X)
-    closeBtn.addEventListener("click", closeDialog);
-
-    // Cancel button
+    // Cancel button (X button, backdrop, and Escape key are wired by createDialog)
     cancelBtn.addEventListener("click", closeDialog);
-
-    // Backdrop click (outside the panel)
-    overlay.addEventListener("click", function (event) {
-        if (!panel.contains(event.target)) {
-            closeDialog();
-        }
-    });
-
-    // Escape key
-    document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && !overlay.classList.contains("hidden")) {
-            closeDialog();
-        }
-    });
 
     // ── Preview helpers ──────────────────────────────────────────────
 
