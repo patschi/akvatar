@@ -26,7 +26,7 @@ settings:
 
 # Page de connexion
 login:
-  heading: "Mettre à jour votre avatar"
+  heading: "Mettre à jour votre photo"
   subtitle: "Connectez-vous avec votre compte d'organisation pour télécharger et gérer votre photo de profil."
   button: "Se connecter"
   error_oidc_failed: "Échec de l'authentification. Veuillez réessayer ou contacter votre administrateur."
@@ -41,21 +41,21 @@ logout:
 
 # Suppression de l'avatar
 reset_avatar:
-  button: "Supprimer l'avatar actuel"
-  confirm_title: "Supprimer l'avatar"
-  confirm_message: "Êtes-vous sûr de vouloir supprimer votre avatar ? Il sera réinitialisé par défaut."
+  button: "Supprimer la photo actuelle"
+  confirm_title: "Supprimer la photo"
+  confirm_message: "Êtes-vous sûr de vouloir supprimer votre photo ? Elle sera réinitialisée par défaut."
   confirm_yes: "Supprimer"
   confirm_no: "Annuler"
-  failed: "Impossible de supprimer votre avatar. Veuillez réessayer."
+  failed: "Impossible de supprimer votre photo. Veuillez réessayer."
 
 # Zone de téléchargement du tableau de bord
 upload:
   heading: "Mettre à jour votre photo de profil"
-  subtitle: "Sélectionnez une image, recadrez-la en carré et cliquez sur Télécharger. Votre avatar sera mis à jour automatiquement dans nos systèmes."
+  subtitle: "Sélectionnez une image, recadrez-la en carré et cliquez sur Télécharger. Votre photo sera mise à jour automatiquement dans nos systèmes."
   drop_hint: "Glissez-déposez une image ici, ou"
   choose: "Choisir une image…"
   disclaimer: "En téléchargeant, vous confirmez que cette image est appropriée et que vous avez le droit de l'utiliser."
-  button: "Télécharger & Mettre à jour l'avatar"
+  button: "Télécharger & Mettre à jour la photo"
   current_photo: "Photo actuelle"
   discard_current: "Choisir une autre image"
   processing: "Traitement en cours…"
@@ -112,7 +112,7 @@ step:
   ldap_updated: "Photo de l'annuaire utilisateurs mise à jour"
   rollback: "Modifications annulées"
   processing_failed: "Échec du traitement de l'image"
-  save_failed: "Impossible d'enregistrer votre avatar."
+  save_failed: "Impossible d'enregistrer votre photo."
 
 # Messages d'erreur de validation et d'API côté serveur
 error:
@@ -139,9 +139,9 @@ error:
 
 # Messages de résultat
 result:
-  success: "Avatar mis à jour avec succès !"
-  retry: "Modifier l'avatar à nouveau"
-  error: "Impossible de mettre à jour votre avatar. Veuillez réessayer plus tard."
+  success: "Photo mise à jour avec succès !"
+  retry: "Modifier la photo à nouveau"
+  error: "Impossible de mettre à jour votre photo. Veuillez réessayer plus tard."
   csrf_failed: "Votre session a expiré. Veuillez recharger la page et réessayer."
   contact_admin: "Veuillez contacter votre administrateur."
   network_error: "Impossible de joindre le serveur. Veuillez vérifier votre connexion et réessayer."
