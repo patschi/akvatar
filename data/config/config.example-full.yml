@@ -18,7 +18,7 @@ app:
   # Maximum upload size in megabytes
   max_upload_size_mb: 10
   # Where processed avatars are stored on disk (relative or absolute path)
-  avatar_storage_path: "data/user-avatars"
+  avatar_storage_path: "/data/user-avatars"
   # Public base URL where the app is reachable.
   # The path component is used to host the app under a subfolder automatically
   # (e.g. "https://portal.example.com/avatar" serves the app under /avatar).

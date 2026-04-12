@@ -37,6 +37,7 @@ METADATA_ROOT = AVATAR_ROOT / "_metadata"
 # Pre-compute frequently used values from config at import time
 MAX_SIZE = max(img_cfg["sizes"])
 _avatar_base_url = app_cfg["public_avatar_url"]
+AVATAR_BASE_URL = _avatar_base_url
 
 # File extensions the upload endpoint will accept
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}

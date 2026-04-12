@@ -9,6 +9,7 @@ Contains:
   - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by security.metadata_access)
   - GET  /api/heartbeat                 -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
+  - POST /api/upload/commit             -> commit pending avatar URL into the session cookie
 """
 
 import json
@@ -39,10 +40,21 @@ from src.image_import import (
     URL_ENABLED,
     WEBCAM_ENABLED,
 )
-from src.imaging import ALLOWED_EXTENSIONS, AVATAR_ROOT, MAX_SIZE, METADATA_ROOT
+from src.imaging import (
+    ALLOWED_EXTENSIONS,
+    AVATAR_ROOT,
+    MAX_SIZE,
+    METADATA_ROOT,
+    generate_filename,
+)
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.sec_csrf import validate_csrf_token
-from src.upload import ValidationError, generate_sse, validate_upload
+from src.upload import (
+    ValidationError,
+    build_canonical_url,
+    generate_sse,
+    validate_upload,
+)
 
 log = logging.getLogger("routes")
 
@@ -252,9 +264,53 @@ def api_upload():
         image.height,
     )
 
+    # Pre-generate the filename and canonical URL here (before the SSE response
+    # is returned) so they can be stored in the session cookie in this normal
+    # request/response cycle.  The SSE generator commits response headers before
+    # it runs, so any session mutation inside the generator would be lost for
+    # cookie-based sessions.  The client calls /api/upload/commit after
+    # receiving the done event to promote _pending_avatar to the active avatar.
+    filename_base = generate_filename()
+    session["_pending_avatar"] = build_canonical_url(filename_base)
+
     # Stream processing progress as SSE
     return Response(
-        stream_with_context(generate_sse(user, image)),
+        stream_with_context(generate_sse(user, image, filename_base)),
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# Upload commit (called by the client after a successful SSE upload stream)
+@routes_bp.route("/api/upload/commit", methods=["POST"])
+@login_required
+def api_upload_commit():
+    """
+    Commit the pending avatar URL from the session into the active user record.
+
+    During api_upload, the canonical URL is stored under session["_pending_avatar"]
+    before the SSE stream begins so it is captured in the cookie header of that
+    request.  The client calls this endpoint (with no body) after the done event
+    so the pending URL is promoted to session["user"]["avatar"] in a normal
+    request/response cycle where Set-Cookie is properly written.
+    """
+    csrf_rejection = validate_csrf_token()
+    if csrf_rejection:
+        return csrf_rejection
+
+    # Promote the pending avatar URL (stored before the SSE stream started) to
+    # the active session avatar.  Using pop() atomically reads and removes the
+    # key so a second call for the same upload returns 400 rather than a stale value.
+    pending_url = session.pop("_pending_avatar", None)
+    if not pending_url:
+        log.warning(
+            "Session avatar commit rejected - no pending avatar for user %r.",
+            session["user"].get("username", "?"),
+        )
+        return jsonify({"error": "no_pending_avatar"}), 400
+
+    session["user"] = {**session["user"], "avatar": pending_url}
+    log.debug(
+        "Session avatar committed for user %r.", session["user"].get("username", "?")
+    )
+    return "", 204

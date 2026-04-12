@@ -138,34 +138,41 @@ function showResult(cssClass, messageText) {
 }
 
 /**
- * Update the profile avatar element in the header.
- * Pass a URL to swap in (or update) the <img>; pass null to revert to the
- * initial-letter placeholder <div>.  Handles both starting states so callers
- * don't need to care whether an <img> or a placeholder <div> is currently shown.
+ * Update the profile avatar overlay image in the header.
+ * The container div (with the initials span) is always present in the DOM as
+ * the base layer.  Passing a URL adds or updates the overlay <img>; passing
+ * null removes it so the initials show through again.
  */
 function setProfileAvatar(url) {
-    var profileAvatar = document.querySelector(".profile-avatar");
-    if (!profileAvatar) return;
+    var avatarContainer = document.querySelector(".profile-avatar");
+    if (!avatarContainer) return;
+    var img = avatarContainer.querySelector(".profile-avatar__img");
     if (url) {
-        if (profileAvatar.tagName === "IMG") {
-            // Already an img - update the src to the new avatar URL
-            profileAvatar.src = url;
+        if (img) {
+            // Already has an overlay - update the src
+            img.src = url;
         } else {
-            // Was a placeholder <div> - swap it for a real <img> element
-            var newAvatar = document.createElement("img");
-            newAvatar.className = "profile-avatar";
-            newAvatar.src = url;
-            newAvatar.alt = I18N.upload_current_photo;
-            profileAvatar.replaceWith(newAvatar);
+            // Add the overlay image on top of the initials
+            img = document.createElement("img");
+            img.className = "profile-avatar__img";
+            img.alt = I18N.upload_current_photo;
+            img.onerror = function () { this.remove(); };
+            img.src = url;
+            avatarContainer.appendChild(img);
         }
     } else {
-        // No URL - revert to the initial-letter placeholder circle
-        var placeholder = document.createElement("div");
-        placeholder.className = "profile-avatar profile-avatar--placeholder";
-        placeholder.textContent = AVATAR_INITIAL;
-        profileAvatar.replaceWith(placeholder);
+        // Remove the overlay so the initials show through
+        if (img) img.remove();
     }
 }
+
+// Attach onerror fallback to the server-rendered avatar image (if present) so
+// a broken URL reveals the initials underneath instead of a broken-image icon.
+// Cannot use an inline onerror attribute because CSP blocks inline handlers.
+(function () {
+    var existing = document.querySelector(".profile-avatar__img");
+    if (existing) existing.onerror = function () { this.remove(); };
+})();
 
 // Drop zone element reference
 var dropZone = document.getElementById("dropZone");
@@ -468,6 +475,23 @@ uploadButton.addEventListener("click", async function () {
 
         // Display final result
         if (finalResult && finalResult.avatar_url && !finalResult.error) {
+            // Commit the pending avatar URL to the session cookie.
+            // During the upload request the server stored the canonical URL in
+            // session["_pending_avatar"] (captured in the cookie header before the
+            // SSE stream starts).  This follow-up POST promotes it to the active
+            // session avatar so reloading the page shows the new photo without
+            // requiring a re-login.  No body is sent - the server uses the value
+            // it already stored, so there is nothing to forge or validate here.
+            try {
+                await fetch(UPLOAD_COMMIT_ENDPOINT, {
+                    method: "POST",
+                    headers: { "X-CSRF-Token": CSRF_TOKEN },
+                });
+            } catch (_commitErr) {
+                // Non-fatal: the avatar was updated successfully; the session
+                // commit is a best-effort convenience for post-reload display.
+            }
+
             // Success: show the updated avatar
             showResult("result-success", I18N.result_success);
 

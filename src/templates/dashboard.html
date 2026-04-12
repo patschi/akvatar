@@ -18,14 +18,14 @@
 
       <!-- Current profile: avatar + display name + remove button -->
       <div class="profile-header">
-        {% if user.avatar %}
-          <img class="profile-avatar" src="{{ user.avatar }}" alt="{{ t('upload.current_photo') }}" />
-        {% else %}
-          <!-- Fallback: initial-letter circle -->
-          <div class="profile-avatar profile-avatar--placeholder">
-            {{ user_initials }}
-          </div>
-        {% endif %}
+        <!-- Avatar circle: initials always present as the base layer;
+             the photo overlays when available so the fallback is never a blank hole. -->
+        <div class="profile-avatar">
+          <span class="profile-avatar__initials">{{ user_initials }}</span>
+          {% if user.avatar %}
+            <img class="profile-avatar__img" src="{{ user.avatar }}" alt="{{ t('upload.current_photo') }}" />
+          {% endif %}
+        </div>
         <div class="profile-meta">
           <h2 class="profile-name">{{ user.name or user.username }}</h2>
           <p class="profile-email">{{ user.email }}</p>
@@ -151,6 +151,7 @@
   <!-- Server-provided constants consumed by dashboard scripts -->
   <script nonce="{{ csp_nonce() }}">
     const UPLOAD_ENDPOINT         = "{{ url_for('routes.api_upload') }}";
+    const UPLOAD_COMMIT_ENDPOINT  = "{{ url_for('routes.api_upload_commit') }}";
     const REMOVE_AVATAR_ENDPOINT  = "{{ url_for('reset_avatar.api_remove_avatar') }}";
     const GRAVATAR_ENDPOINT       = "{{ url_for('import.api_fetch_gravatar') }}";
     const URL_FETCH_ENDPOINT      = "{{ url_for('import.api_fetch_url') }}";
@@ -161,7 +162,6 @@
     const I18N                    = {{ i18n | tojson }};
     const LDAP_ENABLED            = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS      = new Set({{ allowed_extensions | tojson }});
-    const AVATAR_INITIAL          = "{{ user_initials }}";
   </script>
   <script src="{{ url_for('static', filename='js/dashboard-main.js') }}"></script>
   {% if user.avatar %}

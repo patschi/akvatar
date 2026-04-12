@@ -6,7 +6,7 @@
  * and updates the profile header to show the placeholder initial on success.
  *
  * Depends on server-provided constants injected by the template:
- *   REMOVE_AVATAR_ENDPOINT, CSRF_TOKEN, I18N, AVATAR_INITIAL
+ *   REMOVE_AVATAR_ENDPOINT, CSRF_TOKEN, I18N
  * Depends on escapeHTML() and setProfileAvatar() from dashboard-main.js (loaded before this script).
  */
 (function () {

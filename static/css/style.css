@@ -461,28 +461,36 @@ body {
 }
 
 .profile-avatar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    object-fit: cover;
     flex-shrink: 0;
-    border: 2px solid var(--border-strong);
-    transition: border-color var(--transition);
+    overflow: hidden;
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+/* Show a visible ring when the photo is present */
+.profile-avatar:has(.profile-avatar__img) {
+    border-color: var(--border-strong);
 }
 
 .profile-avatar:hover {
     border-color: var(--accent);
 }
 
-.profile-avatar--placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #1e40af, #3b82f6);
-    border-color: transparent;
-    color: #fff;
-    font-size: 1.3rem;
-    font-weight: 700;
+/* Photo overlay - covers the initials when loaded */
+.profile-avatar__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .profile-name {
