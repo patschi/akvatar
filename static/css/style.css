@@ -473,6 +473,7 @@ body {
     color: #fff;
     font-size: 1.3rem;
     font-weight: 700;
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
 }
 
 /* Show a visible ring when the photo is present */
