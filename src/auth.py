@@ -7,9 +7,7 @@ and exposes the auth routes: /login, /callback, /logout, /logged-out.
 OIDC scopes are hardcoded to `openid profile email` and cannot be changed via config.
 """
 
-import base64
 import logging
-import zlib
 from functools import wraps
 from urllib.parse import urlencode
 
@@ -27,19 +25,6 @@ OIDC_SCOPES = "openid profile email"
 
 # Blueprint so auth routes can be registered cleanly on the app
 auth_bp = Blueprint("auth", __name__)
-
-
-def _compress_token(jwt_str):
-    """Compress a JWT string with zlib (level 9) and encode as base64 for compact session storage."""
-    return base64.b64encode(zlib.compress(jwt_str.encode("utf-8"), level=9)).decode("ascii")
-
-
-def _decompress_token(stored):
-    """Decode and decompress a token previously stored via _compress_token. Returns None if stored is None."""
-    if stored is None:
-        return None
-    return zlib.decompress(base64.b64decode(stored.encode("ascii"))).decode("utf-8")
-
 
 # OAuth / OIDC client (initialized later via init_oauth)
 oauth = OAuth()
@@ -146,18 +131,8 @@ def auth_callback():
         "avatar": ak_user.get("avatar", ""),
     }
 
-    # Only store the ID token when end_provider_session is enabled; it is only
-    # used as id_token_hint in RP-Initiated Logout and is dead weight otherwise.
-    # Stored compressed (zlib level 9 + base64) to minimize cookie size.
-    if oidc_cfg.get("end_provider_session", False):
-        _raw_id_token = token.get("id_token", None)
-        if _raw_id_token:
-            session["id_token"] = _compress_token(_raw_id_token)
-            log.debug(
-                "ID token stored compressed (original=%d bytes, stored=%d bytes).",
-                len(_raw_id_token),
-                len(session["id_token"]),
-            )
+    # Store the raw ID token for RP-Initiated Logout (id_token_hint parameter)
+    session["id_token"] = token.get("id_token", None)
 
     # Resolve locale from OIDC claim
     oidc_locale_raw = userinfo.get("locale", "")
@@ -180,8 +155,7 @@ def auth_callback():
 def logout():
     """Clear the local session and optionally redirect to Authentik's end_session_endpoint (RP-Initiated Logout)."""
     username = session.get("user", {}).get("username", "unknown")
-    # Decompress on demand - only present when end_provider_session was true at login
-    id_token = _decompress_token(session.get("id_token", None))
+    id_token = session.get("id_token", None)
     session.clear()
     log.info("User %r logged out.", username)
 
