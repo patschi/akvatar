@@ -258,7 +258,7 @@ _JS_KEYS = (
     "step.upload",
     # Server-side step labels (needed to pre-render waiting steps before SSE arrives)
     "step.validated",
-    "step.filename",
+    "step.prepare",
     "step.processed",
     "step.profile_synced",
     "step.ldap_updated",

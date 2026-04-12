@@ -399,7 +399,7 @@ uploadButton.addEventListener("click", async function () {
         // Pre-render all expected server steps as "pending" so the user sees what's coming
         var serverStepLabels = [
             I18N.step_validated,
-            I18N.step_filename,
+            I18N.step_prepare,
             I18N.step_processed,
             I18N.step_profile_synced,
         ];
