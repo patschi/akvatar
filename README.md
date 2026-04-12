@@ -25,7 +25,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
   (~740 bits of entropy)
-- **Authentik Admin API**: sets a configurable user attribute (default: `avatar-url`) on
+- **Authentik Admin API**: sets a configurable user attribute (default: `avatar`) on
   the user object via `PATCH /api/v3/core/users/{pk}/`
 - **LDAP / Active Directory**: writes one or more photo attributes (binary bytes or URL
   string); optional, toggle in config
@@ -198,7 +198,7 @@ Relevant guides:
 5. Cropped image is uploaded to `POST /api/upload`
 6. Server validates (extension, magic bytes, Pillow decode, dimensions), strips all
    metadata, then resizes to all configured sizes, and saves as JPEG + PNG + WebP
-7. Server `PATCH`es the `avatar-url` attribute on the Authentik user via the Admin API
+7. Server `PATCH`es the `avatar` attribute on the Authentik user via the Admin API
 8. *(If LDAP enabled)* Server writes the photo into configured LDAP attributes (binary
    bytes or URL string)
 9. Browser shows step-by-step progress in real time via Server-Sent Events

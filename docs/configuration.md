@@ -868,10 +868,10 @@ exits with an error if the size is not found.
 
 ### `authentik.avatar_attribute`
 
-| Property    | Value          |
-|-------------|----------------|
-| **Type**    | String         |
-| **Default** | `"avatar-url"` |
+| Property    | Value      |
+|-------------|------------|
+| **Type**    | String     |
+| **Default** | `"avatar"` |
 
 The Authentik user attribute name where the avatar URL is stored. The application sets
 `attributes.<this-value>` on the user object via the API. Change this if your Authentik

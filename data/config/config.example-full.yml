@@ -210,7 +210,7 @@ authentik:
   # Must be one of the values in images.sizes below.
   avatar_size: 512
   # Authentik user attribute to store the avatar URL in
-  avatar_attribute: "avatar-url"
+  avatar_attribute: "avatar"
   # Skip TLS certificate verification (set to true for self-signed certificates)
   skip_cert_verify: false
 

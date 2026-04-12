@@ -118,7 +118,7 @@ sequenceDiagram
     A-->>B: SSE: processed ✓ (6 sizes, 3 formats, 1.2 MB)
 
     A->>K: GET /api/v3/core/users/{pk}/ (read current attributes)
-    A->>K: PATCH /api/v3/core/users/{pk}/ (set avatar-url attribute)
+    A->>K: PATCH /api/v3/core/users/{pk}/ (set avatar attribute)
     A-->>B: SSE: Authentik updated ✓
 
     opt LDAP enabled + user has ldap_uniq attribute
@@ -216,7 +216,7 @@ The app updates the user's avatar URL in Authentik via the Admin API:
 2. **Merge** the new avatar URL into the existing attributes dict, preserving all other
    custom attributes
 3. **Write** the updated dict: `PATCH /api/v3/core/users/{pk}/` with
-   `{"attributes": {..., "avatar-url": "<url>"}}`
+   `{"attributes": {..., "avatar": "<url>"}}`
 
 The URL points to the JPEG at the configured size (see [
 `authentik.avatar_size`](configuration.md#authentik_avatar_size)). Authentik

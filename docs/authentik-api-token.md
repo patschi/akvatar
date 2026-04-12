@@ -10,7 +10,7 @@ requires an API token with the appropriate permissions.
 2. **Read user attributes:** After uploading an avatar, the app calls `GET /api/v3/core/users/<pk>/` to fetch the user's
    current `attributes` dict. This is needed to read the `ldap_uniq` value (used for LDAP updates) without overwriting
    other custom attributes.
-3. **Write avatar URL:** The app calls `PATCH /api/v3/core/users/<pk>/` to set `attributes.avatar-url` (or whichever
+3. **Write avatar URL:** The app calls `PATCH /api/v3/core/users/<pk>/` to set `attributes.avatar` (or whichever
    attribute is configured via `authentik.avatar_attribute`) to the public URL of the uploaded avatar.
 4. **List active users:** The cleanup job calls `GET /api/v3/core/users/?is_active=true` to determine which users still
    exist, so it can remove avatars of deleted or deactivated users.
@@ -36,7 +36,7 @@ authentik:
   base_url: "https://your-authentik-domain"
   api_token: "<token-from-above>"
   avatar_size: 512
-  avatar_attribute: "avatar-url"
+  avatar_attribute: "avatar"
 ```
 
 See [Configuration Reference](configuration.md#authentik-admin-api) for details on each setting.

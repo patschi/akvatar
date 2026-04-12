@@ -19,7 +19,7 @@ log = logging.getLogger("authentik")
 # Module-level configuration
 
 # Which Authentik user attribute stores the avatar URL (configurable in config)
-_avatar_attr = ak_cfg.get("avatar_attribute", "avatar-url")
+_avatar_attr = ak_cfg.get("avatar_attribute", "avatar")
 
 # Whether to skip TLS certificate verification for Authentik API requests
 _skip_cert_verify = ak_cfg.get("skip_cert_verify", False)
@@ -76,7 +76,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
     Fetch the current user object, merge *data* into it, and PATCH it back.
 
     Authentik replaces top-level fields wholesale on PATCH, so a naive
-    ``{"attributes": {"avatar-url": "x"}}`` would wipe every other attribute.
+    ``{"attributes": {"avatar": "x"}}`` would wipe every other attribute.
     This helper GETs the current state first and merges *data* into it:
 
     - Top-level keys in *data* overwrite the corresponding keys in the
@@ -159,7 +159,7 @@ def retrieve_user(username: str) -> dict:
             f"Authentik returned non-integer PK {pk!r} for user {username!r}."
         )
 
-    # Read the custom avatar URL from the configured attribute (e.g. 'avatar-url')
+    # Read the custom avatar URL from the configured attribute (e.g. 'avatar')
     # rather than the top-level 'avatar' field, which is Authentik's computed avatar
     # (Gravatar, initials, etc.) and doesn't distinguish custom from default.
     attrs = user.get("attributes", {})
