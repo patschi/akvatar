@@ -19,6 +19,7 @@ import requests as http_requests
 from flask import Blueprint, Response, abort, request
 
 from src.config import (
+    EXTERNAL_REQUEST_TIMEOUT,
     sentry_browser_dsn,
     sentry_browser_enabled,
     sentry_browser_tunnel_enabled,
@@ -50,7 +51,7 @@ if _SENTRY_TUNNEL_DSN:
 _SENTRY_TUNNEL_MAX_BYTES = 1 * 1024 * 1024
 
 # Timeout for the outbound HTTP request to Sentry (seconds).
-_SENTRY_REPORT_TIMEOUT = 5
+_SENTRY_REPORT_TIMEOUT = EXTERNAL_REQUEST_TIMEOUT
 
 
 @sentry_bp.route("/api/sentry-event", methods=["POST"])

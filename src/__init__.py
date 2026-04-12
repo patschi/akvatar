@@ -10,3 +10,4 @@ APP_BASE_VERSION = "0.1.0"
 APP_VERSION = f"{APP_BASE_VERSION}+{os.environ.get('APP_GIT_HASH', 'unknown')}"
 
 USER_AGENT = f"{APP_NAME}/v{APP_VERSION}"
+

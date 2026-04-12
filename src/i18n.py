@@ -13,12 +13,13 @@ from pathlib import Path
 import yaml
 from flask import g, request, session
 
+from src.config import DEFAULT_LOCALE
+
 log = logging.getLogger("i18n")
 
 # Directory containing per-locale YAML translation files
 _LANGUAGES_DIR = Path(__file__).resolve().parent / "languages"
 
-DEFAULT_LOCALE = "en_US"
 
 # Loaded at startup by _load_translations()
 TRANSLATIONS: dict[str, dict[str, str]] = {}

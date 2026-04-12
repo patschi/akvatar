@@ -5,7 +5,7 @@ Registers the Authlib OAuth client, provides the login_required decorator,
 and exposes init_oauth() for application startup.
 Route handlers for /login-start, /callback, /logout, and /logged-out are in web_auth.py.
 
-OIDC scopes are hardcoded to `openid profile email` and cannot be changed via config.
+OIDC scopes are defined centrally in config.py (``OIDC_SCOPES``).
 """
 
 import logging
@@ -17,6 +17,8 @@ from flask import redirect, session, url_for
 
 from src.authentik import retrieve_user
 from src.config import (
+    EXTERNAL_REQUEST_TIMEOUT,
+    OIDC_SCOPES,
     oidc_client_id,
     oidc_client_secret,
     oidc_end_provider_session,
@@ -29,9 +31,6 @@ from src.i18n import resolve_oidc_locale
 
 log = logging.getLogger("auth")
 
-# Hardcoded OIDC scopes - always request identity, profile, and email claims
-OIDC_SCOPES = "openid profile email"
-
 # OAuth / OIDC client (initialized later via init_oauth)
 oauth = OAuth()
 
@@ -43,7 +42,7 @@ def init_oauth(app):
     # Build client_kwargs, disabling TLS verification when configured.
     # Authlib's OAuth2Session (requests backend) propagates the verify flag to
     # ALL requests it makes, including the server metadata (OIDC discovery) fetch.
-    _client_kwargs = {"scope": OIDC_SCOPES}
+    _client_kwargs = {"scope": OIDC_SCOPES, "timeout": EXTERNAL_REQUEST_TIMEOUT}
     if oidc_skip_cert_verify:
         _client_kwargs["verify"] = False
 

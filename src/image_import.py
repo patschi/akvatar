@@ -20,6 +20,8 @@ import requests as http_requests
 
 from src import USER_AGENT
 from src.config import (
+    EXTERNAL_REQUEST_TIMEOUT,
+    MAX_REDIRECTS,
     gravatar_enabled,
     gravatar_restrict_email,
     import_url_enabled,
@@ -35,8 +37,7 @@ log = logging.getLogger("img_import")
 # Remote image fetch limits (derived from the same config as direct uploads)
 MAX_FETCH_SIZE_MB = max_upload_size_mb
 _MAX_FETCH_SIZE = MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
-FETCH_TIMEOUT = 15  # seconds
-_MAX_REDIRECTS = 5  # maximum redirect hops to follow during URL import
+FETCH_TIMEOUT = EXTERNAL_REQUEST_TIMEOUT  # seconds
 
 # Config: per-source enable flags and URL security settings
 GRAVATAR_ENABLED = gravatar_enabled
@@ -128,7 +129,7 @@ def safe_fetch(url: str) -> http_requests.Response:
     Raises ``ValueError`` when a redirect target fails validation.
     Raises ``http_requests.RequestException`` on network failure.
     """
-    for hop in range(_MAX_REDIRECTS + 1):
+    for hop in range(MAX_REDIRECTS + 1):
         parsed = urlparse(url)
 
         # Only HTTP(S) is allowed at every hop - not file:// or other schemes
@@ -153,11 +154,11 @@ def safe_fetch(url: str) -> http_requests.Response:
             headers={"User-Agent": USER_AGENT},
         )
 
-        # Follow 3xx redirects manually (up to _MAX_REDIRECTS hops)
+        # Follow 3xx redirects manually (up to MAX_REDIRECTS hops)
         if resp.status_code in (301, 302, 303, 307, 308):
-            if hop == _MAX_REDIRECTS:
+            if hop == MAX_REDIRECTS:
                 resp.close()
-                raise ValueError(f"Too many redirects (max {_MAX_REDIRECTS}).")
+                raise ValueError(f"Too many redirects (max {MAX_REDIRECTS}).")
             location = resp.headers.get("Location", "").strip()
             if not location:
                 resp.close()
@@ -165,7 +166,7 @@ def safe_fetch(url: str) -> http_requests.Response:
             resp.close()
             url = location
             log.debug(
-                "Following redirect (hop %d/%d): %r", hop + 1, _MAX_REDIRECTS, url
+                "Following redirect (hop %d/%d): %r", hop + 1, MAX_REDIRECTS, url
             )
             continue
 
@@ -173,7 +174,7 @@ def safe_fetch(url: str) -> http_requests.Response:
         return resp
 
     # Unreachable, but satisfies static analysis
-    raise ValueError(f"Too many redirects (max {_MAX_REDIRECTS}).")
+    raise ValueError(f"Too many redirects (max {MAX_REDIRECTS}).")
 
 
 # Exceptions raised by fetch helpers - allow route handlers to pattern-match

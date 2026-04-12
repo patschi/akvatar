@@ -57,6 +57,33 @@ access_log = bool(web_cfg.get("access_log", False))
 http2_cfg = web_cfg.get("http2", {})
 
 # ---------------------------------------------------------------------------
+# Internal defaults - hardcoded application constants not exposed via config.yml.
+# Centralised here so every module imports from one place instead of scattering
+# magic numbers across the codebase.
+# ---------------------------------------------------------------------------
+
+# Default timeout (in seconds) for all outbound HTTP requests: OIDC discovery,
+# Authentik Admin API calls, remote image fetches, Sentry tunnel relay, etc.
+# Every module that makes external requests should import and use this value
+# (or derive its own timeout from it) instead of hardcoding a per-call number.
+EXTERNAL_REQUEST_TIMEOUT: int = 10
+
+# Maximum number of HTTP redirect hops to follow during remote image import.
+# Each hop is individually validated against the SSRF private-IP filter.
+MAX_REDIRECTS: int = 5
+
+# OIDC scopes requested during authorization - always identity, profile, and email.
+OIDC_SCOPES: str = "openid profile email"
+
+# Fallback locale used when no match is found in the OIDC claim, session,
+# cookie, or Accept-Language header.
+DEFAULT_LOCALE: str = "en_US"
+
+# Pillow decompression bomb pixel limit.  A small file on disk can expand to an
+# enormous bitmap in memory; 25 MP at 4 bytes/pixel ≈ 100 MB of RAM.
+MAX_IMAGE_PIXELS: int = 25_000_000
+
+# ---------------------------------------------------------------------------
 # Per-setting named exports - defaults resolved centrally; re-use in modules
 # ---------------------------------------------------------------------------
 

@@ -14,6 +14,7 @@ import urllib3
 
 from src import USER_AGENT
 from src.config import (
+    EXTERNAL_REQUEST_TIMEOUT,
     ak_api_token,
     ak_avatar_attribute,
     ak_base_url,
@@ -31,9 +32,11 @@ _avatar_attr = ak_avatar_attribute
 # Whether to skip TLS certificate verification for Authentik API requests
 _skip_cert_verify = ak_skip_cert_verify
 
-# Timeout in seconds for individual API requests (longer for paginated list)
-_TIMEOUT = 15
-_TIMEOUT_LIST = 30
+# Timeout in seconds for individual API requests, derived from the central
+# EXTERNAL_REQUEST_TIMEOUT.  Paginated list calls use a longer timeout because
+# Authentik may need extra time to serialize large result sets.
+_TIMEOUT = EXTERNAL_REQUEST_TIMEOUT
+_TIMEOUT_LIST = EXTERNAL_REQUEST_TIMEOUT * 2
 
 # Pre-build a requests.Session for TCP connection pooling across API calls.
 # Avoids a fresh TCP+TLS handshake for every request to the same Authentik host.

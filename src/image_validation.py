@@ -18,7 +18,7 @@ import logging
 
 from PIL import Image
 
-from src.config import img_sizes
+from src.config import MAX_IMAGE_PIXELS, img_sizes
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, ALLOWED_FORMATS
 
@@ -30,7 +30,7 @@ log = logging.getLogger("upload")
 # practical ceiling that accepts very high-resolution source photos while
 # blocking crafted inputs.  Set here (at the validation boundary) so the limit
 # is in place before any Image.open() call in validate_upload().
-Image.MAX_IMAGE_PIXELS = 25_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 # Magic byte signatures for each allowed upload format.
 # Checked before Pillow touches the file so that crafted inputs with a fake
