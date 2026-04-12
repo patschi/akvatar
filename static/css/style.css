@@ -100,6 +100,12 @@ body {
     color: var(--text);
     line-height: 1.6;
     min-height: 100vh;
+    /* Prevent accidental pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+    /* Disable double-tap-to-zoom delay for faster touch response */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 /* Entrance animation */
@@ -114,6 +120,8 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 0.8rem 1.5rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
     background: color-mix(in srgb, var(--surface) 80%, transparent);
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(16px);
@@ -132,7 +140,7 @@ body {
     align-items: center;
     gap: 0.6rem;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 1.3rem;
     color: var(--text);
     text-decoration: none;
     letter-spacing: -0.02em;
@@ -149,7 +157,7 @@ body {
 }
 
 .user-info {
-    font-size: 0.9rem;
+    font-size: 1.15rem;
     color: var(--text-muted);
 }
 
@@ -509,17 +517,17 @@ body {
 .remove-avatar-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     flex-shrink: 0;
     margin-left: auto;
     font-family: inherit;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 500;
     color: var(--text-muted);
     background: none;
     border: 1px solid var(--border-strong);
     cursor: pointer;
-    padding: 0.35rem 0.7rem;
+    padding: 0.25rem 0.55rem;
     border-radius: var(--radius-sm);
     transition: color var(--transition), background var(--transition), border-color var(--transition);
 }
@@ -939,7 +947,7 @@ body {
 .remove-avatar-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: 0.75rem;
     margin-top: 1.5rem;
 }
 
@@ -1082,21 +1090,398 @@ a:focus-visible {
     border-radius: 4px;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
+/* ------------------------------------------------------------------ */
+/*  Responsive / Mobile                                               */
+/* ------------------------------------------------------------------ */
+
+/* ---- Tablet & small desktops (≤768px) ---- */
+@media (max-width: 768px) {
+    html {
+        font-size: 18px;
+    }
+
+    .container {
+        margin: 1.5rem auto;
+        padding: 0 0.75rem;
+    }
+
     .card {
-        padding: 1.5rem 1.25rem;
+        padding: 1.75rem 1.5rem;
     }
 
     .login-card {
-        padding: 2rem 1.25rem;
+        padding: 2.25rem 1.5rem;
+    }
+
+    /* Touch-friendly sizing for all interactive controls */
+    .btn,
+    .remove-avatar-btn,
+    .discard-btn {
+        min-height: 44px;
+    }
+
+    .btn {
+        padding: 0.65rem 1.25rem;
+    }
+
+    .btn.btn-import {
+        padding: 0.55rem 0.85rem;
+    }
+
+    .btn.dialog-option {
+        padding: 0.55rem 0.6rem;
+    }
+
+    .remove-avatar-btn {
+        padding: 0.45rem 0.7rem;
+    }
+
+    .discard-btn {
+        padding: 0.45rem 0.65rem;
+    }
+
+    /* Dialog panels: relax the min-width so they don't overflow on tablets */
+    .dialog-panel {
+        min-width: 320px;
+    }
+}
+
+/* ---- Mobile phones (≤600px) ---- */
+@media (max-width: 600px) {
+    html {
+        font-size: 16px;
+    }
+
+    /* Slightly smaller buttons on phones */
+    .btn,
+    .remove-avatar-btn,
+    .discard-btn,
+    .import-input,
+    .import-email-locked,
+    .import-cancel {
+        min-height: 40px;
     }
 
     .container {
         margin: 1rem auto;
+        padding: 0 0.625rem;
+    }
+
+    .card {
+        padding: 1.5rem 1.15rem;
+        border-radius: 12px;
+    }
+
+    .login-card {
+        padding: 2rem 1.15rem;
+    }
+
+    /* Navbar: tighter spacing, truncate long names */
+    .navbar {
+        padding: 0.6rem 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .brand {
+        font-size: 1.1rem;
+        gap: 0.45rem;
+        flex-shrink: 0;
+    }
+
+    .brand-logo {
+        width: 26px;
+        height: 26px;
+    }
+
+    .navbar-right {
+        min-width: 0;
+        gap: 0.25rem;
+    }
+
+    .user-info {
+        font-size: 0.95rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 150px;
+    }
+
+    /* Profile header: stack when the remove button is present */
+    .profile-header {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .profile-meta {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .profile-name,
+    .profile-email {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .profile-name {
+        font-size: 0.95rem;
+    }
+
+    .profile-email {
+        font-size: 0.75rem;
+    }
+
+    .remove-avatar-btn {
+        flex: 1 0 100%;
+        justify-content: center;
+    }
+
+    /* Headings */
+    .card h1 {
+        font-size: 1.15rem;
+    }
+
+    .login-card h1 {
+        font-size: 1.2rem;
+    }
+
+    .subtitle {
+        font-size: 0.82rem;
+    }
+
+    /* Drop zone – more generous touch area */
+    .drop-zone {
+        padding: 2rem 0.75rem;
+    }
+
+    .drop-zone-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .file-label {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.88rem;
+    }
+
+    /* Import triggers: stack vertically */
+    .import-triggers {
+        flex-direction: column;
+    }
+
+    .btn.btn-import {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Dialogs: full-width on mobile */
+    .dialog-panel {
+        min-width: unset;
+        max-width: unset;
+        width: calc(100vw - 1.25rem);
+        padding: 1.5rem 1.25rem;
+        border-radius: 14px;
+    }
+
+    .dialog-title {
+        font-size: 1.05rem;
+    }
+
+    .dialog-options {
+        gap: 0.35rem;
+    }
+
+    .btn.dialog-option {
+        font-size: 0.82rem;
+        padding: 0.5rem 0.45rem;
+    }
+
+    /* Language options: single column */
+    .dialog-options--lang .btn.dialog-option {
+        flex: 1 0 100%;
+    }
+
+    /* Import dialog internals */
+    .import-field-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .import-input {
+        font-size: 1rem;     /* prevent iOS zoom on focus */
+        padding: 0.55rem 0.75rem;
+    }
+
+    .import-email-locked {
+        font-size: 0.88rem;
+        display: flex;
+        align-items: center;
+        padding: 0.55rem 0.75rem;
+    }
+
+    /* Webcam controls */
+    .webcam-controls {
+        gap: 0.35rem;
+    }
+
+    .webcam-controls .btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* Image selected bar */
+    .image-selected-bar {
+        flex-wrap: wrap;
+    }
+
+    .image-selected-name {
+        flex: 1 0 100%;
+        font-size: 0.78rem;
+    }
+
+    .discard-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Progress panel */
+    .progress-list li {
+        padding: 0.5rem 0.55rem;
+        font-size: 0.82rem;
+    }
+
+    .step-detail {
+        font-size: 0.7rem;
+    }
+
+    /* Upload button */
+    .btn-block {
+        min-height: 44px;
+        font-size: 0.95rem;
+    }
+
+    /* Result messages */
+    .result-success,
+    .result-error {
+        font-size: 0.85rem;
+        padding: 0.65rem 0.85rem;
+    }
+
+    /* Footer actions in dialogs */
+    .remove-avatar-actions {
+        flex-direction: column-reverse;
+        gap: 0.4rem;
+    }
+
+    .remove-avatar-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .dialog-footer.import-footer {
+        gap: 0.4rem;
+    }
+
+    .import-cancel {
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Cropper wrapper */
+    .cropper-wrapper {
+        max-height: 300px;
+    }
+
+    /* Login hero */
+    .login-hero {
+        width: 60px;
+        height: 60px;
+    }
+
+    .login-hero-badge {
+        font-size: 0.55rem;
+    }
+
+    .btn-login {
+        width: 100%;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* ---- Very narrow phones (≤380px) ---- */
+@media (max-width: 380px) {
+    html {
+        font-size: 15px;
+    }
+
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .card {
+        padding: 1.25rem 1rem;
     }
 
     .navbar {
-        padding: 0.6rem 1rem;
+        padding: 0.5rem 0.6rem;
+    }
+
+    .user-info {
+        max-width: 100px;
+        font-size: 0.85rem;
+    }
+
+    .dialog-panel {
+        width: calc(100vw - 0.75rem);
+        padding: 1.25rem 1rem;
+    }
+
+    .dialog-options {
+        flex-wrap: wrap;
+    }
+
+    .btn.dialog-option {
+        flex: 1 0 calc(50% - 0.2rem);
+        font-size: 0.78rem;
+    }
+
+    /* Theme options: stack on very narrow screens */
+    .dialog-group > .dialog-options:not(.dialog-options--lang) .btn.dialog-option {
+        flex: 1 0 100%;
+    }
+}
+
+/* ---- Touch device adjustments ---- */
+@media (pointer: coarse) {
+    /* Larger hit areas for icon-only buttons on touch screens */
+    .settings-btn,
+    .dialog-close {
+        width: 44px;
+        height: 44px;
+    }
+
+    /* Remove hover effects that linger on touch */
+    .btn:hover:not(:disabled) {
+        transform: none;
+    }
+
+    /* Suppress tap highlight on iOS / Android */
+    button,
+    a,
+    label,
+    input {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Ensure active state feedback for touch */
+    .btn:active:not(:disabled) {
+        transform: scale(0.97);
+        transition-duration: 0.08s;
+    }
+
+    .drop-zone:active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
     }
 }
