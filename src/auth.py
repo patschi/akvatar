@@ -132,7 +132,17 @@ def auth_callback():
     }
 
     # Store the raw ID token for RP-Initiated Logout (id_token_hint parameter)
-    session["id_token"] = token.get("id_token", None)
+    # Only store the ID token when end_provider_session is enabled; it is only
+    # used as id_token_hint in RP-Initiated Logout and is dead weight otherwise.
+    if oidc_cfg.get("end_provider_session", False):
+        _raw_id_token = token.get("id_token", None)
+        if _raw_id_token:
+            session["id_token"] = _raw_id_token
+            log.debug(
+                "ID token stored (stored=%d bytes).",
+                len(_raw_id_token),
+                len(session["id_token"]),
+            )
 
     # Resolve locale from OIDC claim
     oidc_locale_raw = userinfo.get("locale", "")
