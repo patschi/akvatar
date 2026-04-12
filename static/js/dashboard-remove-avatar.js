@@ -7,7 +7,7 @@
  *
  * Depends on server-provided constants injected by the template:
  *   REMOVE_AVATAR_ENDPOINT, CSRF_TOKEN, I18N, AVATAR_INITIAL
- * Depends on escapeHTML() from dashboard-main.js (loaded before this script).
+ * Depends on escapeHTML() and setProfileAvatar() from dashboard-main.js (loaded before this script).
  */
 (function () {
     "use strict";
@@ -81,14 +81,8 @@
 
             closeRemoveDialog();
 
-            // Replace the avatar <img> with a placeholder initial-letter circle
-            var profileAvatar = document.querySelector(".profile-avatar");
-            if (profileAvatar) {
-                var placeholder = document.createElement("div");
-                placeholder.className = "profile-avatar profile-avatar--placeholder";
-                placeholder.textContent = AVATAR_INITIAL;
-                profileAvatar.replaceWith(placeholder);
-            }
+            // Revert the profile avatar in the header to the placeholder circle
+            setProfileAvatar(null);
 
             // Hide the remove button (avatar is gone)
             removeAvatarBtn.classList.add("hidden");

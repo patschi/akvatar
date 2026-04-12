@@ -56,6 +56,7 @@ upload:
   choose: "Elegir imagen…"
   disclaimer: "Al subir, confirmas que esta imagen es apropiada y que tienes derecho a utilizarla."
   button: "Subir & Actualizar avatar"
+  current_photo: "Foto actual"
   discard_current: "Elegir otra imagen"
   processing: "Procesando…"
   invalid_ext: "El tipo de archivo .{ext} no está permitido. Aceptados: {allowed}"

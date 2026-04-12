@@ -56,6 +56,7 @@ upload:
   choose: "Choose image…"
   disclaimer: "By uploading, you confirm this is an appropriate image and that you have the right to use it."
   button: "Upload & Update Avatar"
+  current_photo: "Current photo"
   discard_current: "Choose different image"
   processing: "Processing…"
   invalid_ext: "File type .{ext} is not allowed. Accepted: {allowed}"

@@ -19,7 +19,7 @@
       <!-- Current profile: avatar + display name + remove button -->
       <div class="profile-header">
         {% if user.avatar %}
-          <img class="profile-avatar" src="{{ user.avatar }}" alt="Current avatar" />
+          <img class="profile-avatar" src="{{ user.avatar }}" alt="{{ t('upload.current_photo') }}" />
         {% else %}
           <!-- Fallback: initial-letter circle -->
           <div class="profile-avatar profile-avatar--placeholder">

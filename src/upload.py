@@ -22,6 +22,7 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from flask import session
 from PIL import Image
 
 from src.authentik import revert_avatar_url, update_avatar_url
@@ -394,6 +395,15 @@ def generate_sse(user: dict, image: Image.Image):
 
         # Step 6: Persist metadata
         _save_metadata(filename_base, user_pk, total_bytes)
+
+        # Update the session so the dashboard template reflects the new avatar
+        # on the next page render without requiring a re-login.
+        # Note: Flask's default cookie session serializes into response headers
+        # before the SSE generator runs, so this mutation does not write back to
+        # the response cookie. It takes effect for server-side session backends
+        # where the store is updated in-place. The JS receives the avatar_url in
+        # the done event below and updates the profile image immediately regardless.
+        session["user"] = {**session["user"], "avatar": canonical_url}
 
         log.info("Upload pipeline complete for user %r (pk=%s).", username, user_pk)
         yield _sse({"done": True, "avatar_url": canonical_url})

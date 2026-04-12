@@ -56,6 +56,7 @@ upload:
   choose: "Choisir une image…"
   disclaimer: "En téléchargeant, vous confirmez que cette image est appropriée et que vous avez le droit de l'utiliser."
   button: "Télécharger & Mettre à jour l'avatar"
+  current_photo: "Photo actuelle"
   discard_current: "Choisir une autre image"
   processing: "Traitement en cours…"
   invalid_ext: "Le type de fichier .{ext} n'est pas autorisé. Acceptés : {allowed}"

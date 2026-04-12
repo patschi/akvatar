@@ -137,6 +137,36 @@ function showResult(cssClass, messageText) {
     resultMessage.appendChild(buildRetryButton());
 }
 
+/**
+ * Update the profile avatar element in the header.
+ * Pass a URL to swap in (or update) the <img>; pass null to revert to the
+ * initial-letter placeholder <div>.  Handles both starting states so callers
+ * don't need to care whether an <img> or a placeholder <div> is currently shown.
+ */
+function setProfileAvatar(url) {
+    var profileAvatar = document.querySelector(".profile-avatar");
+    if (!profileAvatar) return;
+    if (url) {
+        if (profileAvatar.tagName === "IMG") {
+            // Already an img - update the src to the new avatar URL
+            profileAvatar.src = url;
+        } else {
+            // Was a placeholder <div> - swap it for a real <img> element
+            var newAvatar = document.createElement("img");
+            newAvatar.className = "profile-avatar";
+            newAvatar.src = url;
+            newAvatar.alt = I18N.upload_current_photo;
+            profileAvatar.replaceWith(newAvatar);
+        }
+    } else {
+        // No URL - revert to the initial-letter placeholder circle
+        var placeholder = document.createElement("div");
+        placeholder.className = "profile-avatar profile-avatar--placeholder";
+        placeholder.textContent = AVATAR_INITIAL;
+        profileAvatar.replaceWith(placeholder);
+    }
+}
+
 // Drop zone element reference
 var dropZone = document.getElementById("dropZone");
 
@@ -441,11 +471,8 @@ uploadButton.addEventListener("click", async function () {
             // Success: show the updated avatar
             showResult("result-success", I18N.result_success);
 
-            // Update the avatar image in the profile header
-            var profileAvatar = document.querySelector(".profile-avatar");
-            if (profileAvatar && profileAvatar.tagName === "IMG") {
-                profileAvatar.src = finalResult.avatar_url;
-            }
+            // Update the profile avatar in the header with the new URL
+            setProfileAvatar(finalResult.avatar_url);
         } else {
             // Failure: show the error with a retry button
             var errorCode = finalResult && finalResult.error;
