@@ -41,7 +41,7 @@ def serve_static_file(filename: str) -> Response:
     if entry is None:
         abort(404)
     data, mime, etag = entry
-    headers = {"ETag": f'"{etag}"', "Cache-Control": "public, max-age=86400"}
+    headers = {"ETag": f'"{etag}"', "Cache-Control": "public, max-age=3600"}
     if request.if_none_match and etag in request.if_none_match:
         return Response(status=304, headers=headers)
     return Response(data, mimetype=mime, headers=headers)
