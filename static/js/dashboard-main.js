@@ -67,7 +67,7 @@ const STEP_STATUS_ICONS = {
 
 /**
  * Escape a string for safe insertion into innerHTML.
- * Also used by dashboard-remove-avatar.js and dashboard-image-import.js.
+ * Also used by dashboard-remove-avatar.js and dashboard-import-common.js.
  */
 var _escapeDiv = document.createElement("div");
 function escapeHTML(s) {

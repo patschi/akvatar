@@ -291,7 +291,7 @@ _JS_KEYS = (
     "import.fetch_failed",
     "import.image_too_large",
     "import.url_not_allowed",
-    # Webcam import (all strings used by dashboard-image-import.js)
+    # Webcam import (all strings used by dashboard-import-webcam.js)
     "import.webcam_start",
     "import.webcam_starting",
     "import.webcam_unsupported",

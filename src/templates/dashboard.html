@@ -168,7 +168,16 @@
   <script src="{{ url_for('static', filename='js/dashboard-remove-avatar.js') }}"></script>
   {% endif %}
   {% if import_gravatar_enabled or import_url_enabled or import_webcam_enabled %}
-  <script src="{{ url_for('static', filename='js/dashboard-image-import.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard-import-common.js') }}"></script>
+  {% endif %}
+  {% if import_gravatar_enabled %}
+  <script src="{{ url_for('static', filename='js/dashboard-import-gravatar.js') }}"></script>
+  {% endif %}
+  {% if import_url_enabled %}
+  <script src="{{ url_for('static', filename='js/dashboard-import-url.js') }}"></script>
+  {% endif %}
+  {% if import_webcam_enabled %}
+  <script src="{{ url_for('static', filename='js/dashboard-import-webcam.js') }}"></script>
   {% endif %}
   <script src="{{ url_for('static', filename='js/dashboard-session-check.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
