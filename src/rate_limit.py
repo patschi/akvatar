@@ -83,7 +83,9 @@ class _RateLimiter:
         # {ip: [(monotonic_timestamp, cost), ...]}
         self._entries = shared_dict
         self._lock = shared_lock  # Manager Lock (cross-process)
-        self._prev_active: int | None = None  # suppress repeated "nothing to evict" noise
+        self._prev_active: int | None = (
+            None  # suppress repeated "nothing to evict" noise
+        )
 
     # -- hot path (read + append only, never prune) -------------------------
 
