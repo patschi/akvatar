@@ -766,7 +766,7 @@ access only). When disabled, any forwarded headers sent by clients are ignored.
 | Property    | Value                   |
 |-------------|-------------------------|
 | **Type**    | List of strings or null |
-| **Default** | `null` (no restriction) |
+| **Default** | `null` (auto-derived)   |
 
 A list of hostnames (and optional ports) that the application will accept in the HTTP `Host`
 header. Any request whose `Host` value is not in this list is rejected with `HTTP 400 Bad Request`.
@@ -775,8 +775,14 @@ Protects against HTTP host-header injection attacks, where a malicious client or
 proxy sends a forged `Host` header, potentially poisoning URL generation (e.g. password-reset links
 constructed with `url_for()`) or cache-poisoning downstream caches.
 
-When set to `null` or omitted entirely, no restriction is applied and any `Host` value is accepted
-(the default). An empty list (`[]`) is treated the same as `null` - no restriction.
+When set to `null` or omitted entirely (the default), the trusted hosts list is **automatically
+derived** from the hostnames in [`app.public_base_url`](#apppublic_base_url) and
+[`app.public_avatar_url`](#apppublic_avatar_url). This means the application only accepts `Host`
+headers matching those configured URLs without any manual configuration. An empty list (`[]`) is
+treated the same as `null`.
+
+When set to an explicit list, only the listed hostnames are accepted and no auto-derivation takes
+place.
 
 Each entry is a plain hostname. Port is always stripped before the check, so the port number in the
 `Host` header is never compared:

@@ -89,6 +89,20 @@ MAX_IMAGE_PIXELS: int = 25_000_000
 
 # Application
 public_base_url: str = app_cfg.get("public_base_url", "").rstrip("/")
+public_avatar_url: str = app_cfg.get("public_avatar_url", "").rstrip("/")
+
+# Both public URLs are required and must be absolute (scheme + netloc).
+for _key, _val in (
+    ("app.public_base_url", public_base_url),
+    ("app.public_avatar_url", public_avatar_url),
+):
+    _fatal_unless(bool(_val), f"{_key} is required but not set in config.yml.")
+    _p = urlparse(_val)
+    _fatal_unless(
+        bool(_p.scheme and _p.netloc),
+        f"{_key}={_val!r} must be an absolute URL (e.g. 'https://example.com').",
+    )
+
 avatar_storage_path: str = app_cfg.get("avatar_storage_path", "/data/avatars")
 max_upload_size_mb: int = int(app_cfg.get("max_upload_size_mb", 10))
 branding_name: str = branding_cfg.get("name", "Avatar Updater")
@@ -147,10 +161,18 @@ csp_report_uri: str = security_cfg.get("csp_report_uri", "")
 
 # Webserver
 proxy_mode: bool = bool(web_cfg.get("proxy_mode", True))
+# When trusted_hosts is null/omitted, auto-derive from the configured public URLs.
 _trusted_hosts_raw = web_cfg.get("trusted_hosts", None)
-trusted_hosts: list[str] | None = (
-    [h.lower().strip() for h in _trusted_hosts_raw if h] if _trusted_hosts_raw else None
-)
+if _trusted_hosts_raw:
+    trusted_hosts: list[str] | None = [h.lower().strip() for h in _trusted_hosts_raw if h] or None
+else:
+    _auto_hosts = []
+    for _url in (public_base_url, public_avatar_url):
+        _hostname = urlparse(_url).hostname
+        if _hostname and _hostname not in _auto_hosts:
+            _auto_hosts.append(_hostname)
+    trusted_hosts = _auto_hosts or None
+
 web_host: str = web_cfg.get("host", "0.0.0.0")
 web_port: int = int(web_cfg.get("port", 5000))
 web_workers: int = int(web_cfg.get("workers", 2))
@@ -252,6 +274,13 @@ if debug_full:
     )
     log.debug("Log level forced to DEBUG by debug_full.")
 log.debug("Log level set to %s.", _configured_level)
+if trusted_hosts:
+    if _trusted_hosts_raw:
+        log.debug("Trusted hosts (explicit): %s", trusted_hosts)
+    else:
+        log.debug(
+            "Trusted hosts (auto-derived from public URLs): %s", trusted_hosts
+        )
 if dry_run:
     log.warning(
         "DRY-RUN MODE is enabled - no changes will be pushed to Authentik or LDAP."
@@ -333,20 +362,6 @@ if oidc_skip_cert_verify:
     log.warning(
         "OIDC TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
-
-# Validate app.public_avatar_url - required for building avatar URLs pushed to Authentik/LDAP.
-# Caught here with a clear FATAL message rather than a KeyError deep in imaging.py.
-public_avatar_url: str = app_cfg.get("public_avatar_url", "")
-_fatal_unless(
-    bool(public_avatar_url),
-    "app.public_avatar_url is required but not set in config.yml.",
-)
-_parsed_pub_avatar = urlparse(public_avatar_url)
-_fatal_unless(
-    bool(_parsed_pub_avatar.scheme and _parsed_pub_avatar.netloc),
-    f"app.public_avatar_url={public_avatar_url!r} must be an absolute URL "
-    f"(e.g. 'https://example.com/user-avatars').",
-)
 
 # Validate configured image sizes for backends
 _valid_sizes = img_cfg.get("sizes", [])

@@ -162,7 +162,9 @@ webserver:
   # Restrict which Host header values the application will accept.
   # Requests with a Host header not in this list are rejected with HTTP 400.
   # Protects against HTTP host-header injection attacks.
-  # Leave null (default) or omit to allow any Host header (no restriction).
+  # null (default): hostnames are auto-derived from app.public_base_url and
+  #   app.public_avatar_url so that those origins are always accepted.
+  # Explicit list: only the listed hostnames are accepted (no auto-derivation).
   # Each entry is a plain hostname (port is always ignored during the check).
   # Prefix an entry with "." to match all subdomains (e.g. ".example.com").
   trusted_hosts: null
