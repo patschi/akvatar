@@ -1096,6 +1096,44 @@ body {
     transform-origin: center;
 }
 
+/* Tooltips (CSS-only, instant on hover) */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.3rem 0.55rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 1000;
+    transition: none;
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+/* Hide tooltips on touch devices (they linger awkwardly) */
+@media (pointer: coarse) {
+    [data-tooltip]::after {
+        display: none;
+    }
+}
+
 /* Utility */
 .hidden {
     display: none !important;
