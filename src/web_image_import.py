@@ -24,6 +24,7 @@ from flask import Blueprint, Response, jsonify, request, session
 
 from src.auth import login_required
 from src.i18n import t
+from src.rate_limit import check_gravatar_import_cooldown, check_url_import_cooldown
 from src.image_import import (
     GRAVATAR_ENABLED,
     MAX_FETCH_SIZE_MB,
@@ -65,12 +66,26 @@ def api_fetch_gravatar():
     if csrf_rejection:
         return csrf_rejection
 
+    user = session.get("user", {})
+
+    # Per-user import cooldown - prevents abuse as an outbound HTTP proxy
+    allowed, retry_after = check_gravatar_import_cooldown(user.get("pk", 0))
+    if not allowed:
+        log.warning(
+            "Gravatar import cooldown: denied for user %r (retry_after=%ds).",
+            user.get("username", "unknown"),
+            retry_after,
+        )
+        return (
+            jsonify({"error": t("error.rate_limited"), "retry_after": retry_after}),
+            429,
+            {"Retry-After": str(retry_after)},
+        )
+
     body = request.get_json(silent=True) or {}
     email = (body.get("email", None) or "").strip().lower()
     if not email:
         return jsonify({"error": t("error.import.no_email")}), 400
-
-    user = session.get("user", {})
     email_error = validate_gravatar_email(
         email, user.get("email", ""), user.get("username", "unknown")
     )
@@ -123,6 +138,21 @@ def api_fetch_url():
     csrf_rejection = validate_csrf_token()
     if csrf_rejection:
         return csrf_rejection
+
+    # Per-user import cooldown - prevents abuse as an outbound HTTP proxy
+    user = session.get("user", {})
+    allowed, retry_after = check_url_import_cooldown(user.get("pk", 0))
+    if not allowed:
+        log.warning(
+            "URL import cooldown: denied for user %r (retry_after=%ds).",
+            user.get("username", "unknown"),
+            retry_after,
+        )
+        return (
+            jsonify({"error": t("error.rate_limited"), "retry_after": retry_after}),
+            429,
+            {"Retry-After": str(retry_after)},
+        )
 
     body = request.get_json(silent=True) or {}
     url = (body.get("url", None) or "").strip()

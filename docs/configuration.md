@@ -48,6 +48,9 @@ effect.
 | [`rate_limiting.eviction_interval`](#rate_limitingeviction_interval)             | Integer | Stale-entry cleanup interval in seconds             |
 | [`rate_limiting.avatars`](#rate_limitingavatars)                                 | Object  | Rate limit settings for avatar image requests       |
 | [`rate_limiting.metadata`](#rate_limitingmetadata)                               | Object  | Rate limit settings for metadata JSON requests      |
+| [`rate_limiting.upload`](#rate_limitingupload)                                   | Object  | Per-user upload cooldown settings                   |
+| [`rate_limiting.import_gravatar`](#rate_limitingimport_gravatar)                 | Object  | Per-user Gravatar import cooldown settings          |
+| [`rate_limiting.import_url`](#rate_limitingimport_url)                           | Object  | Per-user URL import cooldown settings               |
 | [`image_import.gravatar.enabled`](#image_importgravatarenabled)                  | Boolean | Enable Gravatar import in the UI                    |
 | [`image_import.gravatar.restrict_email`](#image_importgravatarrestrict_email)    | Boolean | Lock Gravatar email to the session user's address   |
 | [`image_import.url.enabled`](#image_importurlenabled)                            | Boolean | Enable URL import in the UI                         |
@@ -435,8 +438,11 @@ storage purposes.
 ## Rate Limiting
 
 Throttle avatar image and metadata JSON serving endpoints by client IP address to prevent
-URL-guessing abuse and ensure fair usage. Only the `/user-avatars/` endpoints are affected - login,
-dashboard, upload, static files, and health checks are never rate-limited.
+URL-guessing abuse and ensure fair usage. Additionally, per-user cooldowns can be applied to the
+upload and image import proxy endpoints to prevent abuse.
+
+The IP-based rate limits only affect the `/user-avatars/` endpoints - login, dashboard, static
+files, and health checks are never rate-limited by IP.
 
 Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per
 client IP is exactly `points` per `window` period regardless of how many workers are running. Each
@@ -523,6 +529,51 @@ Rate limit settings for avatar metadata JSON requests (`/user-avatars/_metadata/
 | `enabled` | Boolean | `true`  | Enable rate limiting for this endpoint type     |
 | `points`  | Integer | `50`    | Maximum points allowed per client IP per window |
 | `window`  | Integer | `60`    | Time window in seconds                          |
+
+### `rate_limiting.upload`
+
+| Property | Value  |
+|----------|--------|
+| **Type** | Object |
+
+Per-user cooldown for the avatar upload endpoint (`/api/upload`). Enforced across all gunicorn
+worker processes via shared state. Requires the master switch
+([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
+
+| Field      | Type    | Default | Description                                                |
+|------------|---------|---------|------------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user upload cooldown                        |
+| `cooldown` | Integer | `10`    | Minimum seconds between consecutive uploads per user       |
+
+### `rate_limiting.import_gravatar`
+
+| Property | Value  |
+|----------|--------|
+| **Type** | Object |
+
+Per-user cooldown for the Gravatar import endpoint (`/api/fetch-gravatar`). Prevents abuse of the
+import proxy as an outbound HTTP relay and limits load on the external Gravatar service. Requires the
+master switch ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
+
+| Field      | Type    | Default | Description                                                    |
+|------------|---------|---------|----------------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user Gravatar import cooldown                   |
+| `cooldown` | Integer | `5`     | Minimum seconds between consecutive Gravatar imports per user  |
+
+### `rate_limiting.import_url`
+
+| Property | Value  |
+|----------|--------|
+| **Type** | Object |
+
+Per-user cooldown for the URL import endpoint (`/api/fetch-url`). Prevents abuse of the import proxy
+as an outbound HTTP relay. Requires the master switch
+([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
+
+| Field      | Type    | Default | Description                                                |
+|------------|---------|---------|------------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user URL import cooldown                    |
+| `cooldown` | Integer | `5`     | Minimum seconds between consecutive URL imports per user   |
 
 ---
 

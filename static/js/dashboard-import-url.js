@@ -61,7 +61,7 @@
             logger.error("import", "URL fetch threw a network error", { message: e.message });
             ImportDialog.showError(I18N.import_url_error);
         } finally {
-            ImportDialog.startLoadCooldown(urlLoadBtn);
+            ImportDialog.startLoadCooldown(urlLoadBtn, IMPORT_URL_COOLDOWN);
         }
     });
 

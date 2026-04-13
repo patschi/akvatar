@@ -31,7 +31,12 @@ from flask import (
 
 from src.app_static import serve_static_file
 from src.auth import build_user_initials, login_required
-from src.config import img_formats, metadata_access
+from src.config import (
+    gravatar_import_cooldown_secs,
+    img_formats,
+    metadata_access,
+    url_import_cooldown_secs,
+)
 from src.i18n import t
 from src.image_formats import ALLOWED_EXTENSIONS, NEGOTIATION_PREFERENCE
 from src.image_import import (
@@ -118,7 +123,9 @@ def dashboard():
         allowed_extensions=sorted(ALLOWED_EXTENSIONS),
         import_gravatar_enabled=GRAVATAR_ENABLED,
         import_gravatar_restrict_email=GRAVATAR_RESTRICT_EMAIL,
+        import_gravatar_cooldown_secs=gravatar_import_cooldown_secs,
         import_url_enabled=URL_ENABLED,
+        import_url_cooldown_secs=url_import_cooldown_secs,
         import_webcam_enabled=WEBCAM_ENABLED,
     )
 

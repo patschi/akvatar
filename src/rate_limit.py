@@ -35,10 +35,14 @@ from typing import NamedTuple
 from flask import Flask, Response, request
 
 from src.config import (
+    gravatar_import_cooldown_enabled,
+    gravatar_import_cooldown_secs,
     rate_limiting_cfg,
     rate_limiting_enabled,
     upload_cooldown_enabled,
     upload_cooldown_secs,
+    url_import_cooldown_enabled,
+    url_import_cooldown_secs,
 )
 
 log = logging.getLogger("ratelimit")
@@ -401,24 +405,23 @@ class _RateLimitManager:
 
 
 # ---------------------------------------------------------------------------
-# Upload cooldown - per-user, cross-worker cooldown for /api/upload
+# Per-user cooldown - cross-worker cooldown for upload and import endpoints
 # ---------------------------------------------------------------------------
 
 
-class _UploadCooldown:
+class _UserCooldown:
     """
-    Per-user cooldown tracker for the /api/upload endpoint.
+    Per-user cooldown tracker for a single endpoint.
 
-    Tracks the last allowed upload timestamp per user_pk in shared state
-    across all gunicorn worker processes (via multiprocessing.Manager), so
-    the cooldown is enforced application-wide regardless of which worker
-    handles the request.
+    Tracks the last allowed timestamp per user_pk in shared state across all
+    gunicorn worker processes (via multiprocessing.Manager), so the cooldown
+    is enforced application-wide regardless of which worker handles the request.
 
-    Only instantiated when both rate_limiting.enabled and
-    rate_limiting.upload.enabled are true (evaluated in config.py).
+    Used for upload, Gravatar import, and URL import cooldowns.
     """
 
-    def __init__(self, window: int) -> None:
+    def __init__(self, name: str, window: int) -> None:
+        self._name = name
         self._window = window
         self._mp_manager = multiprocessing.Manager()
 
@@ -435,14 +438,14 @@ class _UploadCooldown:
 
         os.register_at_fork(after_in_child=_release_manager_in_child)
 
-        # {user_pk: monotonic_timestamp_of_last_allowed_upload}
-        self._last_upload = self._mp_manager.dict()
+        # {user_pk: monotonic_timestamp_of_last_allowed_action}
+        self._last_action = self._mp_manager.dict()
         self._lock = self._mp_manager.Lock()
-        log.info("Upload cooldown initialized: %ds per-user window.", self._window)
+        log.info("[%s] cooldown initialized: %ds per-user window.", self._name, self._window)
 
     def check_and_record(self, user_pk: int) -> tuple[bool, int]:
         """
-        Check and record an upload attempt for *user_pk*.
+        Check and record an action attempt for *user_pk*.
 
         Returns (allowed, retry_after):
           - allowed:     True if the user is outside the cooldown window
@@ -450,20 +453,21 @@ class _UploadCooldown:
         """
         now = time.monotonic()
         with self._lock:
-            last = self._last_upload.get(user_pk, None)
+            last = self._last_action.get(user_pk, None)
             if last is not None:
                 elapsed = now - last
                 if elapsed < self._window:
                     retry_after = int(self._window - elapsed) + 1
                     log.debug(
-                        "Upload cooldown: denied user_pk=%s (%.1fs elapsed, retry_after=%ds).",
+                        "[%s] cooldown: denied user_pk=%s (%.1fs elapsed, retry_after=%ds).",
+                        self._name,
                         user_pk,
                         elapsed,
                         retry_after,
                     )
                     return False, retry_after
-            # Allowed - record this upload attempt
-            self._last_upload[user_pk] = now
+            # Allowed - record this action
+            self._last_action[user_pk] = now
             return True, 0
 
 
@@ -474,10 +478,26 @@ class _UploadCooldown:
 _manager = _RateLimitManager(rate_limiting_cfg)
 
 if upload_cooldown_enabled:
-    _upload_cooldown: _UploadCooldown | None = _UploadCooldown(upload_cooldown_secs)
+    _upload_cooldown: _UserCooldown | None = _UserCooldown("upload", upload_cooldown_secs)
 else:
     _upload_cooldown = None
     log.info("Upload cooldown is disabled.")
+
+if gravatar_import_cooldown_enabled:
+    _gravatar_import_cooldown: _UserCooldown | None = _UserCooldown(
+        "import_gravatar", gravatar_import_cooldown_secs
+    )
+else:
+    _gravatar_import_cooldown = None
+    log.info("Gravatar import cooldown is disabled.")
+
+if url_import_cooldown_enabled:
+    _url_import_cooldown: _UserCooldown | None = _UserCooldown(
+        "import_url", url_import_cooldown_secs
+    )
+else:
+    _url_import_cooldown = None
+    log.info("URL import cooldown is disabled.")
 
 
 def check_upload_cooldown(user_pk: int) -> tuple[bool, int]:
@@ -489,6 +509,28 @@ def check_upload_cooldown(user_pk: int) -> tuple[bool, int]:
     if _upload_cooldown is None:
         return True, 0
     return _upload_cooldown.check_and_record(user_pk)
+
+
+def check_gravatar_import_cooldown(user_pk: int) -> tuple[bool, int]:
+    """
+    Check and record the Gravatar import cooldown for *user_pk*.
+
+    Returns (allowed, retry_after).  Always allows when the cooldown is disabled.
+    """
+    if _gravatar_import_cooldown is None:
+        return True, 0
+    return _gravatar_import_cooldown.check_and_record(user_pk)
+
+
+def check_url_import_cooldown(user_pk: int) -> tuple[bool, int]:
+    """
+    Check and record the URL import cooldown for *user_pk*.
+
+    Returns (allowed, retry_after).  Always allows when the cooldown is disabled.
+    """
+    if _url_import_cooldown is None:
+        return True, 0
+    return _url_import_cooldown.check_and_record(user_pk)
 
 
 def init_rate_limiting(app: Flask) -> None:

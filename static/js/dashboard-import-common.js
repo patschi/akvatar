@@ -54,9 +54,6 @@
     var currentBlobUrl     = null;
     var currentDisplayName = null;
 
-    // Cooldown delay (in seconds) before a Load button becomes pressable again
-    var LOAD_COOLDOWN_SECONDS = 3;
-
     // Map known server error codes to translated messages
     var errorMessages = {
         "csrf_failed":     I18N.result_csrf_failed,
@@ -181,11 +178,13 @@
 
     /**
      * Start a cooldown countdown on a Load button after a fetch completes.
-     * Disables the button and shows "Load (3s)", "Load (2s)", "Load (1s)" before
+     * Disables the button and shows "Load (Ns)", "Load (N-1s)", ... before
      * re-enabling it with the original label.
+     * @param {HTMLElement} btn - The button to disable during cooldown.
+     * @param {number} seconds - Cooldown duration in seconds (must match the server-side cooldown).
      */
-    function startLoadCooldown(btn) {
-        var remaining = LOAD_COOLDOWN_SECONDS;
+    function startLoadCooldown(btn, seconds) {
+        var remaining = seconds;
         btn.disabled = true;
         btn.textContent = I18N.import_load + " (" + remaining + "s)";
         var timer = setInterval(function () {

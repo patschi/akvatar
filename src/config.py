@@ -229,6 +229,8 @@ sentry_browser_tunnel_enabled: bool = bool(
 # need to repeat the default values or the master-switch logic.
 rate_limiting_cfg = cfg.get("rate_limiting", {})
 _upload_rate_cfg = rate_limiting_cfg.get("upload", {})
+_gravatar_rate_cfg = rate_limiting_cfg.get("import_gravatar", {})
+_url_import_rate_cfg = rate_limiting_cfg.get("import_url", {})
 # Master switch governs all rate limiting (IP limiter and upload cooldown).
 # upload_cooldown_enabled is False when either the master or upload.enabled is off.
 rate_limiting_enabled: bool = bool(rate_limiting_cfg.get("enabled", False))
@@ -236,6 +238,17 @@ upload_cooldown_enabled: bool = rate_limiting_enabled and bool(
     _upload_rate_cfg.get("enabled", True)
 )
 upload_cooldown_secs: int = int(_upload_rate_cfg.get("cooldown", 10))
+# Per-user cooldowns for image import proxy endpoints.
+# These make outbound HTTP requests, so rate limiting prevents abuse as an
+# outbound proxy and limits load on external services (Gravatar, arbitrary URLs).
+gravatar_import_cooldown_enabled: bool = rate_limiting_enabled and bool(
+    _gravatar_rate_cfg.get("enabled", True)
+)
+gravatar_import_cooldown_secs: int = int(_gravatar_rate_cfg.get("cooldown", 5))
+url_import_cooldown_enabled: bool = rate_limiting_enabled and bool(
+    _url_import_rate_cfg.get("enabled", True)
+)
+url_import_cooldown_secs: int = int(_url_import_rate_cfg.get("cooldown", 5))
 
 # Logging setup
 _LOG_LEVELS = {

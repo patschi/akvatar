@@ -62,7 +62,7 @@
             logger.error("import", "Gravatar fetch threw a network error", { message: e.message });
             ImportDialog.showError(I18N.import_gravatar_error);
         } finally {
-            ImportDialog.startLoadCooldown(gravatarLoadBtn);
+            ImportDialog.startLoadCooldown(gravatarLoadBtn, IMPORT_GRAVATAR_COOLDOWN);
         }
     });
 
