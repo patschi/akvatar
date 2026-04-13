@@ -5,15 +5,12 @@ Contains:
   - GET  /                              -> redirect to /login
   - GET  /login                         -> public login page (unauthenticated)
   - GET  /dashboard                     -> avatar upload / crop page (authenticated)
-  - GET  /user-avatars/NxN/<file>       -> serve stored avatar images
-  - GET  /user-avatars/_metadata/<file> -> serve avatar metadata JSON (access controlled by security.metadata_access)
   - GET  /api/heartbeat                 -> lightweight session liveness probe (JSON)
   - POST /api/upload                    -> accept cropped image, process, update backends
   - POST /api/upload/commit             -> commit pending avatar URL into the session cookie
 """
 
 import logging
-import re
 
 from flask import (
     Blueprint,
@@ -23,7 +20,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_from_directory,
     session,
     stream_with_context,
     url_for,
@@ -33,12 +29,10 @@ from src.app_static import serve_static_file
 from src.auth import build_user_initials, login_required
 from src.config import (
     gravatar_import_cooldown_secs,
-    img_formats,
-    metadata_access,
     url_import_cooldown_secs,
 )
 from src.i18n import t
-from src.image_formats import ALLOWED_EXTENSIONS, NEGOTIATION_PREFERENCE
+from src.image_formats import ALLOWED_EXTENSIONS
 from src.image_import import (
     GRAVATAR_ENABLED,
     GRAVATAR_RESTRICT_EMAIL,
@@ -47,11 +41,8 @@ from src.image_import import (
 )
 from src.image_validation import ValidationError, validate_upload
 from src.imaging import (
-    AVATAR_ROOT,
     MAX_SIZE,
-    METADATA_ROOT,
     generate_filename,
-    load_metadata_file,
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.rate_limit import check_upload_cooldown
@@ -130,132 +121,6 @@ def dashboard():
     )
 
 
-# Serve stored avatar files
-# Dimensions must be NxN (e.g. "256x256") - reject anything else before touching the filesystem
-_DIMENSIONS_RE = re.compile(r"^\d{1,5}x\d{1,5}$")
-
-# Build once at import time from the configured formats list.
-# NEGOTIATION_PREFERENCE (mime, ext) order is imported from image_formats.
-_CONFIGURED_EXTS: frozenset[str] = frozenset(fmt.lower() for fmt in img_formats)
-
-
-def _negotiate_avatar_format() -> str:
-    """
-    Pick the best image format for the requesting client based on the Accept
-    header, constrained to formats present in images.formats config.
-
-    Returns the file extension string (e.g. "webp", "jpg").
-    Preference order: AVIF > WebP > PNG > JPEG.
-    Falls back to the first configured format in that preference order when
-    the Accept header does not match any supported format, or "jpg" as a last resort.
-    """
-    accept = request.headers.get("Accept", "")
-    # First pass: find the best format the client explicitly accepts
-    for mime, ext in NEGOTIATION_PREFERENCE:
-        if mime in accept and ext in _CONFIGURED_EXTS:
-            return ext
-    # Second pass: fall back to the best configured format regardless of Accept
-    for _, ext in NEGOTIATION_PREFERENCE:
-        if ext in _CONFIGURED_EXTS:
-            return ext
-    return "jpg"
-
-
-@routes_bp.route("/user-avatars/<dimensions>/<filename>", methods=["GET"])
-def serve_avatar(dimensions, filename):
-    """Serve avatar image files from the storage directory.
-
-    Requests with an explicit extension (e.g. ``photo.jpg``) are served directly.
-    Requests with no extension (e.g. ``photo``) trigger content negotiation: the
-    server selects the best available format based on the Accept header and issues
-    a temporary redirect to the explicit URL.  This lets clients and CDNs use
-    extension-less canonical URLs while still receiving the optimal format.
-
-    ``send_from_directory`` prevents directory-traversal attacks.
-    """
-    if not _DIMENSIONS_RE.match(dimensions):
-        log.debug("Avatar request rejected - invalid dimensions: %r", dimensions)
-        abort(404)
-
-    # Content negotiation: if no extension in the filename, pick the best format
-    # and redirect to the explicit URL.  "." is a reliable separator since the
-    # generated filename base never contains a dot.
-    if "." not in filename:
-        ext = _negotiate_avatar_format()
-        log.debug(
-            "Content negotiation for %s/%s -> .%s (Accept: %s).",
-            dimensions,
-            filename,
-            ext,
-            request.headers.get("Accept", ""),
-        )
-        target_url = url_for(
-            "routes.serve_avatar", dimensions=dimensions, filename=f"{filename}.{ext}"
-        )
-        resp = redirect(target_url, code=302)
-        # Vary: Accept tells CDNs and proxies that the redirect target depends on the
-        # Accept header, so they must not serve the same redirect to all clients.
-        resp.headers["Vary"] = "Accept"
-        resp.headers["Cache-Control"] = "no-store"
-        return resp
-
-    filepath = f"{dimensions}/{filename}"
-    log.debug("Serving avatar file: %s", filepath)
-    # Avatar URLs are immutable: filenames are cryptographically random per upload
-    # (uuid4 + token_urlsafe + nanosecond timestamp).  A new upload always produces
-    # a new URL, so the content at any given URL never changes.  The immutable
-    # directive tells supporting browsers not to revalidate even on explicit refresh.
-    resp = send_from_directory(AVATAR_ROOT, filepath)
-    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-    return resp
-
-
-# Serve avatar metadata JSON files
-# Access control is governed by security.metadata_access in config.yml:
-#   "owner_only" (default) - only the authenticated user who owns the file may access it
-#   "public"               - no authentication required
-# Validation and fallback are handled centrally in config.py at startup.
-_METADATA_ACCESS_MODE = metadata_access
-
-
-@routes_bp.route("/user-avatars/_metadata/<filename>", methods=["GET"])
-def serve_avatar_metadata(filename):
-    """Serve avatar metadata JSON from the storage directory.
-
-    In owner_only mode the requesting session user must match the user_pk stored
-    inside the metadata file.  A 404 is returned for both missing files and
-    ownership mismatches so callers cannot distinguish the two cases.
-    """
-    if _METADATA_ACCESS_MODE == "owner_only":
-        if "user" not in session:
-            log.debug(
-                "Unauthenticated metadata request for %r - redirecting to login.",
-                filename,
-            )
-            return redirect(url_for("routes.login_page"))
-
-        # Load and verify ownership - 404 for both missing files and pk mismatches
-        # so callers cannot distinguish "not found" from "not yours".
-        meta = load_metadata_file(filename)
-        if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
-            if meta is not None:
-                log.debug(
-                    "Metadata access denied for %r - user pk mismatch (session pk=%r).",
-                    filename,
-                    session["user"].get("pk", None),
-                )
-            abort(404)
-
-        # Serve the already-loaded dict directly - avoids a second disk read.
-        log.debug("Serving metadata file: %s (access=owner_only)", filename)
-        resp = jsonify(meta)
-        resp.headers["Cache-Control"] = "no-store"
-        return resp
-
-    log.debug("Serving metadata file: %s (access=public)", filename)
-    resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
-    resp.headers["Cache-Control"] = "no-store"
-    return resp
 
 
 # Session liveness probe (used by the dashboard for client-side expiry detection)

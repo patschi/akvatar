@@ -44,6 +44,7 @@ from src.web_image_import import import_bp
 from src.web_reset_avatar import reset_avatar_bp
 from src.web_routes import routes_bp
 from src.web_sentry import sentry_bp
+from src.web_serve_avatar import serve_avatar_bp
 
 log = logging.getLogger("app")
 
@@ -173,7 +174,8 @@ def create_app() -> Flask:
 
     # Register route blueprints
     app.register_blueprint(auth_bp)  # /login, /callback, /logout, /logged-out
-    app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload, /user-avatars
+    app.register_blueprint(routes_bp)  # /, /dashboard, /api/upload
+    app.register_blueprint(serve_avatar_bp)  # /user-avatars
     app.register_blueprint(reset_avatar_bp)  # /api/remove-avatar
     app.register_blueprint(import_bp)  # /api/fetch-gravatar, /api/fetch-url
     app.register_blueprint(sentry_bp)  # /api/sentry-event (browser Sentry tunnel)
