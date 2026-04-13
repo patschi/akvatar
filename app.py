@@ -100,7 +100,13 @@ def create_app() -> Flask:
         if session_cookie_secure is not None
         else public_webui_url.startswith("https://")
     )
-    app.config["SESSION_COOKIE_NAME"] = "akvatar_session"
+    # Use the __Host- prefix when Secure is active.  The prefix is a browser-
+    # enforced contract: the cookie must be Secure, must not specify Domain, and
+    # must have Path=/.  This prevents a compromised sibling subdomain from
+    # injecting or overwriting the session cookie (subdomain cookie attacks).
+    app.config["SESSION_COOKIE_NAME"] = (
+        "__Host-akvatar_session" if _secure_cookie_option else "akvatar_session"
+    )
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["SESSION_COOKIE_SECURE"] = _secure_cookie_option
