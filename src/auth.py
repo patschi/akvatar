@@ -25,7 +25,7 @@ from src.config import (
     oidc_issuer_url,
     oidc_skip_cert_verify,
     oidc_username_claim,
-    public_base_url,
+    public_webui_url,
 )
 from src.i18n import resolve_oidc_locale
 
@@ -61,9 +61,9 @@ def init_oauth(app):
         OIDC_SCOPES,
     )
     # Log the redirect URI that must be registered in the Authentik OAuth application.
-    # This is derived from public_base_url - if it doesn't match what Authentik has
+    # This is derived from public_webui_url - if it doesn't match what Authentik has
     # registered, logins will fail with "mismatching redirection URI".
-    _expected_redirect_uri = public_base_url + "/callback"
+    _expected_redirect_uri = public_webui_url + "/callback"
     log.debug(
         "Expected OIDC redirect URI (must match Authentik app config): %s",
         _expected_redirect_uri,
@@ -146,7 +146,7 @@ def build_provider_logout_url(id_token: str | None) -> str | None:
         )
         return None
 
-    post_logout_uri = public_base_url + "/logged-out"
+    post_logout_uri = public_webui_url + "/logged-out"
     params = {"post_logout_redirect_uri": post_logout_uri}
     # id_token_hint lets the provider skip the "are you sure?" confirmation page
     if id_token:

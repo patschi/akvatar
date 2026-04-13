@@ -71,11 +71,11 @@ is deployed:
 ```text
   Root domain:    https://avatar.example.com/callback
                   └────────────────────────┘└────────┘
-                        public_base_url       fixed path
+                        public_webui_url       fixed path
 
   Subfolder:      https://portal.example.com/avatar/callback
                   └───────────────────────────────┘└────────┘
-                             public_base_url        fixed path
+                             public_webui_url        fixed path
 ```
 
 | Deployment  | Redirect URI                                 |
@@ -129,7 +129,7 @@ The app reads the following claims from the ID token / userinfo response:
 
 | Problem                                        | Cause                                                                  | Fix                                                                                |
 |------------------------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| "mismatching redirection URI"                  | Redirect URI in Authentik does not match the app's callback URL        | Ensure the URI in the provider matches `<public_base_url>/callback` exactly        |
+| "mismatching redirection URI"                  | Redirect URI in Authentik does not match the app's callback URL        | Ensure the URI in the provider matches `<public_webui_url>/callback` exactly       |
 | Login redirects back with `?error=oidc_failed` | Token exchange failed (network error, invalid secret, expired code)    | Check the app logs for the full exception; verify `client_secret` matches          |
 | Login redirects back with `?error=pk_failed`   | Authentik API could not resolve the user's primary key                 | Ensure the [API token](authentik-api-token.md) has permission to read users        |
 | Login page shows "session expired" message     | Dashboard detected an expired server-side session via `/api/heartbeat` | Normal behavior - the user was idle past the session timeout; simply sign in again |

@@ -516,7 +516,7 @@ max-age=86400` header instructs browsers to cache assets locally.
 | Client-side session liveness     | Dashboard polls `/api/heartbeat` every 60 s; redirects to login page before form submission if session expired        |
 | LDAP filter escaping             | `ldap_uniq` value is escaped via `escape_filter_chars()` to prevent LDAP injection                                    |
 | Flask session signing            | Session cookies are cryptographically signed with `security.secret_key`                                               |
-| Session cookie hardening         | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_base_url`) flags set                                      |
+| Session cookie hardening         | `HttpOnly`, `SameSite=Lax`, `Secure` (auto-set from `public_webui_url`) flags set                                     |
 | Security response headers        | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (HTML), and                                                |
 |                                  | `Referrer-Policy: strict-origin-when-cross-origin` on every response                                                  |
 | Cleanup safety guard             | Aborts if Authentik returns zero users - prevents mass deletion on API failure                                        |

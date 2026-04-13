@@ -19,7 +19,7 @@ Option A - X-Forwarded-Prefix (nginx strips /avatar/ before forwarding):
   nginx sends header: X-Forwarded-Prefix: /avatar
   ProxyFix sets SCRIPT_NAME=/avatar → Flask generates correct /avatar/... URLs
 
-Option B - derive from public_base_url (nginx keeps /avatar/ in the path):
+Option B - derive from public_webui_url (nginx keeps /avatar/ in the path):
   nginx → app sees:   GET /avatar/dashboard
   PrefixMiddleware strips /avatar → Flask receives /dashboard
   SCRIPT_NAME=/avatar set internally → Flask generates correct /avatar/... URLs
@@ -68,13 +68,14 @@ Key points:
 
 ### No additional config.yml changes needed
 
-When using `X-Forwarded-Prefix`, no additional configuration is needed beyond setting `app.public_base_url` to the full
+When using `X-Forwarded-Prefix`, no additional configuration is needed beyond setting `app.public_webui_url` to the full
 public URL including the subfolder (see [Required config.yml settings](#required-configyml-settings) below).
 
-## Option B: Derive prefix from `app.public_base_url`
+## Option B: Derive prefix from `app.public_webui_url`
 
 If your reverse proxy does not support sending `X-Forwarded-Prefix`, the application automatically derives the path
-prefix from the path component of `app.public_base_url`. No separate config key is required: if `app.public_base_url` is
+prefix from the path component of `app.public_webui_url`. No separate config key is required: if `app.public_webui_url`
+is
 set to `https://portal.example.com/avatar`, the app serves under `/avatar` automatically.
 
 When using this option, the reverse proxy must **not** strip the prefix before forwarding, because the app uses it to
@@ -105,7 +106,7 @@ the subfolder:
 ```yaml
 app:
   # Full URL users use to reach the app (including subfolder path)
-  public_base_url: "https://portal.example.com/avatar"
+  public_webui_url: "https://portal.example.com/avatar"
 
   # Full URL where avatar files are served (including subfolder path)
   public_avatar_url: "https://portal.example.com/avatar/user-avatars"
@@ -128,10 +129,10 @@ The application uses two middleware layers (applied during startup in `app.py`):
 
 1. **`ProxyFix`** (Werkzeug): Trusts `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, and
    `X-Forwarded-Prefix` headers from the reverse proxy.
-2. **`PrefixMiddleware`**: If `app.public_base_url` has a path component, this WSGI middleware strips the prefix from
+2. **`PrefixMiddleware`**: If `app.public_webui_url` has a path component, this WSGI middleware strips the prefix from
    incoming request paths and sets `SCRIPT_NAME` so Flask generates correct URLs.
 
-The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_base_url` are configured, the
+The two approaches can coexist: if both `X-Forwarded-Prefix` and a path in `app.public_webui_url` are configured, the
 proxy header takes precedence - ProxyFix sets `SCRIPT_NAME` first, and `PrefixMiddleware` skips when `SCRIPT_NAME` is
 already set.
 

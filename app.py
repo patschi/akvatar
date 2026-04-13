@@ -24,7 +24,7 @@ from src.config import (
     debug_full,
     max_upload_size_mb,
     proxy_mode,
-    public_base_url,
+    public_webui_url,
     secret_key,
     session_cookie_secure,
     tls_cert,
@@ -98,7 +98,7 @@ def create_app() -> Flask:
     _secure_cookie_option = (
         session_cookie_secure
         if session_cookie_secure is not None
-        else public_base_url.startswith("https://")
+        else public_webui_url.startswith("https://")
     )
     app.config["SESSION_COOKIE_NAME"] = "akvatar_session"
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -118,11 +118,11 @@ def create_app() -> Flask:
     log.debug("Metadata storage root: %s", METADATA_ROOT.resolve())
 
     # Subfolder support
-    # Derive the path prefix from public_base_url (e.g. "/avatar-update" from
+    # Derive the path prefix from public_webui_url (e.g. "/avatar-update" from
     # "https://portal.example.com/avatar-update").  Apply PrefixMiddleware as
     # the inner middleware so it only fires when the reverse proxy has NOT
     # already set SCRIPT_NAME via X-Forwarded-Prefix (handled by ProxyFix).
-    _public_path = urlparse(public_base_url).path.rstrip("/")
+    _public_path = urlparse(public_webui_url).path.rstrip("/")
     if _public_path:
         app.wsgi_app = PrefixMiddleware(app.wsgi_app, _public_path)
         log.info("PrefixMiddleware applied - app is served under %r.", _public_path)

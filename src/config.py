@@ -88,12 +88,12 @@ MAX_IMAGE_PIXELS: int = 25_000_000
 # ---------------------------------------------------------------------------
 
 # Application
-public_base_url: str = app_cfg.get("public_base_url", "").rstrip("/")
+public_webui_url: str = app_cfg.get("public_webui_url", "").rstrip("/")
 public_avatar_url: str = app_cfg.get("public_avatar_url", "").rstrip("/")
 
 # Both public URLs are required and must be absolute (scheme + netloc).
 for _key, _val in (
-    ("app.public_base_url", public_base_url),
+    ("app.public_webui_url", public_webui_url),
     ("app.public_avatar_url", public_avatar_url),
 ):
     _fatal_unless(bool(_val), f"{_key} is required but not set in config.yml.")
@@ -167,7 +167,7 @@ if _trusted_hosts_raw:
     trusted_hosts: list[str] | None = [h.lower().strip() for h in _trusted_hosts_raw if h] or None
 else:
     _auto_hosts = []
-    for _url in (public_base_url, public_avatar_url):
+    for _url in (public_webui_url, public_avatar_url):
         _hostname = urlparse(_url).hostname
         if _hostname and _hostname not in _auto_hosts:
             _auto_hosts.append(_hostname)

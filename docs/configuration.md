@@ -28,7 +28,7 @@ effect.
 | [`branding.name`](#brandingname)                                                 | String  | Application name shown in the UI                    |
 | [`app.max_upload_size_mb`](#appmax_upload_size_mb)                               | Integer | Maximum upload size in MB                           |
 | [`app.avatar_storage_path`](#appavatar_storage_path)                             | String  | Directory for stored avatar images                  |
-| [`app.public_base_url`](#apppublic_base_url)                                     | URL     | Public URL where the application is reachable       |
+| [`app.public_webui_url`](#apppublic_webui_url)                                   | URL     | Public URL where the application is reachable       |
 | [`app.public_avatar_url`](#apppublic_avatar_url)                                 | URL     | Public URL where avatar files are served            |
 | [`security.secret_key`](#securitysecret_key)                                     | String  | Flask session signing key                           |
 | [`security.session_cookie_secure`](#securitysession_cookie_secure)               | Boolean | Override Secure flag on the session cookie          |
@@ -164,7 +164,7 @@ Directory where processed avatar images and metadata are stored. Can be a relati
 to the project root) or an absolute path. The application creates the directory and all required
 subdirectories at startup if they do not exist.
 
-### `app.public_base_url`
+### `app.public_webui_url`
 
 | Property    | Value                                            |
 |-------------|--------------------------------------------------|
@@ -249,19 +249,19 @@ See [Flask Session Key](flask-session-key.md) for generation instructions.
 
 ### `security.session_cookie_secure`
 
-| Property    | Value                                             |
-|-------------|---------------------------------------------------|
-| **Type**    | Boolean or `null`                                 |
-| **Default** | `null` (auto-detected from `app.public_base_url`) |
+| Property    | Value                                              |
+|-------------|----------------------------------------------------|
+| **Type**    | Boolean or `null`                                  |
+| **Default** | `null` (auto-detected from `app.public_webui_url`) |
 
 Controls whether the browser-side session cookie is marked with the `Secure` flag, which instructs
 browsers to transmit the cookie only over HTTPS connections.
 
-| Value   | Behavior                                                                                                          |
-|---------|-------------------------------------------------------------------------------------------------------------------|
-| `null`  | Auto-detect: `Secure` is set when `app.public_base_url` starts with `https://` (correct for standard deployments) |
-| `true`  | Always set `Secure`, regardless of `public_base_url`                                                              |
-| `false` | Never set `Secure` - only use this for plain-HTTP development environments                                        |
+| Value   | Behavior                                                                                                           |
+|---------|--------------------------------------------------------------------------------------------------------------------|
+| `null`  | Auto-detect: `Secure` is set when `app.public_webui_url` starts with `https://` (correct for standard deployments) |
+| `true`  | Always set `Secure`, regardless of `public_webui_url`                                                              |
+| `false` | Never set `Secure` - only use this for plain-HTTP development environments                                         |
 
 **You should not need to set this manually.** The auto-detection is correct for all standard
 deployments, including reverse-proxy setups where TLS is terminated at the proxy and the internal
@@ -776,7 +776,7 @@ proxy sends a forged `Host` header, potentially poisoning URL generation (e.g. p
 constructed with `url_for()`) or cache-poisoning downstream caches.
 
 When set to `null` or omitted entirely (the default), the trusted hosts list is **automatically
-derived** from the hostnames in [`app.public_base_url`](#apppublic_base_url) and
+derived** from the hostnames in [`app.public_webui_url`](#apppublic_webui_url) and
 [`app.public_avatar_url`](#apppublic_avatar_url). This means the application only accepts `Host`
 headers matching those configured URLs without any manual configuration. An empty list (`[]`) is
 treated the same as `null`.

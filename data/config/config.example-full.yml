@@ -25,7 +25,7 @@ app:
   # Must NOT have a trailing slash.
   # When this URL starts with "https://", the session cookie is automatically
   # marked Secure so browsers only transmit it over HTTPS connections.
-  public_base_url: "https://avatar.example.com"
+  public_webui_url: "https://avatar.example.com"
   # Public base URL where avatar files are accessible (used to build avatar URLs
   # pushed to Authentik/LDAP). Must NOT have a trailing slash.
   public_avatar_url: "https://avatar.example.com/user-avatars"
@@ -41,7 +41,7 @@ security:
   # Generate one with:  python3 -c "import secrets; print(secrets.token_hex(32))"
   secret_key: "CHANGE-ME-to-a-random-secret-key"
   # Whether to set the Secure flag on the session cookie.
-  # null (default): auto-detected from app.public_base_url - Secure is set when
+  # null (default): auto-detected from app.public_webui_url - Secure is set when
   #   the URL starts with "https://", which is correct for the vast majority of setups.
   # true / false: explicit override for edge cases where auto-detection is wrong
   #   (e.g. an HTTP-only internal deployment behind a TLS-terminating proxy that
@@ -162,7 +162,7 @@ webserver:
   # Restrict which Host header values the application will accept.
   # Requests with a Host header not in this list are rejected with HTTP 400.
   # Protects against HTTP host-header injection attacks.
-  # null (default): hostnames are auto-derived from app.public_base_url and
+  # null (default): hostnames are auto-derived from app.public_webui_url and
   #   app.public_avatar_url so that those origins are always accepted.
   # Explicit list: only the listed hostnames are accepted (no auto-derivation).
   # Each entry is a plain hostname (port is always ignored during the check).
