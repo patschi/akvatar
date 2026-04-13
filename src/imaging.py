@@ -426,8 +426,15 @@ def load_metadata_file(filename: str) -> dict | None:
 
     Returns the parsed dict, or None if the file is missing or unreadable.
     Used by the metadata serve endpoint for ownership checks before serving.
+
+    Defense-in-depth: the resolved path is verified to stay within METADATA_ROOT
+    even though Flask's ``<filename>`` URL converter already rejects slashes.
     """
-    meta_path = METADATA_ROOT / filename
+    meta_path = (METADATA_ROOT / filename).resolve()
+    # Reject any path that escapes the metadata root (e.g. via ".." components)
+    if not meta_path.is_relative_to(METADATA_ROOT.resolve()):
+        log.warning("Metadata path traversal blocked: %s", filename)
+        return None
     meta = _read_meta(meta_path)
     if meta is None:
         log.debug("Could not read metadata file %s.", filename)
