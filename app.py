@@ -15,7 +15,7 @@ from src import APP_VERSION
 from src.app_middleware import MinifyingTemplateLoader, PrefixMiddleware
 from src.app_monitor import start_memory_monitor
 from src.app_sentry import get_browser_sentry_config, init_sentry
-from src.app_static import serve_static_file
+from src.app_static import serve_static_file, static_cache
 from src.auth import init_oauth
 from src.cleanup import start_cleanup_thread
 from src.config import (
@@ -190,12 +190,14 @@ def create_app() -> Flask:
     # Template context processor - inject shared variables into all templates
     _brand_name = branding_name
     _browser_sentry = get_browser_sentry_config()
+    _has_custom_css = "css/style.custom.css" in static_cache
 
     @app.context_processor
     def _inject_globals():
         locale = get_locale()
         return {
             "brand_name": _brand_name,
+            "custom_css": _has_custom_css,
             "app_version": APP_VERSION,
             "t": t,
             "lang": locale.split("_")[0],
