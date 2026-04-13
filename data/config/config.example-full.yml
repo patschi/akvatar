@@ -157,7 +157,7 @@ rate_limiting:
     # Set to false to disable the per-user Gravatar import cooldown only.
     enabled: true
     # Minimum seconds a logged-in user must wait between consecutive Gravatar imports.
-    cooldown: 5
+    cooldown: 3
   # Per-user cooldown for URL import (/api/fetch-url).
   # Prevents abuse of the import proxy as an outbound HTTP relay.
   # Requires the master switch (enabled) to be true.
@@ -165,7 +165,7 @@ rate_limiting:
     # Set to false to disable the per-user URL import cooldown only.
     enabled: true
     # Minimum seconds a logged-in user must wait between consecutive URL imports.
-    cooldown: 5
+    cooldown: 3
 
 # --- Webserver ---
 # These settings apply when running via run.py / gunicorn (production & Docker).

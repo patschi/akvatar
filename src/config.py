@@ -244,11 +244,12 @@ upload_cooldown_secs: int = int(_upload_rate_cfg.get("cooldown", 10))
 gravatar_import_cooldown_enabled: bool = rate_limiting_enabled and bool(
     _gravatar_rate_cfg.get("enabled", True)
 )
-gravatar_import_cooldown_secs: int = int(_gravatar_rate_cfg.get("cooldown", 5))
+gravatar_import_cooldown_secs: int = int(_gravatar_rate_cfg.get("cooldown", 3))
+
 url_import_cooldown_enabled: bool = rate_limiting_enabled and bool(
     _url_import_rate_cfg.get("enabled", True)
 )
-url_import_cooldown_secs: int = int(_url_import_rate_cfg.get("cooldown", 5))
+url_import_cooldown_secs: int = int(_url_import_rate_cfg.get("cooldown", 3))
 
 # Logging setup
 _LOG_LEVELS = {
