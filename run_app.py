@@ -60,11 +60,6 @@ http2_active = http2_enabled and tls_configured
 start_cleanup_thread()
 
 # Build gunicorn command-line arguments
-workers = web_workers
-threads = web_threads
-timeout = web_timeout
-wtmpdir = tempfile.gettempdir()
-
 # fmt: off
 args = [
     "gunicorn",
@@ -72,10 +67,10 @@ args = [
     "--preload",
     "--bind", f"{web_host}:{web_port}",
     "--worker-class", "gthread",
-    "--worker-tmp-dir", wtmpdir,
-    "--workers", str(workers),
-    "--threads", str(threads),
-    "--timeout", str(timeout),
+    "--worker-tmp-dir", tempfile.gettempdir(),
+    "--workers", str(web_workers),
+    "--threads", str(web_threads),
+    "--timeout", str(web_timeout),
 ]
 # fmt: on
 
@@ -97,9 +92,9 @@ log.info(
     scheme,
     web_host,
     web_port,
-    workers,
-    threads,
-    timeout,
+    web_workers,
+    web_threads,
+    web_timeout,
 )
 
 # Override gunicorn's Server header before it is imported by wsgiapp.

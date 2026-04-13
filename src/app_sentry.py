@@ -29,6 +29,9 @@ from src.config import (
 
 log = logging.getLogger("app.sentry")
 
+# Auto-detect environment from debug_full when not explicitly configured
+_environment = sentry_environment or ("development" if debug_full else "production")
+
 
 def init_sentry() -> None:
     """Initialize the Sentry SDK from config.  No-op when disabled or DSN is empty."""
@@ -43,9 +46,6 @@ def init_sentry() -> None:
 
     import sentry_sdk
 
-    # auto-detect environment from debug_full when not explicitly configured
-    environment = sentry_environment or ("development" if debug_full else "production")
-
     # disable performance tracing entirely when capture_performance is off
     traces_sample_rate = (
         sentry_traces_sample_rate if sentry_capture_performance else 0.0
@@ -56,7 +56,7 @@ def init_sentry() -> None:
 
     sentry_sdk.init(
         dsn=sentry_dsn,
-        environment=environment,
+        environment=_environment,
         release=f"{APP_NAME}@{APP_VERSION}",
         sample_rate=sample_rate,
         traces_sample_rate=traces_sample_rate,
@@ -67,7 +67,7 @@ def init_sentry() -> None:
 
     log.info(
         "Sentry initialized (env=%s, errors=%s, performance=%s).",
-        environment,
+        _environment,
         sentry_capture_errors,
         sentry_capture_performance,
     )
@@ -96,13 +96,11 @@ def get_browser_sentry_config() -> dict | None:
         )
         return None
 
-    environment = sentry_environment or ("development" if debug_full else "production")
-
     config = {
         "enabled": True,
         "js_sdk_url": sentry_browser_js_sdk_url,
         "dsn": sentry_browser_dsn,
-        "environment": environment,
+        "environment": _environment,
         "release": f"{APP_NAME}@{APP_VERSION}",
         "sample_rate": sentry_browser_sample_rate,
         "traces_sample_rate": sentry_browser_traces_sample_rate,
@@ -111,7 +109,7 @@ def get_browser_sentry_config() -> dict | None:
 
     log.info(
         "Browser Sentry enabled (env=%s, tunnel=%s).",
-        environment,
+        _environment,
         "on" if sentry_browser_tunnel_enabled else "off",
     )
     return config

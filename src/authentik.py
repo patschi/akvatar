@@ -26,12 +26,6 @@ log = logging.getLogger("authentik")
 
 # Module-level configuration
 
-# Which Authentik user attribute stores the avatar URL (configurable in config)
-_avatar_attr = ak_avatar_attribute
-
-# Whether to skip TLS certificate verification for Authentik API requests
-_skip_cert_verify = ak_skip_cert_verify
-
 # Timeout in seconds for individual API requests, derived from the central
 # EXTERNAL_REQUEST_TIMEOUT.  Paginated list calls use a longer timeout because
 # Authentik may need extra time to serialize large result sets.
@@ -49,7 +43,7 @@ _session.headers.update(
     }
 )
 
-if _skip_cert_verify:
+if ak_skip_cert_verify:
     # Disable TLS certificate verification for all requests on this session.
     # Also suppress urllib3's per-request InsecureRequestWarning - the startup
     # warning in config.py already informs the operator that verification is off.
@@ -227,13 +221,13 @@ def retrieve_user(username: str) -> dict:
     # rather than the top-level 'avatar' field, which is Authentik's computed avatar
     # (Gravatar, initials, etc.) and doesn't distinguish custom from default.
     attrs = user.get("attributes", {})
-    avatar = attrs.get(_avatar_attr, "") if isinstance(attrs, dict) else ""
+    avatar = attrs.get(ak_avatar_attribute, "") if isinstance(attrs, dict) else ""
 
     log.debug(
         "Retrieved user %r: pk=%d, %s=%s.",
         username,
         pk,
-        _avatar_attr,
+        ak_avatar_attribute,
         avatar or "(not set)",
     )
     return {"pk": pk, "avatar": avatar}
@@ -256,7 +250,9 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
     dry-run mode.
     """
     # Fetch current user, merge the avatar attribute, and PATCH back
-    pre_patch, post_patch = _patch_user(pk, {"attributes": {_avatar_attr: avatar_url}})
+    pre_patch, post_patch = _patch_user(
+        pk, {"attributes": {ak_avatar_attribute: avatar_url}}
+    )
 
     current_attrs = pre_patch.get("attributes")
     if not isinstance(current_attrs, dict):
@@ -265,24 +261,24 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
             f"{type(current_attrs).__name__} (expected dict)."
         )
 
-    old_url = current_attrs.get(_avatar_attr)
-    log.debug("Previous %s: %s", _avatar_attr, old_url or "(not set)")
+    old_url = current_attrs.get(ak_avatar_attribute)
+    log.debug("Previous %s: %s", ak_avatar_attribute, old_url or "(not set)")
 
     # Verify the API accepted the change by checking the response body
     # (skipped in dry-run mode where post_patch == pre_patch)
     if not dry_run:
         patched_attrs = post_patch.get("attributes", {})
-        actual_value = patched_attrs.get(_avatar_attr)
+        actual_value = patched_attrs.get(ak_avatar_attribute)
         if actual_value != avatar_url:
             log.warning(
                 "Authentik PATCH returned %s=%r instead of expected %r.",
-                _avatar_attr,
+                ak_avatar_attribute,
                 actual_value,
                 avatar_url,
             )
         log.info(
             "Authentik %s updated for pk=%d: %s -> %s",
-            _avatar_attr,
+            ak_avatar_attribute,
             pk,
             old_url or "(not set)",
             avatar_url,
@@ -301,10 +297,10 @@ def remove_avatar_url(pk: int) -> None:
     Respects dry-run mode.
     """
     # Partial update: set the avatar attribute to null
-    _patch_user(pk, {"attributes": {_avatar_attr: None}})
+    _patch_user(pk, {"attributes": {ak_avatar_attribute: None}})
 
     if not dry_run:
-        log.info("Authentik %s set to null for pk=%d.", _avatar_attr, pk)
+        log.info("Authentik %s set to null for pk=%d.", ak_avatar_attribute, pk)
 
 
 def revert_avatar_url(pk: int, old_url: str | None) -> None:
@@ -315,8 +311,10 @@ def revert_avatar_url(pk: int, old_url: str | None) -> None:
     """
     # Partial update: set the avatar attribute to the old value (or null)
     display = old_url or "(null)"
-    log.info("Rolling back Authentik %s for pk=%d to: %s", _avatar_attr, pk, display)
-    _patch_user(pk, {"attributes": {_avatar_attr: old_url}})
+    log.info(
+        "Rolling back Authentik %s for pk=%d to: %s", ak_avatar_attribute, pk, display
+    )
+    _patch_user(pk, {"attributes": {ak_avatar_attribute: old_url}})
     log.info("Authentik rollback successful for pk=%d.", pk)
 
 

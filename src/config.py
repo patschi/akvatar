@@ -364,22 +364,20 @@ if oidc_skip_cert_verify:
     )
 
 # Validate configured image sizes for backends
-_valid_sizes = img_cfg.get("sizes", [])
-
 # Validated Authentik avatar settings (exported for use by upload.py)
 ak_avatar_size = ak_cfg.get("avatar_size", 1024)
 _fatal_unless(
-    ak_avatar_size in _valid_sizes,
-    f"authentik.avatar_size={ak_avatar_size} is not in images.sizes={_valid_sizes}.",
+    ak_avatar_size in img_sizes,
+    f"authentik.avatar_size={ak_avatar_size} is not in images.sizes={img_sizes}.",
 )
 
-_valid_formats_lower = {f.lower() for f in img_cfg.get("formats", [])}
+_valid_formats_lower = {f.lower() for f in img_formats}
 
 # Validate each entry in images.formats against known format keys.
 # Catches typos (e.g. "jpge") and unsupported formats (e.g. "bmp") at
 # startup rather than at runtime when the first upload triggers a KeyError
 # inside process_image().
-for _fmt in img_cfg.get("formats", []):
+for _fmt in img_formats:
     _fatal_unless(
         _fmt.lower() in _FORMAT_MAP,
         f"images.formats contains unsupported format {_fmt!r}. "
@@ -397,7 +395,7 @@ ak_avatar_ext = _FORMAT_MAP[_ak_avatar_format.lower()][1]
 _fatal_unless(
     ak_avatar_ext in _valid_formats_lower,
     f"authentik.avatar_format={_ak_avatar_format!r} (ext={ak_avatar_ext!r}) is not in "
-    f"images.formats={list(img_cfg.get('formats', []))}.",
+    f"images.formats={img_formats}.",
 )
 log.debug(
     "Authentik API will use %dx%d %s for avatar URL.",
@@ -437,13 +435,13 @@ if ldap_enabled:
         # must exist in the images.sizes / images.formats lists.
         if _photo["type"] == "url":
             _fatal_unless(
-                _photo["image_size"] in _valid_sizes,
-                f"{_pfx}.image_size={_photo['image_size']} is not in images.sizes={_valid_sizes} (required for type=url).",
+                _photo["image_size"] in img_sizes,
+                f"{_pfx}.image_size={_photo['image_size']} is not in images.sizes={img_sizes} (required for type=url).",
             )
             _ext = _FORMAT_MAP[_photo["image_type"]][1]
             _fatal_unless(
                 _ext in _valid_formats_lower,
-                f"{_pfx}.image_type={_photo['image_type']!r} (ext={_ext}) is not in images.formats (required for type=url).",
+                f"{_pfx}.image_type={_photo['image_type']!r} (ext={_ext}) is not in images.formats={img_formats} (required for type=url).",
             )
 
         log.debug(
@@ -493,11 +491,7 @@ _fatal_unless(
     "each in the range 0-255 (e.g. [255, 255, 255] for white).",
 )
 # Exported as a typed tuple for modules that need the RGBA background color
-img_rgba_background_color: tuple[int, int, int] = (
-    _rgba_bg[0],
-    _rgba_bg[1],
-    _rgba_bg[2],
-)
+img_rgba_background_color: tuple[int, int, int] = tuple(_rgba_bg)
 
 # Verify Pillow runtime support for every configured format by attempting a
 # minimal encode.  A 1x1 RGB image is encoded to a BytesIO buffer for each
@@ -511,7 +505,7 @@ try:
 
     log.debug("Verifying Pillow runtime support for configured image formats...")
     _test_img = _PilImage.new("RGB", (1, 1), (0, 0, 0))
-    for _fmt in img_cfg.get("formats", []):
+    for _fmt in img_formats:
         _pillow_fmt = _FORMAT_MAP[_fmt.lower()][0]
         try:
             _buf = _io.BytesIO()
