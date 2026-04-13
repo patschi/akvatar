@@ -8,8 +8,8 @@
     <!-- Header with title and close button -->
     <div class="dialog-header">
       <span class="dialog-title">{{ t('import.title') }}</span>
-      <button class="dialog-close" type="button" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+      <button class="dialog-close" type="button" title="{{ t('dialog.close') }}" aria-label="{{ t('dialog.close') }}">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"></path></svg>
       </button>
     </div>
 
@@ -19,19 +19,19 @@
         <div class="dialog-options">
           {% if import_gravatar_enabled %}
             <button class="btn dialog-option active" data-import-tab="gravatar" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
               {{ t('import.gravatar') }}
             </button>
           {% endif %}
           {% if import_url_enabled %}
             <button class="btn dialog-option{% if not import_gravatar_enabled %} active{% endif %}" data-import-tab="url" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"></path></svg>
               URL
             </button>
           {% endif %}
           {% if import_webcam_enabled %}
             <button class="btn dialog-option{% if not import_gravatar_enabled and not import_url_enabled %} active{% endif %}" data-import-tab="webcam" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"></rect><path d="M16 10l6-3v10l-6-3z"></path></svg>
               {{ t('import.webcam') }}
             </button>
           {% endif %}
@@ -47,9 +47,9 @@
             <!-- Locked mode: show the session email as static text; hidden input carries
                  the value so the JS load handler reads gravatarEmail.value unchanged. -->
             <span class="import-email-locked">{{ user.email }}</span>
-            <input id="gravatarEmail" type="hidden" value="{{ user.email }}" />
+            <input id="gravatarEmail" type="hidden" value="{{ user.email }}" aria-label="{{ t('import.gravatar_placeholder') }}" />
           {% else %}
-            <input id="gravatarEmail" type="email" class="import-input" value="{{ user.email }}" placeholder="{{ t('import.gravatar_placeholder') }}" />
+            <input id="gravatarEmail" type="email" class="import-input" value="{{ user.email }}" placeholder="{{ t('import.gravatar_placeholder') }}" aria-label="{{ t('import.gravatar_placeholder') }}" />
           {% endif %}
           <button id="gravatarLoadBtn" class="btn btn-import" type="button">{{ t('import.load') }}</button>
         </div>
@@ -60,7 +60,7 @@
       <!-- URL tab: URL input + load button -->
       <div class="import-tab{% if import_gravatar_enabled %} hidden{% endif %}" id="importTabUrl">
         <div class="import-field-row">
-          <input id="urlInput" type="url" class="import-input" placeholder="{{ t('import.url_placeholder') }}" />
+          <input id="urlInput" type="url" class="import-input" placeholder="{{ t('import.url_placeholder') }}" aria-label="{{ t('import.url_placeholder') }}" />
           <button id="urlLoadBtn" class="btn btn-import" type="button">{{ t('import.load') }}</button>
         </div>
       </div>
@@ -78,7 +78,7 @@
           <video id="webcamVideo" class="webcam-video hidden" autoplay playsinline muted></video>
           <!-- Placeholder shown before the camera is started -->
           <div id="webcamPlaceholder" class="webcam-placeholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"></rect><path d="M16 10l6-3v10l-6-3z"></path></svg>
             <span>{{ t('import.webcam_placeholder') }}</span>
           </div>
         </div>

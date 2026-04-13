@@ -14,6 +14,10 @@ title:
 nav:
   logout: "Abmelden"
 
+# Dialog
+dialog:
+  close: "Schließen"
+
 # Einstellungen
 settings:
   title: "Einstellungen"

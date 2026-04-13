@@ -14,6 +14,10 @@ title:
 nav:
   logout: "Cerrar sesión"
 
+# Diálogos
+dialog:
+  close: "Cerrar"
+
 # Interfaz de configuración
 settings:
   title: "Configuración"

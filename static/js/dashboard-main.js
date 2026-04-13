@@ -52,26 +52,26 @@ var CROPPER_TEMPLATE = ''
 
 // Progress step icons (SVGs using currentColor for theme adaptation)
 const ICON_CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
-    + '<path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"></circle>'
+    + '<path d="M6 10.5l2.5 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>'
     + '</svg>';
 
 const ICON_CROSS_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
-    + '<path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"></circle>'
+    + '<path d="M7 7l6 6M13 7l-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>'
     + '</svg>';
 
 const ICON_DASH_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"/>'
-    + '<path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5"></circle>'
+    + '<path d="M7 10h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>'
     + '</svg>';
 
 const ICON_DASHED_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>'
+    + '<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"></circle>'
     + '</svg>';
 
 const ICON_SPINNER = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-    + '<circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"/>'
+    + '<circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="38 14"></circle>'
     + '</svg>';
 
 // Map step status to its SVG icon

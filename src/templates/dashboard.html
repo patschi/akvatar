@@ -31,7 +31,7 @@
         </div>
         {% if user.avatar %}
           <button id="removeAvatarBtn" class="remove-avatar-btn" type="button">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"></path></svg>
             {{ t('reset_avatar.button') }}
           </button>
         {% endif %}
@@ -48,9 +48,9 @@
           <div id="dropZone" class="drop-zone">
             <div class="drop-zone-content">
               <svg class="drop-zone-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
               <p class="drop-zone-hint">{{ t('upload.drop_hint') }}</p>
               <label class="btn file-label" for="fileInput">
@@ -74,19 +74,19 @@
             <div class="import-triggers">
               {% if import_gravatar_enabled %}
                 <button class="btn btn-import" data-import-tab="gravatar" type="button">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
                   {{ t('import.gravatar') }}
                 </button>
               {% endif %}
               {% if import_url_enabled %}
                 <button class="btn btn-import" data-import-tab="url" type="button">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"></path></svg>
                   URL
                 </button>
               {% endif %}
               {% if import_webcam_enabled %}
                 <button class="btn btn-import" data-import-tab="webcam" type="button">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"></rect><path d="M16 10l6-3v10l-6-3z"></path></svg>
                   {{ t('import.webcam') }}
                 </button>
               {% endif %}
@@ -98,7 +98,7 @@
         <div id="imageSelectedBar" class="image-selected-bar hidden">
           <span id="imageSelectedName" class="image-selected-name"></span>
           <button id="discardImageBtn" class="discard-btn" type="button">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"></path></svg>
             {{ t('upload.discard_current') }}
           </button>
         </div>
@@ -131,7 +131,7 @@
         <div class="dialog-header">
           <h2 class="dialog-title" id="removeAvatarTitle"></h2>
           <button class="dialog-close" id="removeAvatarCloseBtn" type="button">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"></path></svg>
           </button>
         </div>
         <p class="remove-avatar-message" id="removeAvatarMessage"></p>

@@ -157,35 +157,30 @@ body {
     height: 30px;
 }
 
-.user-info {
-    color: var(--text-muted);
-}
-
-.user-info a,
-.logout-btn {
-    color: var(--link);
-    text-decoration: none;
-    transition: color var(--transition);
-}
-
-.user-info a:hover,
-.logout-btn:hover {
-    color: var(--link-hover);
-}
-
-/* Logout form and button styled as an inline link */
+/* Logout form and button styled as an icon */
 .logout-form {
-    display: inline;
+    display: flex;
     margin: 0;
     padding: 0;
 }
 
 .logout-btn {
-    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
     border: none;
+    background: none;
+    color: var(--text-muted);
     cursor: pointer;
-    font: inherit;
-    padding: 0;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s, background 0.15s;
+}
+
+.logout-btn:hover {
+    color: var(--error);
+    background: var(--error-soft);
 }
 
 .navbar-right {
