@@ -83,6 +83,7 @@ class _RateLimiter:
         # {ip: [(monotonic_timestamp, cost), ...]}
         self._entries = shared_dict
         self._lock = shared_lock  # Manager Lock (cross-process)
+        self._prev_active: int | None = None  # suppress repeated "nothing to evict" noise
 
     # -- hot path (read + append only, never prune) -------------------------
 
@@ -226,13 +227,14 @@ class _RateLimiter:
                 len(evicted_ips),
                 remaining,
             )
-        else:
+        elif remaining > 0 or remaining != self._prev_active:
             log.debug(
                 "[%s]: eviction pass - nothing to evict (%d active).",
                 self._cfg.name,
                 remaining,
             )
 
+        self._prev_active = remaining
         return pruned_total, len(evicted_ips)
 
 
