@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ lang }}">
 {% set cropper_head %}
-  <!-- Cropper.js - served locally from static/css+js/vendor/ -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/vendor/cropper.min.css') }}" />
+  <!-- Cropper.js v2 - served locally from static/js/vendor/ -->
   <script src="{{ url_for('static', filename='js/vendor/cropper.min.js') }}"></script>
 {% endset %}
 {% with page_title=t('title.dashboard'), head_extra=cropper_head %}
@@ -19,7 +18,7 @@
       <!-- Current profile: avatar + display name + remove button -->
       <div class="profile-header">
         <!-- Avatar circle: initials always present as the base layer;
-             the photo overlays when available so the fallback is never a blank hole. -->
+             the photo overlays when available, so the fallback is never a blank hole. -->
         <div class="profile-avatar">
           <span class="profile-avatar__initials">{{ user_initials }}</span>
           {% if user.avatar %}

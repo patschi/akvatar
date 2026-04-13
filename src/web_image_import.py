@@ -5,7 +5,7 @@ Provides proxy endpoints that fetch images from external sources on behalf
 of the authenticated user.  Proxying is required so that fetched images are
 served from the same origin as the app - without this, the browser marks
 cross-origin images drawn on an HTML canvas as "tainted", which prevents
-Cropper.js from reading pixel data via ``getCroppedCanvas().toBlob()``.
+Cropper.js from reading pixel data.
 
 Core fetch helpers, configuration constants, and exception classes are in
 image_import.py.

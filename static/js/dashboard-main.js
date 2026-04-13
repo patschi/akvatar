@@ -26,8 +26,29 @@ const resultMessage      = document.getElementById("resultMessage");
 // Import section element (hidden during upload processing)
 const importSection      = document.getElementById("importSection");
 
-// Cropper.js instance - created when user selects an image
+// Cropper.js v2 instance - created when user selects an image
 let cropperInstance = null;
+
+// Cropper.js v2 template
+var CROPPER_TEMPLATE = ''
+    + '<cropper-canvas background>'
+    +   '<cropper-image scalable translatable></cropper-image>'
+    +   '<cropper-shade hidden></cropper-shade>'
+    +   '<cropper-handle action="move" plain></cropper-handle>'
+    +   '<cropper-selection aspect-ratio="1" initial-coverage="1" movable resizable outlined>'
+    +     '<cropper-grid role="grid" covered></cropper-grid>'
+    +     '<cropper-crosshair centered></cropper-crosshair>'
+    +     '<cropper-handle action="move" plain></cropper-handle>'
+    +     '<cropper-handle action="n-resize"></cropper-handle>'
+    +     '<cropper-handle action="e-resize"></cropper-handle>'
+    +     '<cropper-handle action="s-resize"></cropper-handle>'
+    +     '<cropper-handle action="w-resize"></cropper-handle>'
+    +     '<cropper-handle action="ne-resize"></cropper-handle>'
+    +     '<cropper-handle action="nw-resize"></cropper-handle>'
+    +     '<cropper-handle action="se-resize"></cropper-handle>'
+    +     '<cropper-handle action="sw-resize"></cropper-handle>'
+    +   '</cropper-selection>'
+    + '</cropper-canvas>';
 
 // Progress step icons (SVGs using currentColor for theme adaptation)
 const ICON_CHECK_CIRCLE = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
@@ -207,25 +228,18 @@ function initCropper(imageSrc, displayName) {
     uploadButton.classList.remove("hidden");
     uploadButton.disabled = false;
 
-    // Initialize Cropper.js with a locked square aspect ratio
-    cropperInstance = new Cropper(cropperImage, {
-        aspectRatio: 1,
-        viewMode: 1,
-        dragMode: "move",
-        autoCropArea: 1,
-        responsive: true,
-        restore: false,
-        guides: true,
-        center: true,
-        highlight: false,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: false,
-        ready: function () {
-            // Scroll the cropper into view once the image is fully rendered
-            cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
-        },
+    // Initialize Cropper.js v2 with the custom template
+    cropperInstance = new Cropper.default(cropperImage, {
+        template: CROPPER_TEMPLATE,
     });
+
+    // Scroll the cropper into view once the image is fully loaded (v2 ready equivalent)
+    var cropperImageEl = cropperInstance.getCropperImage();
+    if (cropperImageEl) {
+        cropperImageEl.$ready().then(function () {
+            cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+    }
 }
 
 /** Discard the selected image and restore the file picker and import section. */
@@ -346,11 +360,14 @@ uploadButton.addEventListener("click", async function () {
 
     // Step 1: Crop the image to a square at the server's max avatar dimension
     var cropStepElement = appendStep(I18N.step_crop, "active");
-    var croppedCanvas = cropperInstance.getCroppedCanvas({
+    var cropperSelection = cropperInstance.getCropperSelection();
+    var croppedCanvas = await cropperSelection.$toCanvas({
         width: MAX_AVATAR_SIZE,
         height: MAX_AVATAR_SIZE,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: "high",
+        beforeDraw: function (context) {
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = "high";
+        },
     });
     logger.debug("main", "crop complete", { width: MAX_AVATAR_SIZE, height: MAX_AVATAR_SIZE });
     updateStep(cropStepElement, I18N.step_crop, "success");
