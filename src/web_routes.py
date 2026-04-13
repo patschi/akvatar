@@ -15,7 +15,6 @@ import logging
 from flask import (
     Blueprint,
     Response,
-    abort,
     jsonify,
     redirect,
     render_template,
@@ -119,8 +118,6 @@ def dashboard():
         import_url_cooldown_secs=url_import_cooldown_secs,
         import_webcam_enabled=WEBCAM_ENABLED,
     )
-
-
 
 
 # Session liveness probe (used by the dashboard for client-side expiry detection)

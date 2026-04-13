@@ -24,7 +24,6 @@ from flask import Blueprint, Response, jsonify, request, session
 
 from src.auth import login_required
 from src.i18n import t
-from src.rate_limit import check_gravatar_import_cooldown, check_url_import_cooldown
 from src.image_import import (
     GRAVATAR_ENABLED,
     MAX_FETCH_SIZE_MB,
@@ -38,6 +37,7 @@ from src.image_import import (
     validate_gravatar_email,
     validate_import_url,
 )
+from src.rate_limit import check_gravatar_import_cooldown, check_url_import_cooldown
 from src.sec_csrf import validate_csrf_token
 
 log = logging.getLogger("img_import")

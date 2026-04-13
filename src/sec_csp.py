@@ -214,7 +214,11 @@ def build_csp_header(nonce: str) -> str | None:
 _REPORT_TO_HEADER: str | None = None
 if _CSP_ENABLED and _CSP_REPORT_URI:
     _REPORT_TO_HEADER = json.dumps(
-        {"group": "csp-endpoint", "max_age": 86400, "endpoints": [{"url": _CSP_REPORT_URI}]},
+        {
+            "group": "csp-endpoint",
+            "max_age": 86400,
+            "endpoints": [{"url": _CSP_REPORT_URI}],
+        },
         separators=(",", ":"),
     )
 

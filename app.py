@@ -37,7 +37,12 @@ from src.config import (
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
 from src.image_import import WEBCAM_ENABLED
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
-from src.sec_csp import CSP_HEADER_NAME, build_csp_header, build_report_to_header, generate_csp_nonce
+from src.sec_csp import (
+    CSP_HEADER_NAME,
+    build_csp_header,
+    build_report_to_header,
+    generate_csp_nonce,
+)
 from src.sec_csrf import generate_csrf_token
 from src.web_auth import auth_bp
 from src.web_image_import import import_bp

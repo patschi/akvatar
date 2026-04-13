@@ -441,7 +441,9 @@ class _UserCooldown:
         # {user_pk: monotonic_timestamp_of_last_allowed_action}
         self._last_action = self._mp_manager.dict()
         self._lock = self._mp_manager.Lock()
-        log.info("[%s] cooldown initialized: %ds per-user window.", self._name, self._window)
+        log.info(
+            "[%s] cooldown initialized: %ds per-user window.", self._name, self._window
+        )
 
     def check_and_record(self, user_pk: int) -> tuple[bool, int]:
         """
@@ -478,7 +480,9 @@ class _UserCooldown:
 _manager = _RateLimitManager(rate_limiting_cfg)
 
 if upload_cooldown_enabled:
-    _upload_cooldown: _UserCooldown | None = _UserCooldown("upload", upload_cooldown_secs)
+    _upload_cooldown: _UserCooldown | None = _UserCooldown(
+        "upload", upload_cooldown_secs
+    )
 else:
     _upload_cooldown = None
     log.info("Upload cooldown is disabled.")

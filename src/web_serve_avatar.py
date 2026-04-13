@@ -146,7 +146,6 @@ def serve_avatar_file(dimensions, basename, ext):
     return resp
 
 
-
 # ---------------------------------------------------------------------------
 # Metadata route
 # ---------------------------------------------------------------------------
@@ -175,9 +174,7 @@ def serve_avatar_metadata(filename):
             return redirect(url_for("routes.login_page"))
 
         meta = load_metadata_file(filename)
-        if meta is None or meta.get("user_pk", None) != session["user"].get(
-            "pk", None
-        ):
+        if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
             if meta is not None:
                 log.debug(
                     "Metadata access denied for %r - user pk mismatch (session pk=%r).",
@@ -195,4 +192,3 @@ def serve_avatar_metadata(filename):
     resp = send_from_directory(METADATA_ROOT, filename, mimetype="application/json")
     resp.headers["Cache-Control"] = "no-store"
     return resp
-
