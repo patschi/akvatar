@@ -1,4 +1,4 @@
-# Nginx Reverse Proxy
+# nginx Reverse Proxy
 
 This guide covers how to run Akvatar behind an **nginx** reverse proxy.
 

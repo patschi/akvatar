@@ -19,7 +19,7 @@ Benefits of reverse proxy TLS termination:
 When the reverse proxy terminates TLS, the application runs over plain HTTP internally. The `X-Forwarded-Proto` header
 tells the app that the original request was HTTPS, ensuring all generated URLs use the correct scheme.
 
-See [Nginx Reverse Proxy](nginx-reverse-proxy.md) for a complete nginx configuration guide.
+See [nginx Reverse Proxy](nginx-reverse-proxy.md) for a complete nginx configuration guide.
 
 ## Built-in TLS (development / testing)
 

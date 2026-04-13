@@ -69,7 +69,7 @@ When submitting a pull request:
 - [How it works](docs/how-it-works.md) - application architecture and request flow
 - [Authentik OIDC Setup](docs/authentik-oidc-setup.md) / [API Token](docs/authentik-api-token.md) - Authentik
   integration guide
-- [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md) / [Subfolder Deployment](docs/subfolder-deployment.md) - deployment
+- [nginx Reverse Proxy](docs/nginx-reverse-proxy.md) / [Subfolder Deployment](docs/subfolder-deployment.md) - deployment
   guides
 - [Cropper.js documentation](https://github.com/fengyuanchen/cropperjs) - client-side image cropping library
 

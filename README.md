@@ -175,8 +175,8 @@ under a subfolder path (e.g. `https://example.com/avatar/`). It honors
 
 Relevant guides:
 
-- **[Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS termination, SSE support,
-  and optional direct avatar file serving
+- **[nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS termination, SSE support,
+   and optional direct avatar file serving
 - **[Subfolder Deployment](docs/subfolder-deployment.md)**: hosting under a URL path prefix (e.g. `/avatar/`)
 
 ## How it works
@@ -225,7 +225,7 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 | [Authentik OIDC Setup](docs/authentik-oidc-setup.md)   | Creating the OIDC provider and application in Authentik                                 |
 | [Authentik API Token](docs/authentik-api-token.md)     | Creating an API token for the Authentik Admin API                                       |
 | [Application TLS](docs/app-tls.md)                     | TLS and HTTP/2 configuration, certificate setup, and reverse proxy recommendation       |
-| [Nginx Reverse Proxy](docs/nginx-reverse-proxy.md)     | Full nginx config with TLS termination, SSE support, and optional static avatar serving |
+| [nginx Reverse Proxy](docs/nginx-reverse-proxy.md)     | Full nginx config with TLS termination, SSE support, and optional static avatar serving |
 | [Subfolder Deployment](docs/subfolder-deployment.md)   | Hosting the app under a URL path prefix (e.g. `/avatar/`)                               |
 | [MS AD Service Account](docs/ms-ad-service-account.md) | Least-privilege Active Directory service account setup with PowerShell automation       |
 | [Troubleshooting](docs/troubleshooting.md)             | General debugging tips, known issues, and their fixes                                   |
