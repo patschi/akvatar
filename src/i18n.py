@@ -1,5 +1,5 @@
 """
-i18n.py - Internationalisation support.
+i18n.py - Internationalization support.
 
 Loads translations from YAML files in the ``src/languages/`` directory at startup.
 Each ``.yml`` file represents one locale (e.g. ``en_US.yml``, ``de_DE.yml``).

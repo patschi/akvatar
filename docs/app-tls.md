@@ -11,8 +11,8 @@ Benefits of reverse proxy TLS termination:
 
 - **Automated certificate management:** Tools like Certbot (Let's Encrypt) or Caddy's built-in ACME integrate directly
   with the reverse proxy
-- **Centralised TLS configuration:** Cipher suites, protocol versions, HSTS headers, and OCSP stapling are managed in
-  one place
+- **Centralized TLS configuration:** Cipher suites, protocol versions, HSTS headers, and OCSP stapling are managed in
+   one place
 - **Better performance:** Reverse proxies are optimized for TLS handling and connection management
 - **Separation of concerns:** The Python application does not need to handle TLS, reducing its attack surface
 

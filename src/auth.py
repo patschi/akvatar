@@ -37,7 +37,7 @@ oauth = OAuth()
 
 def init_oauth(app):
     """Bind the OAuth instance to the Flask `app` and register the Authentik provider. Must be called once at startup."""
-    log.debug("Initialising OAuth client for Authentik.")
+    log.debug("Initializing OAuth client for Authentik.")
     oauth.init_app(app)
     # Build client_kwargs, disabling TLS verification when configured.
     # Authlib's OAuth2Session (requests backend) propagates the verify flag to

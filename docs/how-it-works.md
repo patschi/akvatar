@@ -209,7 +209,7 @@ a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4-Ks8dF2nP...86chars...-1711612800123456789
 | `token_urlsafe(64)` | 86 chars | ~512 bits       |
 | `time_ns()`         | 19 chars | uniqueness only |
 
-## Backend synchronisation
+## Backend synchronization
 
 ### Authentik API
 
