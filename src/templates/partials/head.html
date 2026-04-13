@@ -63,9 +63,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.custom.css') }}" />
   {% endif %}
 
-  <!-- Client-side logger - loaded in <head> so it is available on every page before any body script runs -->
-  <script src="{{ url_for('static', filename='js/logger.js') }}"></script>
-
-  <!-- Tooltip system - converts title attrs to CSS tooltips (no delay) -->
-  <script src="{{ url_for('static', filename='js/tooltip.js') }}"></script>
+  <!-- Common utilities - loaded in <head> so they are available on every page before any body script runs -->
+  <script src="{{ url_for('static', filename='js/common-utils.js') }}"></script>
 </head>
