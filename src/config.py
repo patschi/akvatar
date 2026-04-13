@@ -376,6 +376,19 @@ if oidc_skip_cert_verify:
         "OIDC TLS certificate verification is DISABLED - connections are vulnerable to MITM attacks."
     )
 
+# Warn when the Sentry browser JS SDK URL is not served over HTTPS.
+# Loading a script over plain HTTP allows network-level attackers to inject
+# arbitrary JavaScript into the application.
+if sentry_browser_enabled and sentry_browser_js_sdk_url:
+    _parsed_sdk_url = urlparse(sentry_browser_js_sdk_url)
+    if _parsed_sdk_url.scheme and _parsed_sdk_url.scheme != "https":
+        log.warning(
+            "sentry.browser.js_sdk_url is not HTTPS (%s) - the browser Sentry SDK "
+            "will be loaded over an insecure connection, making it vulnerable to "
+            "script injection by network-level attackers.",
+            sentry_browser_js_sdk_url,
+        )
+
 # Validate configured image sizes for backends
 # Validated Authentik avatar settings (exported for use by upload.py)
 ak_avatar_size = ak_cfg.get("avatar_size", 1024)
