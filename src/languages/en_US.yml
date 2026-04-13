@@ -30,7 +30,7 @@ settings:
 
 # Login page
 login:
-  heading: "Update your photo"
+  heading: "Update your picture"
   subtitle: "Sign in with your organization account to upload and manage your profile picture."
   button: "Sign in"
   error_oidc_failed: "Authentication failed. Please try again or contact your administrator."
@@ -45,22 +45,22 @@ logout:
 
 # Avatar removal
 reset_avatar:
-  button: "Remove current photo"
-  confirm_title: "Remove photo"
-  confirm_message: "Are you sure you want to remove your photo? This will reset it to the default."
+  button: "Remove current picture"
+  confirm_title: "Remove picture"
+  confirm_message: "Are you sure you want to remove your picture? This will reset it to the default."
   confirm_yes: "Remove"
   confirm_no: "Cancel"
-  failed: "Could not remove your photo. Please try again."
+  failed: "Could not remove your picture. Please try again."
 
 # Dashboard upload area
 upload:
   heading: "Update your profile picture"
-  subtitle: "Select an image, crop it to a square, and hit Upload. Your photo will be updated across our systems automatically."
+  subtitle: "Select an image, crop it to a square, and hit Upload. Your picture will be updated across our systems automatically."
   drop_hint: "Drag & drop an image here, or"
   choose: "Choose image…"
   disclaimer: "By uploading, you confirm this is an appropriate image and that you have the right to use it."
-  button: "Upload & Update Photo"
-  current_photo: "Current photo"
+  button: "Upload & Update Picture"
+  current_picture: "Current picture"
   discard_current: "Choose different image"
   processing: "Processing…"
   invalid_ext: "File type .{ext} is not allowed. Accepted: {allowed}"
@@ -112,11 +112,11 @@ step:
   prepare: "Preparing image"
   processed: "Image processed and saved"
   processed_detail: "{sizes} sizes, {formats} formats, {total} total"
-  profile_synced: "Login Portal Photo updated"
-  ldap_updated: "User Directory Photo updated"
+  profile_synced: "Login Portal Picture updated"
+  ldap_updated: "User Directory Picture updated"
   rollback: "Changes rolled back"
   processing_failed: "Processing the image failed"
-  save_failed: "Could not save your photo."
+  save_failed: "Could not save your picture."
 
 # Server-side validation and API error messages.
 # Non-English locales that do not define these keys are auto-backfilled from
@@ -145,9 +145,9 @@ error:
 
 # Result messages
 result:
-  success: "Photo updated successfully!"
-  retry: "Change photo again"
-  error: "Could not update your photo. Please try again later."
+  success: "Picture updated successfully!"
+  retry: "Change picture again"
+  error: "Could not update your picture. Please try again later."
   csrf_failed: "Your session has expired. Please reload the page and try again."
   contact_admin: "Please contact your administrator."
   network_error: "Could not reach the server. Please check your connection and try again."

@@ -30,7 +30,7 @@ settings:
 
 # Anmeldeseite
 login:
-  heading: "Foto aktualisieren"
+  heading: "Bild aktualisieren"
   subtitle: "Melden Sie sich mit Ihrem Organisationskonto an, um Ihr Profilbild hochzuladen und zu verwalten."
   button: "Anmelden"
   error_oidc_failed: "Authentifizierung fehlgeschlagen. Bitte versuchen Sie es erneut oder kontaktieren Sie Ihren Administrator."
@@ -45,22 +45,22 @@ logout:
 
 # Avatar-Entfernung
 reset_avatar:
-  button: "Aktuelles Foto entfernen"
-  confirm_title: "Foto entfernen"
-  confirm_message: "Möchten Sie Ihr Foto wirklich entfernen? Es wird auf den Standard zurückgesetzt."
+  button: "Aktuelles Bild entfernen"
+  confirm_title: "Bild entfernen"
+  confirm_message: "Möchten Sie Ihr Bild wirklich entfernen? Es wird auf den Standard zurückgesetzt."
   confirm_yes: "Entfernen"
   confirm_no: "Abbrechen"
-  failed: "Foto konnte nicht entfernt werden. Bitte versuchen Sie es erneut."
+  failed: "Bild konnte nicht entfernt werden. Bitte versuchen Sie es erneut."
 
 # Dashboard Uploadbereich
 upload:
   heading: "Profilbild aktualisieren"
-  subtitle: "Wählen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf Hochladen. Ihr Foto wird automatisch in unseren Systemen aktualisiert."
+  subtitle: "Wählen Sie ein Bild aus, schneiden Sie es quadratisch zu und klicken Sie auf Hochladen. Ihr Bild wird automatisch in unseren Systemen aktualisiert."
   drop_hint: "Bild hierher ziehen, oder"
   choose: "Bild auswählen…"
   disclaimer: "Mit dem Hochladen bestätigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden."
-  button: "Hochladen & Foto aktualisieren"
-  current_photo: "Aktuelles Foto"
+  button: "Hochladen & Bild aktualisieren"
+  current_picture: "Aktuelles Bild"
   discard_current: "Anderes Bild wählen"
   processing: "Verarbeitung…"
   invalid_ext: "Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}"
@@ -89,11 +89,11 @@ import:
   ok: "Bild verwenden"
   cancel: "Abbrechen"
   webcam: "Webcam"
-  webcam_hint: "Nimm ein Foto mit Deiner Kamera auf. Das Bild verbleibt in Deinem Browser, bis Du es bestätigst."
+  webcam_hint: "Nimm ein Bild mit Deiner Kamera auf. Das Bild verbleibt in Deinem Browser, bis Du es bestätigst."
   webcam_placeholder: "Kameravorschau erscheint hier"
   webcam_start: "Kamera starten"
   webcam_starting: "Wird gestartet…"
-  webcam_capture: "Foto aufnehmen"
+  webcam_capture: "Bild aufnehmen"
   webcam_retake: "Erneut aufnehmen"
   webcam_stop: "Kamera stoppen"
   webcam_unsupported: "Dein Browser unterstützt keinen Kamerazugriff. Bitte verwende einen modernen Browser über HTTPS."
@@ -112,11 +112,11 @@ step:
   prepare: "Bild wird vorbereitet"
   processed: "Bild verarbeitet und gespeichert"
   processed_detail: "{sizes} Größen, {formats} Formate, {total} gesamt"
-  profile_synced: "Anmelde-Portal Foto aktualisiert"
-  ldap_updated: "Benutzerverzeichnis Foto aktualisiert"
+  profile_synced: "Anmelde-Portal Bild aktualisiert"
+  ldap_updated: "Benutzerverzeichnis Bild aktualisiert"
   rollback: "Änderungen rückgängig gemacht"
   processing_failed: "Verarbeitung des Bildes fehlgeschlagen"
-  save_failed: "Foto konnte nicht gespeichert werden."
+  save_failed: "Bild konnte nicht gespeichert werden."
 
 # Serverseitige Validierungs- und API-Fehlermeldungen
 error:
@@ -143,9 +143,9 @@ error:
 
 # Ergebnisnachrichten
 result:
-  success: "Foto erfolgreich aktualisiert!"
-  retry: "Foto erneut ändern"
-  error: "Foto konnte nicht aktualisiert werden. Bitte versuchen Sie es später erneut."
+  success: "Bild erfolgreich aktualisiert!"
+  retry: "Bild erneut ändern"
+  error: "Bild konnte nicht aktualisiert werden. Bitte versuchen Sie es später erneut."
   csrf_failed: "Ihre Sitzung ist abgelaufen. Bitte laden Sie die Seite neu und versuchen Sie es erneut."
   contact_admin: "Bitte kontaktieren Sie Ihren Administrator."
   network_error: "Server nicht erreichbar. Bitte überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."

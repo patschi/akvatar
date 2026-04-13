@@ -30,8 +30,8 @@ settings:
 
 # Página de inicio de sesión
 login:
-  heading: "Actualizar tu foto"
-  subtitle: "Inicia sesión con tu cuenta de organización para subir y gestionar tu foto de perfil."
+  heading: "Actualizar tu imagen"
+  subtitle: "Inicia sesión con tu cuenta de organización para subir y gestionar tu imagen de perfil."
   button: "Iniciar sesión"
   error_oidc_failed: "Error de autenticación. Por favor, inténtalo de nuevo o contacta con tu administrador."
   error_pk_failed: "No se pudo completar el inicio de sesión - no se pudo recuperar tu cuenta. Por favor, inténtalo de nuevo o contacta con tu administrador."
@@ -45,22 +45,22 @@ logout:
 
 # Eliminación de avatar
 reset_avatar:
-  button: "Eliminar foto actual"
-  confirm_title: "Eliminar foto"
-  confirm_message: "¿Estás seguro de que quieres eliminar tu foto? Se restablecerá al predeterminado."
+  button: "Eliminar imagen actual"
+  confirm_title: "Eliminar imagen"
+  confirm_message: "¿Estás seguro de que quieres eliminar tu imagen? Se restablecerá al predeterminado."
   confirm_yes: "Eliminar"
   confirm_no: "Cancelar"
-  failed: "No se pudo eliminar tu foto. Por favor, inténtalo de nuevo."
+  failed: "No se pudo eliminar tu imagen. Por favor, inténtalo de nuevo."
 
 # Zona de subida del panel
 upload:
-  heading: "Actualizar tu foto de perfil"
-  subtitle: "Selecciona una imagen, recórtala en cuadrado y pulsa Subir. Tu foto se actualizará automáticamente en nuestros sistemas."
+  heading: "Actualizar tu imagen de perfil"
+  subtitle: "Selecciona una imagen, recórtala en cuadrado y pulsa Subir. Tu imagen se actualizará automáticamente en nuestros sistemas."
   drop_hint: "Arrastra y suelta una imagen aquí, o"
   choose: "Elegir imagen…"
   disclaimer: "Al subir, confirmas que esta imagen es apropiada y que tienes derecho a utilizarla."
-  button: "Subir & Actualizar foto"
-  current_photo: "Foto actual"
+  button: "Subir & Actualizar imagen"
+  current_picture: "Imagen actual"
   discard_current: "Elegir otra imagen"
   processing: "Procesando…"
   invalid_ext: "El tipo de archivo .{ext} no está permitido. Aceptados: {allowed}"
@@ -89,11 +89,11 @@ import:
   ok: "Usar imagen"
   cancel: "Cancelar"
   webcam: "Webcam"
-  webcam_hint: "Toma una foto con tu cámara. La imagen permanece en tu navegador hasta que la confirmes."
+  webcam_hint: "Captura una imagen con tu cámara. La imagen permanece en tu navegador hasta que la confirmes."
   webcam_placeholder: "La vista previa de la cámara aparecerá aquí"
   webcam_start: "Iniciar cámara"
   webcam_starting: "Iniciando…"
-  webcam_capture: "Tomar foto"
+  webcam_capture: "Capturar imagen"
   webcam_retake: "Repetir"
   webcam_stop: "Detener cámara"
   webcam_unsupported: "Tu navegador no admite el acceso a la cámara. Prueba con un navegador moderno a través de HTTPS."
@@ -112,11 +112,11 @@ step:
   prepare: "Preparando imagen"
   processed: "Imagen procesada y guardada"
   processed_detail: "{sizes} tamaños, {formats} formatos, {total} en total"
-  profile_synced: "Foto del portal de inicio de sesión actualizada"
-  ldap_updated: "Foto del directorio de usuarios actualizada"
+  profile_synced: "Imagen del portal de inicio de sesión actualizada"
+  ldap_updated: "Imagen del directorio de usuarios actualizada"
   rollback: "Cambios revertidos"
   processing_failed: "Error al procesar la imagen"
-  save_failed: "No se pudo guardar tu foto."
+  save_failed: "No se pudo guardar tu imagen."
 
 # Mensajes de error de validación y de API del servidor
 error:
@@ -143,9 +143,9 @@ error:
 
 # Mensajes de resultado
 result:
-  success: "¡Foto actualizada correctamente!"
-  retry: "Cambiar foto de nuevo"
-  error: "No se pudo actualizar tu foto. Por favor, inténtalo más tarde."
+  success: "¡Imagen actualizada correctamente!"
+  retry: "Cambiar imagen de nuevo"
+  error: "No se pudo actualizar tu imagen. Por favor, inténtalo más tarde."
   csrf_failed: "Tu sesión ha expirado. Por favor, recarga la página e inténtalo de nuevo."
   contact_admin: "Por favor, contacta con tu administrador."
   network_error: "No se pudo conectar con el servidor. Por favor, comprueba tu conexión e inténtalo de nuevo."

@@ -30,8 +30,8 @@ settings:
 
 # Page de connexion
 login:
-  heading: "Mettre à jour votre photo"
-  subtitle: "Connectez-vous avec votre compte d'organisation pour télécharger et gérer votre photo de profil."
+  heading: "Mettre à jour votre image"
+  subtitle: "Connectez-vous avec votre compte d'organisation pour télécharger et gérer votre image de profil."
   button: "Se connecter"
   error_oidc_failed: "Échec de l'authentification. Veuillez réessayer ou contacter votre administrateur."
   error_pk_failed: "La connexion n'a pas pu être finalisée - impossible de récupérer votre compte. Veuillez réessayer ou contacter votre administrateur."
@@ -45,22 +45,22 @@ logout:
 
 # Suppression de l'avatar
 reset_avatar:
-  button: "Supprimer la photo actuelle"
-  confirm_title: "Supprimer la photo"
-  confirm_message: "Êtes-vous sûr de vouloir supprimer votre photo ? Elle sera réinitialisée par défaut."
+  button: "Supprimer l'image actuelle"
+  confirm_title: "Supprimer l'image"
+  confirm_message: "Êtes-vous sûr de vouloir supprimer votre image ? Elle sera réinitialisée par défaut."
   confirm_yes: "Supprimer"
   confirm_no: "Annuler"
-  failed: "Impossible de supprimer votre photo. Veuillez réessayer."
+  failed: "Impossible de supprimer votre image. Veuillez réessayer."
 
 # Zone de téléchargement du tableau de bord
 upload:
-  heading: "Mettre à jour votre photo de profil"
-  subtitle: "Sélectionnez une image, recadrez-la en carré et cliquez sur Télécharger. Votre photo sera mise à jour automatiquement dans nos systèmes."
+  heading: "Mettre à jour votre image de profil"
+  subtitle: "Sélectionnez une image, recadrez-la en carré et cliquez sur Télécharger. Votre image sera mise à jour automatiquement dans nos systèmes."
   drop_hint: "Glissez-déposez une image ici, ou"
   choose: "Choisir une image…"
   disclaimer: "En téléchargeant, vous confirmez que cette image est appropriée et que vous avez le droit de l'utiliser."
-  button: "Télécharger & Mettre à jour la photo"
-  current_photo: "Photo actuelle"
+  button: "Télécharger & Mettre à jour l'image"
+  current_picture: "Image actuelle"
   discard_current: "Choisir une autre image"
   processing: "Traitement en cours…"
   invalid_ext: "Le type de fichier .{ext} n'est pas autorisé. Acceptés : {allowed}"
@@ -89,11 +89,11 @@ import:
   ok: "Utiliser l'image"
   cancel: "Annuler"
   webcam: "Webcam"
-  webcam_hint: "Prenez une photo avec votre caméra. L'image reste dans votre navigateur jusqu'à confirmation."
+  webcam_hint: "Capturez une image avec votre caméra. L'image reste dans votre navigateur jusqu'à confirmation."
   webcam_placeholder: "L'aperçu de la caméra s'affichera ici"
   webcam_start: "Démarrer la caméra"
   webcam_starting: "Démarrage…"
-  webcam_capture: "Prendre la photo"
+  webcam_capture: "Capturer l'image"
   webcam_retake: "Reprendre"
   webcam_stop: "Arrêter la caméra"
   webcam_unsupported: "Votre navigateur ne prend pas en charge l'accès à la caméra. Utilisez un navigateur moderne via HTTPS."
@@ -112,11 +112,11 @@ step:
   prepare: "Préparation de l'image"
   processed: "Image traitée et enregistrée"
   processed_detail: "{sizes} tailles, {formats} formats, {total} au total"
-  profile_synced: "Photo du portail de connexion mise à jour"
-  ldap_updated: "Photo de l'annuaire utilisateurs mise à jour"
+  profile_synced: "Image du portail de connexion mise à jour"
+  ldap_updated: "Image de l'annuaire utilisateurs mise à jour"
   rollback: "Modifications annulées"
   processing_failed: "Échec du traitement de l'image"
-  save_failed: "Impossible d'enregistrer votre photo."
+  save_failed: "Impossible d'enregistrer votre image."
 
 # Messages d'erreur de validation et d'API côté serveur
 error:
@@ -143,9 +143,9 @@ error:
 
 # Messages de résultat
 result:
-  success: "Photo mise à jour avec succès !"
-  retry: "Modifier la photo à nouveau"
-  error: "Impossible de mettre à jour votre photo. Veuillez réessayer plus tard."
+  success: "Image mise à jour avec succès !"
+  retry: "Modifier l'image à nouveau"
+  error: "Impossible de mettre à jour votre image. Veuillez réessayer plus tard."
   csrf_failed: "Votre session a expiré. Veuillez recharger la page et réessayer."
   contact_admin: "Veuillez contacter votre administrateur."
   network_error: "Impossible de joindre le serveur. Veuillez vérifier votre connexion et réessayer."

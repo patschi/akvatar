@@ -177,7 +177,7 @@ function setProfileAvatar(url) {
             // Add the overlay image on top of the initials
             img = document.createElement("img");
             img.className = "profile-avatar__img";
-            img.alt = I18N.upload_current_photo;
+            img.alt = I18N.upload_current_picture;
             img.onerror = function () { this.remove(); };
             img.src = url;
             avatarContainer.appendChild(img);
