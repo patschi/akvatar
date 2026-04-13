@@ -55,6 +55,13 @@ def auth_callback():
         log.exception("Failed to process OIDC callback user data.")
         return redirect(url_for("routes.login_page", error="pk_failed"))
 
+    # Regenerate the session to prevent session fixation attacks.
+    # Clearing the session discards any pre-authentication state (including a
+    # potentially attacker-set session cookie) and starts fresh.  Flask's
+    # cookie-based sessions make classical fixation harder (the cookie is HMAC-
+    # signed), but clearing is zero-cost defense-in-depth.
+    session.clear()
+
     # Mark session as permanent so PERMANENT_SESSION_LIFETIME is enforced.
     # Without this Flask uses a browser-session cookie with no server-side expiry.
     session.permanent = True
