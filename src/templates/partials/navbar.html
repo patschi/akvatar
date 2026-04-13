@@ -7,7 +7,10 @@
   <div class="navbar-right">
     {% if user is defined and user %}
       <span class="user-info">
-        <a href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit" class="logout-btn">{{ t('nav.logout') }}</button>
+        </form>
       </span>
     {% endif %}
     {% include 'partials/settings-btn.html' %}

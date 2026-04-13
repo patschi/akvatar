@@ -16,6 +16,7 @@ import logging
 from flask import Blueprint, redirect, render_template, session, url_for
 
 from src.auth import build_provider_logout_url, oauth, process_oidc_callback
+from src.sec_csrf import validate_csrf_token
 
 log = logging.getLogger("auth")
 
@@ -66,9 +67,22 @@ def auth_callback():
     return redirect(url_for("routes.dashboard"))
 
 
-@auth_bp.route("/logout", methods=["GET"])
+@auth_bp.route("/logout", methods=["POST"])
 def logout():
-    """Clear the local session and optionally redirect to Authentik's end_session_endpoint (RP-Initiated Logout)."""
+    """Clear the local session and optionally redirect to Authentik's end_session_endpoint (RP-Initiated Logout).
+
+    Uses POST (not GET) to prevent cross-origin logout via ``<img src="/logout">``
+    or similar passive resource loads.  CSRF validation ensures the request
+    originated from a page served by this application.
+    """
+    # CSRF token validation - prevents cross-site logout attacks.
+    # On failure, redirect to login rather than returning JSON (the user
+    # is likely seeing an HTML page, not making an API call).
+    csrf_rejection = validate_csrf_token()
+    if csrf_rejection:
+        log.warning("Logout CSRF validation failed - redirecting to login.")
+        return redirect(url_for("routes.login_page"))
+
     username = session.get("user", {}).get("username", "unknown")
     id_token = session.get("id_token", None)
     session.clear()

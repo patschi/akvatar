@@ -161,14 +161,31 @@ body {
     color: var(--text-muted);
 }
 
-.user-info a {
+.user-info a,
+.logout-btn {
     color: var(--link);
     text-decoration: none;
     transition: color var(--transition);
 }
 
-.user-info a:hover {
+.user-info a:hover,
+.logout-btn:hover {
     color: var(--link-hover);
+}
+
+/* Logout form and button styled as an inline link */
+.logout-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.logout-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
 }
 
 .navbar-right {
