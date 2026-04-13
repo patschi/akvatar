@@ -37,7 +37,7 @@ from src.config import (
 from src.i18n import AVAILABLE_LANGUAGES, get_js_translations, get_locale, t
 from src.image_import import WEBCAM_ENABLED
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, ensure_size_directories_existence
-from src.sec_csp import CSP_HEADER_NAME, build_csp_header, generate_csp_nonce
+from src.sec_csp import CSP_HEADER_NAME, build_csp_header, build_report_to_header, generate_csp_nonce
 from src.sec_csrf import generate_csrf_token
 from src.web_auth import auth_bp
 from src.web_image_import import import_bp
@@ -271,6 +271,12 @@ def create_app() -> Flask:
                 # CSP_HEADER_NAME is "Content-Security-Policy" normally, or
                 # "Content-Security-Policy-Report-Only" when security.csp_report_only is true.
                 response.headers[CSP_HEADER_NAME] = csp
+
+                # Report-To header (Reporting API) - required by the report-to
+                # CSP directive to define the named endpoint group.
+                report_to = build_report_to_header()
+                if report_to is not None:
+                    response.headers["Report-To"] = report_to
 
         # Limit referrer information sent to cross-origin destinations
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"

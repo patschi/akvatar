@@ -23,6 +23,7 @@ Usage:
     returns ``None`` and the caller omits the header entirely.
 """
 
+import json
 import logging
 import secrets
 from urllib.parse import urlparse
@@ -38,6 +39,7 @@ from src.config import (
     sentry_browser_enabled,
     sentry_browser_js_sdk_url,
     sentry_browser_tunnel_enabled,
+    webcam_enabled,
 )
 
 log = logging.getLogger("csp")
@@ -131,6 +133,12 @@ if _sentry_ingest_origin:
     _connect_src_parts.append(_sentry_ingest_origin)
 _CONNECT_SRC = " ".join(_connect_src_parts)
 
+# media-src directive - controls <video> and <audio> sources as well as
+# MediaStream objects from getUserMedia().  When the webcam import feature is
+# enabled, 'self' is required so the browser allows the camera MediaStream;
+# otherwise 'none' denies media loading entirely.
+_MEDIA_SRC = "'self'" if webcam_enabled else "'none'"
+
 # Pre-built CSP directive string.  The nonce placeholder is substituted per
 # request in build_csp_header() to keep allocation minimal.
 #
@@ -140,6 +148,7 @@ _CONNECT_SRC = " ".join(_connect_src_parts)
 # connect-src blob:      - Cropper.js calls fetch(blobUrl) to read the cropped
 #                          canvas back as binary data before POSTing it; blob:
 #                          must be listed here so that connection is not blocked.
+# media-src              - required for webcam getUserMedia() MediaStream.
 # frame-ancestors 'none' - CSP3 equivalent of X-Frame-Options: DENY, respected
 #                          by modern browsers that ignore the legacy header.
 _CSP_TEMPLATE = (
@@ -149,6 +158,7 @@ _CSP_TEMPLATE = (
     f"img-src {_IMG_SRC}; "
     "font-src 'self'; "
     f"connect-src {_CONNECT_SRC}; "
+    f"media-src {_MEDIA_SRC}; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
@@ -188,7 +198,27 @@ def build_csp_header(nonce: str) -> str | None:
     if not _CSP_ENABLED:
         return None
     policy = _CSP_TEMPLATE.format(nonce=nonce)
-    # Append report-uri directive when configured
+    # Append reporting directives when configured.
+    # report-uri (CSP Level 2, deprecated in Level 3) is included for older
+    # browsers.  report-to (CSP Level 3 / Reporting API) is the modern
+    # replacement.  Both are emitted in parallel for maximum compatibility.
     if _CSP_REPORT_URI:
-        policy += f"; report-uri {_CSP_REPORT_URI}"
+        policy += "; report-to csp-endpoint"
     return policy
+
+
+# Pre-build the Report-To header value at startup (static JSON).
+# The Reporting API (report-to directive) requires a separate Report-To response
+# header that defines the named endpoint group.  This header is the same on
+# every response, so it is built once and reused.
+_REPORT_TO_HEADER: str | None = None
+if _CSP_ENABLED and _CSP_REPORT_URI:
+    _REPORT_TO_HEADER = json.dumps(
+        {"group": "csp-endpoint", "max_age": 86400, "endpoints": [{"url": _CSP_REPORT_URI}]},
+        separators=(",", ":"),
+    )
+
+
+def build_report_to_header() -> str | None:
+    """Return the ``Report-To`` header value, or ``None`` when CSP reporting is not configured."""
+    return _REPORT_TO_HEADER

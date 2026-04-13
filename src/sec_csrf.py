@@ -40,6 +40,10 @@ def validate_csrf_token():
     """
     Validate the CSRF token on the current request.
 
+    The token is read from the ``X-CSRF-Token`` header first (used by JS-driven
+    API calls), then from the ``csrf_token`` form field (used by plain HTML form
+    submissions such as the logout button).
+
     Returns None if the token is valid, or a (response, 403) tuple if
     validation fails.  Intended to be called at the start of POST handlers::
 
@@ -48,7 +52,10 @@ def validate_csrf_token():
             return rejection
     """
     expected = session.get(_SESSION_KEY, None)
-    provided = request.headers.get(_HEADER_NAME, "")
+    # Check the header first (API calls), then fall back to form data (HTML forms)
+    provided = request.headers.get(_HEADER_NAME, "") or request.form.get(
+        "csrf_token", ""
+    )
     # Explicitly reject when either value is absent - a falsy `expected` (e.g.
     # empty string or None) must never be treated as "validation passed".
     # secrets.compare_digest is only reached when both values are non-empty.
