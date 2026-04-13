@@ -540,10 +540,10 @@ Per-user cooldown for the avatar upload endpoint (`/api/upload`). Enforced acros
 worker processes via shared state. Requires the master switch
 ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
 
-| Field      | Type    | Default | Description                                                |
-|------------|---------|---------|------------------------------------------------------------|
-| `enabled`  | Boolean | `true`  | Enable the per-user upload cooldown                        |
-| `cooldown` | Integer | `10`    | Minimum seconds between consecutive uploads per user       |
+| Field      | Type    | Default | Description                                          |
+|------------|---------|---------|------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user upload cooldown                  |
+| `cooldown` | Integer | `10`    | Minimum seconds between consecutive uploads per user |
 
 ### `rate_limiting.import_gravatar`
 
@@ -555,10 +555,10 @@ Per-user cooldown for the Gravatar import endpoint (`/api/fetch-gravatar`). Prev
 import proxy as an outbound HTTP relay and limits load on the external Gravatar service. Requires the
 master switch ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
 
-| Field      | Type    | Default | Description                                                    |
-|------------|---------|---------|----------------------------------------------------------------|
-| `enabled`  | Boolean | `true`  | Enable the per-user Gravatar import cooldown                   |
-| `cooldown` | Integer | `5`     | Minimum seconds between consecutive Gravatar imports per user  |
+| Field      | Type    | Default | Description                                                   |
+|------------|---------|---------|---------------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user Gravatar import cooldown                  |
+| `cooldown` | Integer | `3`     | Minimum seconds between consecutive Gravatar imports per user |
 
 ### `rate_limiting.import_url`
 
@@ -570,10 +570,10 @@ Per-user cooldown for the URL import endpoint (`/api/fetch-url`). Prevents abuse
 as an outbound HTTP relay. Requires the master switch
 ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
 
-| Field      | Type    | Default | Description                                                |
-|------------|---------|---------|------------------------------------------------------------|
-| `enabled`  | Boolean | `true`  | Enable the per-user URL import cooldown                    |
-| `cooldown` | Integer | `5`     | Minimum seconds between consecutive URL imports per user   |
+| Field      | Type    | Default | Description                                              |
+|------------|---------|---------|----------------------------------------------------------|
+| `enabled`  | Boolean | `true`  | Enable the per-user URL import cooldown                  |
+| `cooldown` | Integer | `3`     | Minimum seconds between consecutive URL imports per user |
 
 ---
 
