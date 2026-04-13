@@ -4,7 +4,7 @@
  *
  * Depends on server-provided constants injected inline by the template
  * before this script is loaded:
- *   UPLOAD_ENDPOINT, MAX_AVATAR_SIZE, I18N, LDAP_ENABLED, ALLOWED_EXTENSIONS
+ *   UPLOAD_ENDPOINT, MAX_AVATAR_SIZE, I18N, DIR_SYNC, ALLOWED_EXTENSIONS
  */
 
 // DOM element references
@@ -441,7 +441,7 @@ uploadButton.addEventListener("click", async function () {
             I18N.step_processed,
             I18N.step_profile_synced,
         ];
-        if (LDAP_ENABLED) {
+        if (DIR_SYNC) {
             serverStepLabels.push(I18N.step_ldap_updated);
         }
 

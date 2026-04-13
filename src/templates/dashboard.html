@@ -159,7 +159,7 @@
     const MAX_AVATAR_SIZE         = {{ max_size }};
     const CSRF_TOKEN              = "{{ csrf_token() }}";
     const I18N                    = {{ i18n | tojson }};
-    const LDAP_ENABLED            = {{ ldap_enabled | tojson }};
+    const DIR_SYNC                = {{ ldap_enabled | tojson }};
     const ALLOWED_EXTENSIONS      = new Set({{ allowed_extensions | tojson }});
     const IMPORT_GRAVATAR_COOLDOWN = {{ import_gravatar_cooldown_secs }};
     const IMPORT_URL_COOLDOWN      = {{ import_url_cooldown_secs }};
