@@ -164,7 +164,9 @@ proxy_mode: bool = bool(web_cfg.get("proxy_mode", True))
 # When trusted_hosts is null/omitted, auto-derive from the configured public URLs.
 _trusted_hosts_raw = web_cfg.get("trusted_hosts", None)
 if _trusted_hosts_raw:
-    trusted_hosts: list[str] | None = [h.lower().strip() for h in _trusted_hosts_raw if h] or None
+    trusted_hosts: list[str] | None = [
+        h.lower().strip() for h in _trusted_hosts_raw if h
+    ] or None
 else:
     _auto_hosts = []
     for _url in (public_webui_url, public_avatar_url):
@@ -278,9 +280,7 @@ if trusted_hosts:
     if _trusted_hosts_raw:
         log.debug("Trusted hosts (explicit): %s", trusted_hosts)
     else:
-        log.debug(
-            "Trusted hosts (auto-derived from public URLs): %s", trusted_hosts
-        )
+        log.debug("Trusted hosts (auto-derived from public URLs): %s", trusted_hosts)
 if dry_run:
     log.warning(
         "DRY-RUN MODE is enabled - no changes will be pushed to Authentik or LDAP."
