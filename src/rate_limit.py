@@ -229,7 +229,7 @@ class _RateLimiter:
                 len(evicted_ips),
                 remaining,
             )
-        elif remaining > 0 or remaining != self._prev_active:
+        elif remaining != self._prev_active:
             log.debug(
                 "[%s]: eviction pass - nothing to evict (%d active).",
                 self._cfg.name,
