@@ -72,6 +72,14 @@ upload:
 progress:
   heading: "Progress"
 
+# Step indicator (top of dashboard)
+steps:
+  selection: "Selection"
+  editing: "Editing"
+  preview: "Preview"
+  upload: "Upload"
+  success: "Success"
+
 # Import dialog
 import:
   or: "or import from"

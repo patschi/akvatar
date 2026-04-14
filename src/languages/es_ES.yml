@@ -72,6 +72,14 @@ upload:
 progress:
   heading: "Progreso"
 
+# Indicador de pasos (parte superior del panel)
+steps:
+  selection: "Selección"
+  editing: "Edición"
+  preview: "Vista previa"
+  upload: "Subida"
+  success: "Éxito"
+
 # Cuadro de diálogo de importación
 import:
   or: "o importar desde"

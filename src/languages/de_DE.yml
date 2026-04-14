@@ -72,6 +72,14 @@ upload:
 progress:
   heading: "Fortschritt"
 
+# Schrittanzeige (oben im Dashboard)
+steps:
+  selection: "Auswahl"
+  editing: "Bearbeitung"
+  preview: "Vorschau"
+  upload: "Hochladen"
+  success: "Fertig"
+
 # Importdialog
 import:
   or: "oder importieren von"

@@ -72,6 +72,14 @@ upload:
 progress:
   heading: "Progression"
 
+# Indicateur d'étapes (haut du tableau de bord)
+steps:
+  selection: "Sélection"
+  editing: "Édition"
+  preview: "Aperçu"
+  upload: "Téléchargement"
+  success: "Succès"
+
 # Boîte de dialogue d'importation
 import:
   or: "ou importer depuis"

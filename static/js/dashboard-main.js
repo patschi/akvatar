@@ -30,6 +30,28 @@ const resultMessage      = document.getElementById("resultMessage");
 // Import section element (hidden during upload processing)
 const importSection      = document.getElementById("importSection");
 
+// Step indicator elements
+const stepIndicator      = document.getElementById("stepIndicator");
+const stepItems          = stepIndicator ? stepIndicator.querySelectorAll(".step-indicator__step") : [];
+const stepLines          = stepIndicator ? stepIndicator.querySelectorAll(".step-indicator__line") : [];
+
+/** Update the step indicator to reflect the current step (1-based). */
+function setStep(n) {
+    if (stepIndicator) {
+        stepIndicator.classList.toggle("hidden", n === 1);
+    }
+    // Apply active/done state to both step dots and connector lines
+    function applyState(nodes) {
+        nodes.forEach(function (el, i) {
+            el.classList.remove("active", "done");
+            if (i + 1 < n) el.classList.add("done");
+            else if (i + 1 === n) el.classList.add("active");
+        });
+    }
+    applyState(stepItems);
+    applyState(stepLines);
+}
+
 // Cropper.js v2 instance - created when user selects an image
 let cropperInstance = null;
 
@@ -153,6 +175,8 @@ function returnToPreview() {
     uploadDisclaimer.classList.remove("hidden");
     applyUploadCooldown();
     previewSection.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    setStep(3);
 }
 
 /** Record the upload cooldown start (called on failure paths in performUpload). */
@@ -317,6 +341,8 @@ function initCropper(imageSrc, displayName) {
     uploadButton.classList.remove("hidden");
     uploadButton.disabled = false;
 
+    setStep(2);
+
     // Initialize Cropper.js v2 with the custom template
     cropperInstance = new Cropper.default(cropperImage, {
         template: CROPPER_TEMPLATE,
@@ -361,6 +387,8 @@ function discardImage() {
     // Restore file picker and import section
     filePicker.classList.remove("hidden");
     if (importSection) importSection.classList.remove("hidden");
+
+    setStep(1);
 }
 
 discardImageBtn.addEventListener("click", discardImage);
@@ -497,6 +525,8 @@ uploadButton.addEventListener("click", async function () {
     // Reset button for when user returns to cropping
     resetUploadButton();
 
+    setStep(3);
+
     // Scroll preview into view
     previewSection.scrollIntoView({ behavior: "smooth", block: "center" });
 });
@@ -514,6 +544,8 @@ previewReturnBtn.addEventListener("click", function () {
     cropperWrapper.classList.remove("hidden");
     uploadButton.classList.remove("hidden");
 
+    setStep(2);
+
     // Scroll cropper into view
     cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
 });
@@ -528,6 +560,8 @@ async function performUpload(imageBlob, imageFormat) {
     progressPanel.classList.remove("hidden");
     progressList.innerHTML = "";
     resultMessage.innerHTML = "";
+
+    setStep(4);
 
     // Show crop and compress as already completed
     appendStep(I18N.step_crop, "success");
@@ -680,6 +714,8 @@ async function performUpload(imageBlob, imageFormat) {
             // Success: release the preview blob (no longer needed) and show result
             clearPreviewState();
             showResult("result-success", I18N.result_success);
+
+            setStep(5);
 
             // Update the profile avatar in the header with the new URL
             setProfileAvatar(finalResult.avatar_url);

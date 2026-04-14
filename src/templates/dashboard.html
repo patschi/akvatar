@@ -43,6 +43,34 @@
         <h1>{{ t('upload.heading') }}</h1>
         <p class="subtitle">{{ t('upload.subtitle') }}</p>
 
+        <!-- Step progress indicator -->
+        <div id="stepIndicator" class="step-indicator hidden">
+            <div class="step-indicator__step">
+                <div class="step-indicator__dot">1</div>
+                <span class="step-indicator__label">{{ t('steps.selection') }}</span>
+            </div>
+            <div class="step-indicator__line"></div>
+            <div class="step-indicator__step">
+                <div class="step-indicator__dot">2</div>
+                <span class="step-indicator__label">{{ t('steps.editing') }}</span>
+            </div>
+            <div class="step-indicator__line"></div>
+            <div class="step-indicator__step">
+                <div class="step-indicator__dot">3</div>
+                <span class="step-indicator__label">{{ t('steps.preview') }}</span>
+            </div>
+            <div class="step-indicator__line"></div>
+            <div class="step-indicator__step">
+                <div class="step-indicator__dot">4</div>
+                <span class="step-indicator__label">{{ t('steps.upload') }}</span>
+            </div>
+            <div class="step-indicator__line"></div>
+            <div class="step-indicator__step">
+                <div class="step-indicator__dot">5</div>
+                <span class="step-indicator__label">{{ t('steps.success') }}</span>
+            </div>
+        </div>
+
         <!-- File picker + drop zone -->
         <div id="filePicker">
           <div id="dropZone" class="drop-zone">

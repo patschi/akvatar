@@ -594,6 +594,94 @@ body {
 }
 
 /* ====================================================================
+ *  Step Indicator
+ * ==================================================================== */
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 1.5rem;
+}
+
+.step-indicator__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.step-indicator__dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: var(--border);
+    color: var(--text-muted);
+    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+}
+
+.step-indicator__label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.3s;
+    white-space: nowrap;
+    opacity: 0.7;
+}
+
+.step-indicator__line {
+    flex: 1;
+    height: 2px;
+    min-width: 20px;
+    background: var(--border);
+    margin: 0 0.25rem;
+    margin-bottom: 1.25rem; /* align with dots, not labels */
+    border-radius: 1px;
+    transition: background 0.3s;
+}
+
+/* Active step (current) */
+.step-indicator__step.active .step-indicator__dot {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.step-indicator__step.active .step-indicator__label {
+    color: var(--accent);
+    opacity: 1;
+    font-weight: 600;
+}
+
+/* Completed step */
+.step-indicator__step.done .step-indicator__dot {
+    background: var(--success);
+    color: #fff;
+}
+
+.step-indicator__step.done .step-indicator__label {
+    color: var(--text);
+    opacity: 1;
+}
+
+/* Completed connector line */
+.step-indicator__line.done {
+    background: var(--success);
+}
+
+/* Active connector line (between last done and current active) */
+.step-indicator__line.active {
+    background: var(--accent);
+}
+
+/* ====================================================================
  *  Upload / Drop Zone
  * ==================================================================== */
 
@@ -1408,6 +1496,22 @@ a:focus-visible {
         font-size: 0.82rem;
     }
 
+    /* Step indicator */
+    .step-indicator__dot {
+        width: 24px;
+        height: 24px;
+        font-size: 0.62rem;
+    }
+
+    .step-indicator__label {
+        font-size: 0.6rem;
+    }
+
+    .step-indicator__line {
+        min-width: 12px;
+        margin-bottom: 1.1rem;
+    }
+
     /* Drop zone - more generous touch area */
     .drop-zone {
         padding: 2rem 0.75rem;
@@ -1576,6 +1680,21 @@ a:focus-visible {
 @media (max-width: 380px) {
     html {
         font-size: 15px;
+    }
+
+    .step-indicator__dot {
+        width: 22px;
+        height: 22px;
+        font-size: 0.58rem;
+    }
+
+    .step-indicator__label {
+        font-size: 0.55rem;
+    }
+
+    .step-indicator__line {
+        min-width: 8px;
+        margin-bottom: 1rem;
     }
 
     .container {
