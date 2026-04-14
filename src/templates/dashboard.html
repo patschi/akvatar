@@ -108,11 +108,24 @@
           <img id="cropperImage" src="" alt="Preview" />
         </div>
 
-        <!-- Disclaimer + Upload button (hidden until an image is chosen) -->
-        <p id="uploadDisclaimer" class="upload-disclaimer hidden">{{ t('upload.disclaimer') }}</p>
+        <!-- Preview image button (hidden until an image is chosen) -->
         <button id="uploadBtn" class="btn btn-block hidden" disabled>
-          {{ t('upload.button') }}
+          {{ t('upload.preview_image') }}
         </button>
+
+        <!-- Preview section (hidden until preview is triggered) -->
+        <div id="previewSection" class="preview-section hidden">
+          <img id="previewImage" src="" alt="Preview" class="preview-image" />
+          <p id="uploadDisclaimer" class="upload-disclaimer hidden">{{ t('upload.disclaimer') }}</p>
+          <div class="preview-actions">
+            <button id="previewUploadBtn" class="btn btn-block" type="button">
+              {{ t('upload.upload_image') }}
+            </button>
+            <button id="previewReturnBtn" class="btn btn-block btn-cancel" type="button">
+              {{ t('upload.return_to_cropping') }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Progress panel -->

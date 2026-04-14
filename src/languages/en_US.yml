@@ -45,12 +45,12 @@ logout:
 
 # Avatar removal
 reset_avatar:
-  button: "Remove current picture"
-  confirm_title: "Remove picture"
-  confirm_message: "Are you sure you want to remove your picture? This will reset it to the default."
+  button: "Remove current image"
+  confirm_title: "Remove image"
+  confirm_message: "Are you sure you want to remove your image? This will reset it to the default."
   confirm_yes: "Remove"
   confirm_no: "Cancel"
-  failed: "Could not remove your picture. Please try again."
+  failed: "Could not remove your image. Please try again."
 
 # Dashboard upload area
 upload:
@@ -60,6 +60,9 @@ upload:
   choose: "Choose image…"
   disclaimer: "By uploading, you confirm this is an appropriate image and that you have the right to use it."
   button: "Upload & Update Picture"
+  preview_image: "Preview image"
+  upload_image: "Confirm & Upload"
+  return_to_cropping: "Adjust crop"
   current_picture: "Current picture"
   discard_current: "Choose different image"
   processing: "Processing…"

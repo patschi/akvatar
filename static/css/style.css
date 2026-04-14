@@ -937,6 +937,43 @@ body {
     height: 100%;
 }
 
+/* Make cropper resize handles larger for easier interaction */
+.cropper-wrapper cropper-selection cropper-handle[action$="-resize"] {
+    transform: scale(2.25);
+}
+
+/* ====================================================================
+ *  Preview
+ * ==================================================================== */
+
+/* Preview section shown after cropping, before upload */
+.preview-section {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.preview-image {
+    max-width: 256px;
+    max-height: 256px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+}
+
+.preview-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.preview-actions .btn-block {
+    flex: 1;
+    margin-top: 0;
+}
+
 /* ====================================================================
  *  Buttons
  * ==================================================================== */
@@ -1511,6 +1548,11 @@ a:focus-visible {
     /* Cropper wrapper */
     .cropper-wrapper {
         height: 300px;
+    }
+
+    /* Preview actions: stack buttons vertically on mobile */
+    .preview-actions {
+        flex-direction: column;
     }
 
     /* Login hero */

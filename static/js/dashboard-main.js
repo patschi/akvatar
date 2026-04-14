@@ -18,6 +18,10 @@ const cropperWrapper     = document.getElementById("cropperWrapper");
 const cropperImage       = document.getElementById("cropperImage");
 const uploadButton       = document.getElementById("uploadBtn");
 const uploadDisclaimer   = document.getElementById("uploadDisclaimer");
+const previewSection     = document.getElementById("previewSection");
+const previewImage       = document.getElementById("previewImage");
+const previewUploadBtn   = document.getElementById("previewUploadBtn");
+const previewReturnBtn   = document.getElementById("previewReturnBtn");
 const profileDivider     = document.getElementById("profileDivider");
 const progressPanel      = document.getElementById("progressPanel");
 const progressList       = document.getElementById("progressList");
@@ -28,6 +32,20 @@ const importSection      = document.getElementById("importSection");
 
 // Cropper.js v2 instance - created when user selects an image
 let cropperInstance = null;
+
+// Preview state: stores the cropped blob between preview and upload
+let previewBlob = null;
+let previewFormat = null;
+
+/** Revoke the preview blob URL (if any), clear the image src, and null out stored blob state. */
+function clearPreviewState() {
+    if (previewImage.src.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage.src);
+    }
+    previewImage.src = "";
+    previewBlob = null;
+    previewFormat = null;
+}
 
 // Cropper.js v2 template
 var CROPPER_TEMPLATE = ''
@@ -135,7 +153,7 @@ function buildRetryButton() {
 /** Reset upload button to its default enabled state. */
 function resetUploadButton() {
     uploadButton.disabled = false;
-    uploadButton.textContent = I18N.upload_button;
+    uploadButton.textContent = I18N.upload_preview_image;
 }
 
 /** Switch from the upload form to the result view (hides upload controls, shows progress panel). */
@@ -224,7 +242,6 @@ function initCropper(imageSrc, displayName) {
     // Show the cropper area and upload controls
     cropperImage.src = imageSrc;
     cropperWrapper.classList.remove("hidden");
-    uploadDisclaimer.classList.remove("hidden");
     uploadButton.classList.remove("hidden");
     uploadButton.disabled = false;
 
@@ -256,14 +273,18 @@ function discardImage() {
     }
     cropperImage.src = "";
 
+    // Clean up preview state
+    clearPreviewState();
+
     // Clear the file input so the same file can be re-selected
     fileInput.value = "";
 
-    // Hide image bar and cropper controls
+    // Hide image bar, cropper controls, and preview section
     imageSelectedBar.classList.add("hidden");
     cropperWrapper.classList.add("hidden");
     uploadDisclaimer.classList.add("hidden");
     uploadButton.classList.add("hidden");
+    previewSection.classList.add("hidden");
 
     // Restore file picker and import section
     filePicker.classList.remove("hidden");
@@ -346,20 +367,17 @@ dropZone.addEventListener("drop", function (event) {
     }
 });
 
-// Upload flow with SSE streaming progress
+// Preview flow: crop and compress, then show preview for confirmation
 uploadButton.addEventListener("click", async function () {
     if (!cropperInstance) return;
 
-    logger.info("main", "upload started by user");
+    logger.info("main", "preview started by user");
 
-    // Lock the UI and switch to progress view
-    uploadSection.classList.add("hidden");
-    progressPanel.classList.remove("hidden");
-    progressList.innerHTML = "";
-    resultMessage.innerHTML = "";
+    // Disable button while processing
+    uploadButton.disabled = true;
+    uploadButton.textContent = I18N.upload_processing;
 
-    // Step 1: Crop the image to a square at the server's max avatar dimension
-    var cropStepElement = appendStep(I18N.step_crop, "active");
+    // Crop the image to a square at the server's max avatar dimension
     var cropperSelection = cropperInstance.getCropperSelection();
     var croppedCanvas = await cropperSelection.$toCanvas({
         width: MAX_AVATAR_SIZE,
@@ -370,10 +388,8 @@ uploadButton.addEventListener("click", async function () {
         },
     });
     logger.debug("main", "crop complete", { width: MAX_AVATAR_SIZE, height: MAX_AVATAR_SIZE });
-    updateStep(cropStepElement, I18N.step_crop, "success");
 
-    // Step 2: Compress to WebP (preferred) with JPEG as fallback
-    var compressStepElement = appendStep(I18N.step_compress, "active");
+    // Compress to WebP (preferred) with JPEG as fallback
     var imageBlob = await new Promise(function (resolve) {
         croppedCanvas.toBlob(resolve, "image/webp", 0.85);
     });
@@ -388,9 +404,63 @@ uploadButton.addEventListener("click", async function () {
         imageFormat = "jpg";
     }
 
+    logger.debug("main", "compress complete", { format: imageFormat, sizeKB: (imageBlob.size / 1024).toFixed(0) });
+
+    // Store blob for upload (revoke any stale blob URL before overwriting)
+    if (previewImage.src.startsWith("blob:")) {
+        URL.revokeObjectURL(previewImage.src);
+    }
+    previewBlob = imageBlob;
+    previewFormat = imageFormat;
+
+    // Show preview image
+    previewImage.src = URL.createObjectURL(imageBlob);
+
+    // Hide cropper controls, show preview section with disclaimer
+    cropperWrapper.classList.add("hidden");
+    uploadButton.classList.add("hidden");
+    uploadDisclaimer.classList.remove("hidden");
+    previewSection.classList.remove("hidden");
+
+    // Reset button for when user returns to cropping
+    resetUploadButton();
+
+    // Scroll preview into view
+    previewSection.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+// Return to cropping from preview
+previewReturnBtn.addEventListener("click", function () {
+    logger.debug("main", "returning to cropping from preview");
+
+    // Revoke preview blob URL and clear stored state
+    clearPreviewState();
+
+    // Hide preview and disclaimer, show cropper and controls
+    previewSection.classList.add("hidden");
+    uploadDisclaimer.classList.add("hidden");
+    cropperWrapper.classList.remove("hidden");
+    uploadButton.classList.remove("hidden");
+
+    // Scroll cropper into view
+    cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+/**
+ * Send the cropped image blob to the server and stream processing progress
+ * as Server-Sent Events (SSE).
+ */
+async function performUpload(imageBlob, imageFormat) {
+    // Lock the UI and switch to progress view
+    uploadSection.classList.add("hidden");
+    progressPanel.classList.remove("hidden");
+    progressList.innerHTML = "";
+    resultMessage.innerHTML = "";
+
+    // Show crop and compress as already completed
+    appendStep(I18N.step_crop, "success");
     var fileSizeKB = (imageBlob.size / 1024).toFixed(0);
-    logger.debug("main", "compress complete", { format: imageFormat, sizeKB: fileSizeKB });
-    updateStep(compressStepElement, I18N.step_compress, "success",
+    appendStep(I18N.step_compress, "success",
         imageFormat.toUpperCase() + ", " + fileSizeKB + " KB");
 
     // Step 3: Upload the compressed image to the server
@@ -559,5 +629,16 @@ uploadButton.addEventListener("click", async function () {
 
         // Show the error with a retry button
         showResult("result-error", I18N.result_network_error);
+    } finally {
+        // Release the stored blob and revoke its URL - bytes are already sent or the flow ended
+        clearPreviewState();
     }
+}
+
+// Upload from preview (triggers the server upload with the stored blob)
+previewUploadBtn.addEventListener("click", function () {
+    if (!previewBlob) return;
+    if (uploadDisclaimer.classList.contains("hidden")) return;
+    logger.info("main", "upload started from preview");
+    performUpload(previewBlob, previewFormat);
 });

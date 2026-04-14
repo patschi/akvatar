@@ -267,6 +267,9 @@ _JS_KEYS = (
     # UI strings
     "upload.processing",
     "upload.button",
+    "upload.preview_image",
+    "upload.upload_image",
+    "upload.return_to_cropping",
     "upload.current_picture",
     "step.save_failed",
     "result.success",
