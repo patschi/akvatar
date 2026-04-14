@@ -57,7 +57,8 @@ production (distroless base image, non-root user, read-only filesystem).
 When submitting a pull request:
 
 1. **Explain why** the change is needed and **what** it does in the PR description
-2. **Add screenshots** for any UI or visual changes
+2. **Add screenshots** for any UI or visual changes (see [docs/screenshots.md](docs/screenshots.md) for the existing
+   visual walkthrough)
 3. **Update documentation** in `docs/` if your change affects configuration, setup steps, or behavior described there
 4. **Comment your code** with descriptive comments that explain what each block does (not just non-obvious logic, but
    all meaningful blocks)

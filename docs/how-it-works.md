@@ -3,6 +3,8 @@
 This document explains the complete request lifecycle of Akvatar, from login through avatar
 upload to backend synchronization, and how the background cleanup job keeps storage tidy.
 
+For a visual overview of the user-facing flow, see the **[Screenshots](screenshots.md)** page.
+
 ## Architecture overview
 
 ```text

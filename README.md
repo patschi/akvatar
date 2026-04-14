@@ -1,11 +1,15 @@
 # Akvatar - Authentik Avatar Updater
 
-<p align="center"><img src="static/images/favicon-192.png" alt="Akvatar logo" width="128" height="128"></p>
+![Akvatar Logo](/docs/images/akvatar-logo.png)
 
 A self-hosted web application that lets users update their profile picture via a modern
 browser UI. The image is cropped client-side, processed into multiple sizes and formats
 server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 **LDAP / Active Directory** server.
+
+## Screenshots
+
+**[See the full visual walkthrough →](docs/screenshots.md)** → sign-in through avatar upload, step by step.
 
 ## Features
 
@@ -176,7 +180,7 @@ under a subfolder path (e.g. `https://example.com/avatar/`). It honors
 Relevant guides:
 
 - **[nginx Reverse Proxy](docs/nginx-reverse-proxy.md)**: full nginx config with TLS termination, SSE support,
-   and optional direct avatar file serving
+  and optional direct avatar file serving
 - **[Subfolder Deployment](docs/subfolder-deployment.md)**: hosting under a URL path prefix (e.g. `/avatar/`)
 
 ## How it works
@@ -219,6 +223,7 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 
 | Guide                                                  | Description                                                                             |
 |--------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [Screenshots](docs/screenshots.md)                     | Visual walkthrough of the full user flow, from sign-in to uploaded avatar               |
 | [Configuration](docs/configuration.md)                 | Complete reference for all `config.yml` settings with defaults and explanations         |
 | [How It Works](docs/how-it-works.md)                   | Full lifecycle walkthrough with sequence diagrams and cleanup flow                      |
 | [Flask Session Key](docs/flask-session-key.md)         | Generating and setting the Flask session secret key                                     |
