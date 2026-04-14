@@ -28,6 +28,7 @@ from src.app_static import serve_static_file
 from src.auth import build_user_initials, login_required
 from src.config import (
     gravatar_import_cooldown_secs,
+    upload_cooldown_secs,
     url_import_cooldown_secs,
 )
 from src.i18n import t
@@ -117,6 +118,7 @@ def dashboard():
         import_url_enabled=URL_ENABLED,
         import_url_cooldown_secs=url_import_cooldown_secs,
         import_webcam_enabled=WEBCAM_ENABLED,
+        upload_cooldown_secs=upload_cooldown_secs,
     )
 
 

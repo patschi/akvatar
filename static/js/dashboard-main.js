@@ -37,6 +37,10 @@ let cropperInstance = null;
 let previewBlob = null;
 let previewFormat = null;
 
+// Upload cooldown state: prevents rapid re-uploads after failure
+let uploadCooldownEnd = 0;
+let uploadCooldownTimer = null;
+
 /** Revoke the preview blob URL (if any), clear the image src, and null out stored blob state. */
 function clearPreviewState() {
     if (previewImage.src.startsWith("blob:")) {
@@ -139,6 +143,56 @@ function updateStep(stepElement, label, status, detail) {
     stepElement.innerHTML = buildStepHTML(label, status, detail);
 }
 
+/** Restore the preview step from the progress/result view (used by retry on failure). */
+function returnToPreview() {
+    progressPanel.classList.add("hidden");
+    progressList.innerHTML = "";
+    resultMessage.innerHTML = "";
+    uploadSection.classList.remove("hidden");
+    previewSection.classList.remove("hidden");
+    uploadDisclaimer.classList.remove("hidden");
+    applyUploadCooldown();
+    previewSection.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** Record the upload cooldown start (called on failure paths in performUpload). */
+function startUploadCooldown() {
+    if (!UPLOAD_COOLDOWN) return;
+    uploadCooldownEnd = Date.now() + UPLOAD_COOLDOWN * 1000;
+}
+
+/**
+ * Apply the upload cooldown to previewUploadBtn if still active.
+ * Shows a countdown ("Upload image (Ns)") and disables the button until
+ * the cooldown expires.  No-op when the cooldown has already elapsed or
+ * UPLOAD_COOLDOWN is 0.
+ */
+function applyUploadCooldown() {
+    if (uploadCooldownTimer) {
+        clearInterval(uploadCooldownTimer);
+        uploadCooldownTimer = null;
+    }
+    let remaining = Math.ceil((uploadCooldownEnd - Date.now()) / 1000);
+    if (!UPLOAD_COOLDOWN || remaining <= 0) {
+        previewUploadBtn.disabled = false;
+        previewUploadBtn.textContent = I18N.upload_upload_image;
+        return;
+    }
+    previewUploadBtn.disabled = true;
+    previewUploadBtn.textContent = I18N.upload_upload_image + " (" + remaining + "s)";
+    uploadCooldownTimer = setInterval(function () {
+        remaining = Math.ceil((uploadCooldownEnd - Date.now()) / 1000);
+        if (remaining > 0) {
+            previewUploadBtn.textContent = I18N.upload_upload_image + " (" + remaining + "s)";
+        } else {
+            clearInterval(uploadCooldownTimer);
+            uploadCooldownTimer = null;
+            previewUploadBtn.disabled = false;
+            previewUploadBtn.textContent = I18N.upload_upload_image;
+        }
+    }, 1000);
+}
+
 /** Build and return the retry/change-avatar button element shown after a result. */
 function buildRetryButton() {
     var btn = document.createElement("button");
@@ -146,7 +200,15 @@ function buildRetryButton() {
     btn.textContent = I18N.result_retry;
     // Use addEventListener instead of an inline onclick attribute - inline handlers
     // are blocked by the CSP script-src nonce directive.
-    btn.addEventListener("click", function () { location.reload(); });
+    btn.addEventListener("click", function () {
+        // If the preview blob is still available (upload failed), return to the
+        // preview step so the user can retry without re-selecting/re-cropping.
+        if (previewBlob) {
+            returnToPreview();
+        } else {
+            location.reload();
+        }
+    });
     return btn;
 }
 
@@ -174,6 +236,16 @@ function showResult(cssClass, messageText) {
     resultMessage.textContent = "";
     resultMessage.appendChild(para);
     resultMessage.appendChild(buildRetryButton());
+}
+
+/**
+ * Display an upload failure and start the upload cooldown in one step.
+ * All upload failure paths that transition to the result view should use this
+ * instead of calling startUploadCooldown() + showResult() separately.
+ */
+function showUploadError(messageText) {
+    startUploadCooldown();
+    showResult("result-error", messageText);
 }
 
 /**
@@ -488,7 +560,7 @@ async function performUpload(imageBlob, imageFormat) {
             if (errorData.error === "csrf_failed") {
                 logger.error("main", "upload rejected - CSRF token failure");
                 updateStep(uploadStepElement, I18N.step_upload, "failed");
-                showResult("result-error", I18N.result_csrf_failed);
+                showUploadError(I18N.result_csrf_failed);
                 return;
             }
             logger.error("main", "upload rejected - server validation error", { error: errorData.error });
@@ -496,6 +568,7 @@ async function performUpload(imageBlob, imageFormat) {
             // resultMessage.innerHTML only contains static I18N strings
             // that are escaped via escapeHTML() - no untrusted data is interpolated.
             resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
+            startUploadCooldown();
             resetUploadButton();
             return;
         }
@@ -604,7 +677,8 @@ async function performUpload(imageBlob, imageFormat) {
                 // commit is a best-effort convenience for post-reload display.
             }
 
-            // Success: show the updated avatar
+            // Success: release the preview blob (no longer needed) and show result
+            clearPreviewState();
             showResult("result-success", I18N.result_success);
 
             // Update the profile avatar in the header with the new URL
@@ -616,7 +690,7 @@ async function performUpload(imageBlob, imageFormat) {
             var errorMessage = (errorCode === 'contact_admin')
                 ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
                 : (errorCode ? errorCode : I18N.result_error);
-            showResult("result-error", errorMessage);
+            showUploadError(errorMessage);
         }
     } catch (networkError) {
         // Network failure or stream read error
@@ -628,11 +702,12 @@ async function performUpload(imageBlob, imageFormat) {
         appendStep(I18N.step_upload, "failed", networkError.message);
 
         // Show the error with a retry button
-        showResult("result-error", I18N.result_network_error);
-    } finally {
-        // Release the stored blob and revoke its URL - bytes are already sent or the flow ended
-        clearPreviewState();
+        showUploadError(I18N.result_network_error);
     }
+    // Note: preview state is intentionally NOT cleared in a finally block.
+    // It is released on the success path only (see clearPreviewState() above),
+    // so the retry button can return to the preview step without re-selecting
+    // or re-cropping the image.
 }
 
 // Upload from preview (triggers the server upload with the stored blob)
