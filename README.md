@@ -9,7 +9,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 
 ## Screenshots
 
-**[See the full visual walkthrough →](docs/screenshots.md)** → sign-in through avatar upload, step by step.
+**[See the full visual walkthrough](docs/screenshots.md)** → sign-in through avatar upload, step by step.
 
 ## Features
 
