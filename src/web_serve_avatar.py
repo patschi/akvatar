@@ -157,15 +157,20 @@ _METADATA_ACCESS_MODE = metadata_access
 def serve_avatar_metadata(filename):
     """Serve avatar metadata JSON from the storage directory.
 
-    In owner_only mode the requesting session user must match the user_pk stored
-    inside the metadata file.  A 404 is returned for both missing files and
-    ownership mismatches so callers cannot distinguish the two cases.
+    Access is controlled by the configured metadata_access mode:
+    - owner_only: session user must match the user_pk in the file; 404 for both
+      missing files and ownership mismatches so the two cases are indistinguishable.
+    - authed_user: any authenticated user may read any metadata file; 404 only for
+      missing files.
+    - public: no authentication required; missing files are handled by send_from_directory.
+
+    Both owner_only and authed_user redirect unauthenticated visitors to the login page.
     """
     if not _check_path_traversal(METADATA_ROOT, filename):
         log.warning("Metadata path traversal blocked: %s", filename)
         abort(404)
 
-    if _METADATA_ACCESS_MODE == "owner_only":
+    if _METADATA_ACCESS_MODE in ("owner_only", "authed_user"):
         if "user" not in session:
             log.debug(
                 "Unauthenticated metadata request for %r - redirecting to login.",
@@ -174,16 +179,21 @@ def serve_avatar_metadata(filename):
             return redirect(url_for("routes.login_page"))
 
         meta = load_metadata_file(filename)
-        if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
-            if meta is not None:
-                log.debug(
-                    "Metadata access denied for %r - user pk mismatch (session pk=%r).",
-                    filename,
-                    session["user"].get("pk", None),
-                )
-            abort(404)
 
-        log.debug("Serving metadata file: %s (access=owner_only)", filename)
+        if _METADATA_ACCESS_MODE == "owner_only":
+            if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
+                if meta is not None:
+                    log.debug(
+                        "Metadata access denied for %r - user pk mismatch (session pk=%r).",
+                        filename,
+                        session["user"].get("pk", None),
+                    )
+                abort(404)
+        else:
+            if meta is None:
+                abort(404)
+
+        log.debug("Serving metadata file: %s (access=%s)", filename, _METADATA_ACCESS_MODE)
         resp = jsonify(meta)
         resp.headers["Cache-Control"] = "no-store"
         return resp

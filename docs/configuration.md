@@ -278,27 +278,28 @@ Flask-to-proxy link.
 | **Type**    | Integer             |
 | **Default** | `1800` (30 minutes) |
 
-How long a login session lasts, in seconds. After this period the session cookie expires and the
+How long a login session lasts, in seconds. After this period the session cookie expires, and the
 user must authenticate again via Authentik. The timer starts from the moment of login and is not
 extended by activity.
 
 ### `security.metadata_access`
 
-| Property         | Value                  |
-|------------------|------------------------|
-| **Type**         | String (enum)          |
-| **Default**      | `"owner_only"`         |
-| **Valid values** | `owner_only`, `public` |
+| Property         | Value                                 |
+|------------------|---------------------------------------|
+| **Type**         | String (enum)                         |
+| **Default**      | `"owner_only"`                        |
+| **Valid values** | `owner_only`, `authed_user`, `public` |
 
 Controls who may read avatar metadata JSON files served at `/user-avatars/_metadata/<file>`.
 Metadata files contain the user's Authentik PK (`user_pk`) alongside upload timestamps, sizes, and
 formats. Exposing them to other users or the public could allow someone to enumerate user PKs if
 they can observe or predict filenames.
 
-| Value        | Behavior                                                                                                                                                                                                                                                                                           |
-|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `owner_only` | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user - or a request for a file belonging to a different user - receives a `404` so the caller cannot distinguish "not found" from "not yours". |
-| `public`     | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
+| Value         | Behavior                                                                                                                                                                                                                                                                                           |
+|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `owner_only`  | Only the authenticated user who uploaded the file may access it. Unauthenticated visitors are redirected to the login page. Any other authenticated user - or a request for a file belonging to a different user - receives a `404` so the caller cannot distinguish "not found" from "not yours". |
+| `authed_user` | Any authenticated user may access any metadata file. Unauthenticated visitors are redirected to the login page. Use this when other logged-in users or internal services acting on behalf of a user need to read metadata, but anonymous access should remain blocked.                             |
+| `public`      | No authentication is required. Any visitor may fetch any metadata file by its filename. Use this only when an unauthenticated external service needs direct access to metadata and you have accepted the privacy implications.                                                                     |
 
 The default (`owner_only`) is recommended for all standard deployments.
 
@@ -416,7 +417,7 @@ When enabled (default), the cleanup job removes all avatar sets belonging to use
 deleted from Authentik entirely. A user is considered deleted when their PK no longer appears in
 any Authentik user listing.
 
-Disable this setting only if you want to retain avatars indefinitely even for users that no longer
+Disable this setting only if you want to retain avatars indefinitely, even for users that no longer
 exist in Authentik.
 
 ### `cleanup.when_user_deactivated`
@@ -444,7 +445,7 @@ upload and image import proxy endpoints to prevent abuse.
 The IP-based rate limits only affect the `/user-avatars/` endpoints - login, dashboard, static
 files, and health checks are never rate-limited by IP.
 
-Rate limiting counters are shared across all gunicorn worker processes, so the effective limit per
+Rate-limiting counters are shared across all gunicorn worker processes, so the effective limit per
 client IP is exactly `points` per `window` period regardless of how many workers are running. Each
 request costs 1 point. A 404 response costs
 [`points_cost_404`](#rate_limitingpoints_cost_404) points (default 5) to penalize URL-guessing
@@ -552,8 +553,8 @@ worker processes via shared state. Requires the master switch
 | **Type** | Object |
 
 Per-user cooldown for the Gravatar import endpoint (`/api/fetch-gravatar`). Prevents abuse of the
-import proxy as an outbound HTTP relay and limits load on the external Gravatar service. Requires the
-master switch ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
+import proxy as an outbound HTTP relay and limits the load on the external Gravatar service. Requires
+the master switch ([`rate_limiting.enabled`](#rate_limitingenabled)) to be `true`.
 
 | Field      | Type    | Default | Description                                                   |
 |------------|---------|---------|---------------------------------------------------------------|
@@ -592,7 +593,7 @@ When disabled (the default), `sentry-sdk` is never imported and adds zero runtim
 | **Type**    | Boolean |
 | **Default** | `false` |
 
-Master switch for the Sentry integration. Set to `true` and provide a valid [`dsn`](#sentry_dsn) to
+Master switch for the Sentry integration. Set to `true` and provide a valid [`dsn`](#sentrydsn) to
 start sending events. A warning is logged at startup if this is `true` but the DSN is empty.
 
 ### `sentry.dsn`
@@ -626,7 +627,7 @@ allowing performance tracing if configured separately.
 | **Default** | `false` |
 
 When enabled, Flask request transactions are traced and sent to Sentry for performance monitoring.
-Each traced request shows timing for the full request lifecycle including template rendering and
+Each traced request shows timing for the full request lifecycle, including template rendering and
 external API calls. Disabled by default because performance tracing produces significantly more
 data than error tracking.
 
@@ -638,7 +639,7 @@ data than error tracking.
 | **Default** | `1.0`           |
 
 Fraction of error events to send. `1.0` sends every error, `0.5` sends roughly half, `0.0` sends
-none. Only applies when [`capture_errors`](#sentry_capture_errors) is `true` - otherwise forced to
+none. Only applies when [`capture_errors`](#sentrycapture_errors) is `true` - otherwise forced to
 `0.0` regardless of this setting.
 
 For most deployments, `1.0` is correct - you want to see every unhandled exception. Lower this only
@@ -652,7 +653,7 @@ if you have a high-traffic deployment generating excessive duplicate errors.
 | **Default** | `0.2`           |
 
 Fraction of requests to trace for performance monitoring. `1.0` traces every request, `0.2` traces
-roughly 20%. Only applies when [`capture_performance`](#sentry_capture_performance) is `true` -
+roughly 20%. Only applies when [`capture_performance`](#sentrycapture_performance) is `true` -
 otherwise forced to `0.0`.
 
 Start with `0.2` and adjust based on your Sentry plan's event quota. Tracing every request (`1.0`)
@@ -666,7 +667,7 @@ provides the most complete picture but can quickly consume event budgets on busy
 | **Default** | `""` (auto-detected from debug mode) |
 
 The environment tag attached to every Sentry event. Used to filter events in the Sentry dashboard
-(e.g. show only production errors).
+(e.g., show only production errors).
 
 When empty (the default), the environment is auto-detected:
 
@@ -695,7 +696,7 @@ implications.
 
 ### Browser-Side Sentry (optional)
 
-Loads the Sentry JavaScript SDK in the browser so client-side errors and (optionally) performance
+Loads the Sentry JavaScript SDK in the browser, so client-side errors and (optionally) performance
 data are captured and forwarded to your Sentry project. The SDK bundle is served from your
 self-hosted Sentry installation - no third-party CDN is involved.
 
@@ -712,7 +713,7 @@ The tunnel validates that the DSN in each incoming envelope matches the configur
 before forwarding, so it cannot be abused as an open relay.
 
 **DSN exposure:** The browser DSN is visible in the page source. Using a separate Sentry project
-(and therefore a different DSN) for browser events is recommended so the server-side DSN is never
+(and therefore a different DSN) for browser events is recommended, so the server-side DSN is never
 exposed. If both use the same DSN, only the write-only public key is revealed - reading events
 still requires separate authentication.
 
@@ -736,13 +737,13 @@ endpoint is registered.
 | **Default** | `""` (empty) |
 
 Full URL of the Sentry JavaScript SDK bundle served by your self-hosted Sentry installation.
-Typically follows the pattern `https://sentry.example.com/js-sdk-loader/<loader-key>.min.js`.
+Typically, follows the pattern `https://sentry.example.com/js-sdk-loader/<loader-key>.min.js`.
 
 The script is loaded via `<script src="...">` with the per-request CSP nonce. The **origin** of
-this URL (scheme + host) is automatically added to the CSP `script-src` directive at startup, so
+this URL (scheme and host) is automatically added to the CSP `script-src` directive at startup, so
 no manual CSP configuration is required.
 
-A warning is logged at startup if browser Sentry is enabled but this value is empty.
+A warning is logged at startup if browser Sentry is enabled, but this value is empty.
 
 ### `sentry.browser.dsn`
 
@@ -823,7 +824,7 @@ A list of hostnames (and optional ports) that the application will accept in the
 header. Any request whose `Host` value is not in this list is rejected with `HTTP 400 Bad Request`.
 
 Protects against HTTP host-header injection attacks, where a malicious client or misconfigured
-proxy sends a forged `Host` header, potentially poisoning URL generation (e.g. password-reset links
+proxy sends a forged `Host` header, potentially poisoning URL generation (e.g., password-reset links
 constructed with `url_for()`) or cache-poisoning downstream caches.
 
 When set to `null` or omitted entirely (the default), the trusted hosts list is **automatically
@@ -872,7 +873,7 @@ Useful for debugging but verbose in production.
 
 Number of gunicorn worker processes. Each worker is an independent OS process that handles
 requests. A reasonable starting point is `2 * CPU_cores + 1`, but for this application 2-4 workers
-are usually sufficient since image processing is the bottleneck, not concurrency.
+are usually enough since image processing is the bottleneck, not concurrency.
 
 ### `webserver.threads`
 
@@ -1043,8 +1044,8 @@ See [Authentik API Token](authentik-api-token.md) for step-by-step setup instruc
 | **Type**    | String (URL)                                   |
 | **Default** | `"https://auth.example.com"` (must be changed) |
 
-The base URL of your Authentik instance (without trailing slash). The application appends API paths
-like `/api/v3/core/users/` to this URL.
+The base URL of your Authentik instance (without a trailing slash). The application appends API
+paths like `/api/v3/core/users/` to this URL.
 
 ### `authentik.api_token`
 
@@ -1075,7 +1076,7 @@ exits with an error if the size is not found.
 | **Default** | `"jpg"` |
 
 Which image format to use for the avatar URL pushed to Authentik. The value must be a recognized
-format key and the resolved file extension must be present in `images.formats` (a file must
+format key, and the resolved file extension must be present in `images.formats` (a file must
 actually be generated for it). The application validates this at startup and exits with an error
 if the format is not valid or not present in the generated formats list.
 
@@ -1226,7 +1227,7 @@ The password for the LDAP bind DN. Treat as a secret.
 | **Type**    | String                |
 | **Default** | `"DC=example,DC=com"` |
 
-The base DN under which user objects are searched. The search is performed with subtree scope, so
+The base DN under which user objects are searched. The search is performed with a subtree scope, so
 users in any sub-OU are found.
 
 ### `ldap.search_filter`
@@ -1236,7 +1237,7 @@ users in any sub-OU are found.
 | **Type**    | String                      |
 | **Default** | `"(objectSid={ldap_uniq})"` |
 
-The LDAP search filter used to locate the user object. The placeholder `{ldap_uniq}` is replaced
+The LDAP search filter is used to locate the user object. The placeholder `{ldap_uniq}` is replaced
 with the user's `ldap_uniq` attribute value from Authentik (properly escaped for LDAP filter
 syntax).
 
@@ -1264,8 +1265,8 @@ attribute and how to populate it.
 | `max_file_size` | Integer | **Binary only.** Maximum size in KB. `0` = unlimited. Quality is reduced iteratively for JPEG/WebP. |
 
 **Type `binary`:** Writes raw image bytes into the attribute. If a pre-generated file at the exact
-size and format already exists and fits within `max_file_size`, it is reused. Otherwise the image
-is generated on-the-fly from the closest equal-or-larger source and quality is reduced iteratively
+size and format already exists and fits within `max_file_size`, it is reused. Otherwise, the image
+is generated on-the-fly from the closest equal-or-larger source, and quality is reduced iteratively
 until the output fits.
 
 **Type `url`:** Writes the public URL of a pre-generated image file as a string. Requires
@@ -1295,7 +1296,7 @@ Controls whether users can import images from external sources (Gravatar by emai
 a live webcam capture) instead of uploading a file directly. Gravatar and URL import are enabled by
 default; webcam capture is opt-in because it requires a secure origin and adjusts the
 `Permissions-Policy` response header. When a method is disabled, its trigger button is hidden from
-the dashboard and the corresponding server endpoint (where applicable) returns HTTP 403.
+the dashboard, and the corresponding server endpoint (where applicable) returns HTTP 403.
 
 ### `image_import.gravatar.enabled`
 
@@ -1321,7 +1322,7 @@ simply shows their account email as static text.
 
 The server enforces the same restriction on every request: the submitted email must exactly match
 the session user's email, and any mismatch is rejected with HTTP 403. This dual enforcement
-(UI lock + server validation) prevents the Gravatar proxy endpoint from being used as an
+(UI lock and server validation) prevents the Gravatar proxy endpoint from being used as an
 account-existence oracle for arbitrary email addresses.
 
 Enable this option when you want to ensure users can only import their own Gravatar and cannot
@@ -1421,7 +1422,7 @@ balance for avatars.
 | **Type**    | Integer (1--100) |
 | **Default** | `85`             |
 
-WebP compression quality. Similar to JPEG quality but WebP typically achieves better compression at
+WebP compression quality. Similar to JPEG quality, but WebP typically achieves better compression at
 the same visual quality.
 
 ### `images.png_compress_level`
@@ -1457,7 +1458,7 @@ cryptic runtime error on the first upload.
 | **Type**    | List of integers  |
 | **Default** | `[255, 255, 255]` |
 
-The solid RGB background color used when compositing RGBA images (those with an alpha channel)
+The solid RGB background color is used when compositing RGBA images (those with an alpha channel)
 before encoding to JPEG or non-transparent WebP. Without compositing, transparent and
 semi-transparent pixels would appear black in the output; compositing onto this color produces
 the intended result for logos and images with transparent borders.
@@ -1469,4 +1470,4 @@ Examples:
 
 - `[255, 255, 255]` - white (default)
 - `[0, 0, 0]` - black
-- `[128, 128, 128]` - medium grey
+- `[128, 128, 128]` - medium gray

@@ -144,7 +144,7 @@ ldap_search_filter: str = ldap_cfg.get("search_filter", "(objectSid={ldap_uniq})
 ldap_photos: list = ldap_cfg.get("photos", [])
 
 # Security - metadata_access validated here so all consumers get the corrected value
-_METADATA_ACCESS_MODES = frozenset({"owner_only", "public"})
+_METADATA_ACCESS_MODES = frozenset({"owner_only", "authed_user", "public"})
 _raw_metadata_access: str = security_cfg.get("metadata_access", "owner_only")
 metadata_access: str = (
     _raw_metadata_access

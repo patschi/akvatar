@@ -59,6 +59,8 @@ security:
   #   owner_only (default): only the authenticated user who owns the file may
   #     access it.  Other authenticated users and unauthenticated visitors both
   #     receive a 404.
+  #   authed_user: any authenticated user may access any metadata file.
+  #     Unauthenticated visitors are redirected to the login page.
   #   public: no authentication is required.  Suitable only when metadata
   #     files are needed by an unauthenticated service and the privacy
   #     implications are acceptable.

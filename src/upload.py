@@ -272,7 +272,7 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
         "total_bytes": total_bytes,
     }
     meta_path = METADATA_ROOT / f"{filename_base}.meta.json"
-    meta_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    meta_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     log.debug("Metadata saved to %s.", meta_path)
 
 
