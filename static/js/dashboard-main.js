@@ -774,6 +774,8 @@ async function performUpload(imageBlob, imageFormat) {
             showResult("result-success", I18N.result_success);
 
             setStep(5);
+            // All steps complete - mark the final step as done (green) instead of active (blue)
+            stepItems[4].classList.replace("active", "done");
 
             // Update the profile avatar in the header with the new URL
             setProfileAvatar(finalResult.avatar_url);
