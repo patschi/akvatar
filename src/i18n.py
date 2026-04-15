@@ -271,6 +271,7 @@ _JS_KEYS = (
     "upload.upload_image",
     "upload.return_to_cropping",
     "upload.current_picture",
+    "upload.avatar_load_error",
     "step.save_failed",
     "result.success",
     "result.retry",

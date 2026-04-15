@@ -64,6 +64,7 @@ upload:
   upload_image: "Confirm & Upload"
   return_to_cropping: "Adjust crop"
   current_picture: "Current picture"
+  avatar_load_error: "Image could not be loaded"
   discard_current: "Choose different image"
   processing: "Processing…"
   invalid_ext: "File type .{ext} is not allowed. Accepted: {allowed}"

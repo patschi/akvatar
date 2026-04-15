@@ -273,6 +273,40 @@ function showUploadError(messageText) {
 }
 
 /**
+ * Append a small error badge to the avatar container to signal a load failure.
+ * No-op if a badge is already present.
+ */
+function showAvatarErrorBadge() {
+    var avatarContainer = document.querySelector(".profile-avatar");
+    if (!avatarContainer) return;
+    if (avatarContainer.querySelector(".profile-avatar__error-badge")) return;
+    var badge = document.createElement("span");
+    badge.className = "profile-avatar__error-badge";
+    badge.setAttribute("aria-label", I18N.upload_avatar_load_error);
+    badge.setAttribute("data-tooltip", I18N.upload_avatar_load_error);
+    badge.innerHTML = '<svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="10" y1="5" x2="10" y2="11"></line><circle cx="10" cy="15" r="1.2" fill="currentColor" stroke="none"></circle></svg>';
+    avatarContainer.appendChild(badge);
+}
+
+/** Remove the error badge from the avatar container if present. */
+function clearAvatarErrorBadge() {
+    var avatarContainer = document.querySelector(".profile-avatar");
+    if (!avatarContainer) return;
+    var badge = avatarContainer.querySelector(".profile-avatar__error-badge");
+    if (badge) badge.remove();
+}
+
+/** Attach onload/onerror handlers to an avatar <img> element. */
+function attachAvatarImgHandlers(img) {
+    img.onload = function () { clearAvatarErrorBadge(); };
+    img.onerror = function () {
+        logger.error("main", "avatar image failed to load", { src: this.src });
+        showAvatarErrorBadge();
+        this.remove();
+    };
+}
+
+/**
  * Update the profile avatar overlay image in the header.
  * The container div (with the initials span) is always present in the DOM as
  * the base layer.  Passing a URL adds or updates the overlay <img>; passing
@@ -282,6 +316,8 @@ function setProfileAvatar(url) {
     logger.debug("main", "profile avatar updated in header", { url: url });
     var avatarContainer = document.querySelector(".profile-avatar");
     if (!avatarContainer) return;
+    // Clear any stale error badge when the avatar is being updated
+    clearAvatarErrorBadge();
     var img = avatarContainer.querySelector(".profile-avatar__img");
     if (url) {
         if (img) {
@@ -292,7 +328,7 @@ function setProfileAvatar(url) {
             img = document.createElement("img");
             img.className = "profile-avatar__img";
             img.alt = I18N.upload_current_picture;
-            img.onerror = function () { this.remove(); };
+            attachAvatarImgHandlers(img);
             img.src = url;
             avatarContainer.appendChild(img);
         }
@@ -307,7 +343,19 @@ function setProfileAvatar(url) {
 // Cannot use an inline onerror attribute because CSP blocks inline handlers.
 (function () {
     var existing = document.querySelector(".profile-avatar__img");
-    if (existing) existing.onerror = function () { this.remove(); };
+    if (!existing) return;
+    // Image may have already settled before this script ran - check before attaching handlers
+    if (existing.complete) {
+        if (existing.naturalHeight === 0) {
+            // Already failed - show badge and remove the broken element now
+            logger.error("main", "avatar image failed to load", { src: existing.src });
+            showAvatarErrorBadge();
+            existing.remove();
+        }
+        // Already loaded successfully - nothing to do
+        return;
+    }
+    attachAvatarImgHandlers(existing);
 })();
 
 // Drop zone element reference

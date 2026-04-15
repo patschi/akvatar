@@ -64,6 +64,7 @@ upload:
   upload_image: "Confirmar & Subir"
   return_to_cropping: "Ajustar recorte"
   current_picture: "Imagen actual"
+  avatar_load_error: "No se pudo cargar la imagen"
   discard_current: "Elegir otra imagen"
   processing: "Procesando…"
   invalid_ext: "El tipo de archivo .{ext} no está permitido. Aceptados: {allowed}"

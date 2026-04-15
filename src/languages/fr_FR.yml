@@ -64,6 +64,7 @@ upload:
   upload_image: "Confirmer & Télécharger"
   return_to_cropping: "Ajuster le recadrage"
   current_picture: "Image actuelle"
+  avatar_load_error: "Impossible de charger l'image"
   discard_current: "Choisir une autre image"
   processing: "Traitement en cours…"
   invalid_ext: "Le type de fichier .{ext} n'est pas autorisé. Acceptés : {allowed}"

@@ -64,6 +64,7 @@ upload:
   upload_image: "Bestätigen & Hochladen"
   return_to_cropping: "Zuschnitt anpassen"
   current_picture: "Aktuelles Bild"
+  avatar_load_error: "Bild konnte nicht geladen werden"
   discard_current: "Anderes Bild wählen"
   processing: "Verarbeitung…"
   invalid_ext: "Dateityp .{ext} ist nicht erlaubt. Erlaubt: {allowed}"
