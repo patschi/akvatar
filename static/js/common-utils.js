@@ -57,7 +57,9 @@ var logger = (function () {
         // Skip messages below the active threshold
         if (LEVELS[level] < _currentLevel) return;
 
-        var prefix = "[" + level + "] [" + namespace + "]";
+        // UTC timestamp with Z notation (ISO-8601), e.g. 2026-04-15T14:30:00.000Z
+        var ts = new Date().toISOString();
+        var prefix = "[" + ts + "] [" + level + "] [" + namespace + "]";
         var style  = _styles[level] || _styles.DEBUG;
 
         if (data !== undefined) {
