@@ -181,7 +181,9 @@ def serve_avatar_metadata(filename):
         meta = load_metadata_file(filename)
 
         if _METADATA_ACCESS_MODE == "owner_only":
-            if meta is None or meta.get("user_pk", None) != session["user"].get("pk", None):
+            if meta is None or meta.get("user_pk", None) != session["user"].get(
+                "pk", None
+            ):
                 if meta is not None:
                     log.debug(
                         "Metadata access denied for %r - user pk mismatch (session pk=%r).",
@@ -193,7 +195,9 @@ def serve_avatar_metadata(filename):
             if meta is None:
                 abort(404)
 
-        log.debug("Serving metadata file: %s (access=%s)", filename, _METADATA_ACCESS_MODE)
+        log.debug(
+            "Serving metadata file: %s (access=%s)", filename, _METADATA_ACCESS_MODE
+        )
         resp = jsonify(meta)
         resp.headers["Cache-Control"] = "no-store"
         return resp
