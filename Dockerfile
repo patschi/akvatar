@@ -15,14 +15,17 @@ FROM python:3.13-slim-trixie@sha256:d168b8d9eb761f4d3fe305ebd04aeb7e7f2de0297cec
 
 WORKDIR /build
 
-# Install OS-level libs required to compile Pillow (JPEG, PNG, WebP, zlib)
+# Install OS-level libs required to compile Pillow (JPEG, PNG, WebP, zlib, etc)
 # and build wheels, then clean up in the same layer.
+# https://pillow.readthedocs.io/en/stable/installation/building-from-source.html
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         libjpeg62-turbo-dev \
         libpng-dev \
         libwebp-dev \
+        libavif-dev \
+        libtiff-dev \
         zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
