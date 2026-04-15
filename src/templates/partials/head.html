@@ -25,11 +25,11 @@
   <script nonce="{{ csp_nonce() }}">
     (function () {
       // Read the saved theme preference from cookie
-      var cookieMatch    = document.cookie.match(/(?:^|; )theme=([^;]*)/);
-      var savedPreference = cookieMatch ? cookieMatch[1] : null;
+      let cookieMatch    = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+      let savedPreference = cookieMatch ? cookieMatch[1] : null;
 
       // Explicit light/dark wins; otherwise follow the OS preference
-      var resolvedTheme = (savedPreference === "light" || savedPreference === "dark")
+      let resolvedTheme = (savedPreference === "light" || savedPreference === "dark")
         ? savedPreference
         : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
