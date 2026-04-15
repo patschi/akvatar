@@ -712,6 +712,18 @@ body {
     background: var(--accent);
 }
 
+/* Error step (upload failure) */
+.step-indicator__step.error .step-indicator__dot {
+    background: var(--error);
+    color: #fff;
+}
+
+.step-indicator__step.error .step-indicator__label {
+    color: var(--error);
+    opacity: 1;
+    font-weight: 600;
+}
+
 /* ====================================================================
  *  Upload / Drop Zone
  * ==================================================================== */

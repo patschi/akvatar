@@ -39,12 +39,8 @@
 
       <hr id="profileDivider" class="divider" />
 
-      <div id="uploadSection">
-        <h1>{{ t('upload.heading') }}</h1>
-        <p class="subtitle">{{ t('upload.subtitle') }}</p>
-
-        <!-- Step progress indicator -->
-        <div id="stepIndicator" class="step-indicator hidden">
+      <!-- Step progress indicator (outside uploadSection so it stays visible during upload/error) -->
+      <div id="stepIndicator" class="step-indicator hidden">
             <div class="step-indicator__step">
                 <div class="step-indicator__dot">1</div>
                 <span class="step-indicator__label">{{ t('steps.selection') }}</span>
@@ -70,6 +66,10 @@
                 <span class="step-indicator__label">{{ t('steps.success') }}</span>
             </div>
         </div>
+
+        <div id="uploadSection">
+        <h1>{{ t('upload.heading') }}</h1>
+        <p class="subtitle">{{ t('upload.subtitle') }}</p>
 
         <!-- File picker + drop zone -->
         <div id="filePicker">

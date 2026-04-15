@@ -43,13 +43,21 @@ function setStep(n) {
     // Apply active/done state to both step dots and connector lines
     function applyState(nodes) {
         nodes.forEach(function (el, i) {
-            el.classList.remove("active", "done");
+            el.classList.remove("active", "done", "error");
             if (i + 1 < n) el.classList.add("done");
             else if (i + 1 === n) el.classList.add("active");
         });
     }
     applyState(stepItems);
     applyState(stepLines);
+}
+
+/** Mark a step in the indicator as errored (1-based). */
+function markStepError(n) {
+    if (!stepIndicator || n < 1 || n > stepItems.length) return;
+    var step = stepItems[n - 1];
+    step.classList.remove("active", "done");
+    step.classList.add("error");
 }
 
 // Cropper.js v2 instance - created when user selects an image
@@ -269,6 +277,7 @@ function showResult(cssClass, messageText) {
  */
 function showUploadError(messageText) {
     startUploadCooldown();
+    markStepError(4);
     showResult("result-error", messageText);
 }
 
@@ -647,6 +656,7 @@ async function performUpload(imageBlob, imageFormat) {
             }
             logger.error("main", "upload rejected - server validation error", { error: errorData.error });
             updateStep(uploadStepElement, I18N.step_upload, "failed", errorData.error || "");
+            markStepError(4);
             // resultMessage.innerHTML only contains static I18N strings
             // that are escaped via escapeHTML() - no untrusted data is interpolated.
             resultMessage.innerHTML = '<p class="result-error">' + escapeHTML(I18N.result_error) + '</p>';
