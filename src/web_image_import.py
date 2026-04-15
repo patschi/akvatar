@@ -40,7 +40,7 @@ from src.image_import import (
 from src.rate_limit import check_gravatar_import_cooldown, check_url_import_cooldown
 from src.sec_csrf import validate_csrf_token
 
-log = logging.getLogger("img_import")
+log = logging.getLogger("import_img")
 
 import_bp = Blueprint("import", __name__)
 

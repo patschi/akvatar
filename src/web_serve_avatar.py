@@ -25,7 +25,7 @@ from src.config import img_formats, img_sizes, metadata_access
 from src.image_formats import NEGOTIATION_PREFERENCE
 from src.imaging import AVATAR_ROOT, METADATA_ROOT, load_metadata_file
 
-log = logging.getLogger("serve_avatar")
+log = logging.getLogger("serve_img")
 
 serve_avatar_bp = Blueprint("serve_avatar", __name__)
 

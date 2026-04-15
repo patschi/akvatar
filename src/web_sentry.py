@@ -25,7 +25,7 @@ from src.config import (
     sentry_browser_tunnel_enabled,
 )
 
-log = logging.getLogger("sentry.proxy")
+log = logging.getLogger("sentry_proxy")
 
 sentry_bp = Blueprint("sentry", __name__)
 

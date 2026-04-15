@@ -13,7 +13,7 @@ from src.auth import login_required
 from src.authentik import remove_avatar_url
 from src.sec_csrf import validate_csrf_token
 
-log = logging.getLogger("reset_avatar")
+log = logging.getLogger("reset_img")
 
 reset_avatar_bp = Blueprint("reset_avatar", __name__)
 
