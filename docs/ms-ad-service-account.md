@@ -598,12 +598,12 @@ ldap:
   photos:
     - attribute: thumbnailPhoto
       type: binary
-      image_type: jpeg
+      image_type: jpg
       image_size: 96
       max_file_size: 100
     - attribute: jpegPhoto
       type: binary
-      image_type: jpeg
+      image_type: jpg
       image_size: 648
       max_file_size: 0
 ```

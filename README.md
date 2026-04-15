@@ -118,6 +118,8 @@ For manual installation see [Manual setup (Python)](#manual-setup-python).
 
 - An **Authentik** instance with an OIDC provider and an Admin API token
   (see [Authentik OIDC Setup](docs/authentik-oidc-setup.md) and [Authentik API Token](docs/authentik-api-token.md))
+- A **reverse proxy** (nginx, Caddy, Traefik, etc.) in front of the application - this is the
+  only supported deployment method. See [Application TLS](docs/app-tls.md) for details.
 - *(Optional)* An LDAP server reachable via LDAPS/LDAP - tested with Microsoft Active
   Directory; see [MS AD Service Account](docs/ms-ad-service-account.md)
 - **Container deployment:** Docker or any OCI-compatible runtime

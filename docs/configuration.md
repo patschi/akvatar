@@ -395,6 +395,8 @@ Set to `""` (empty string) to disable the cleanup job entirely.
 When enabled, the cleanup job runs once 60 seconds after application startup, in addition to the
 regular cron schedule. Useful for catching up after extended downtime.
 
+Cleanup can also be triggered manually at any time by running `python run_cleanup.py`.
+
 ### `cleanup.avatar_retention_count`
 
 | Property    | Value   |
@@ -1278,12 +1280,12 @@ until the output fits.
 photos:
   - attribute: thumbnailPhoto
     type: binary
-    image_type: jpeg
+    image_type: jpg
     image_size: 96
     max_file_size: 100
   - attribute: jpegPhoto
     type: binary
-    image_type: jpeg
+    image_type: jpg
     image_size: 648
     max_file_size: 0
 ```
