@@ -159,6 +159,7 @@ error:
 result:
   success: "Picture updated successfully!"
   retry: "Change picture again"
+  try_again: "Try again"
   error: "Could not update your picture. Please try again later."
   csrf_failed: "Your session has expired. Please reload the page and try again."
   contact_admin: "Please contact your administrator."

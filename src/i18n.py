@@ -275,6 +275,7 @@ _JS_KEYS = (
     "step.save_failed",
     "result.success",
     "result.retry",
+    "result.try_again",
     "result.error",
     "result.csrf_failed",
     "result.contact_admin",

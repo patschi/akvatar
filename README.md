@@ -25,7 +25,7 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Multi-size output**: configurable square sizes (see [Configuration](docs/configuration.md#images_sizes))
 - **Multi-format output**: JPEG, PNG, WebP, and AVIF with configurable quality
   settings (see [Configuration](docs/configuration.md#imagesformats)).
-- **Privacy-first image handling**: EXIF orientation applied to pixels then all metadata
+- **Privacy-first image handling**: EXIF orientation applied to pixels, then all metadata
   stripped (GPS, device info, ICC profiles, XMP, IPTC)
 - **Unguessable filenames**: `uuid4` hex + `token_urlsafe(64)` + nanosecond timestamp
   (~740 bits of entropy)

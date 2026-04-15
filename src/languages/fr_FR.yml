@@ -157,6 +157,7 @@ error:
 result:
   success: "Image mise à jour avec succès !"
   retry: "Modifier l'image à nouveau"
+  try_again: "Réessayer"
   error: "Impossible de mettre à jour votre image. Veuillez réessayer plus tard."
   csrf_failed: "Votre session a expiré. Veuillez recharger la page et réessayer."
   contact_admin: "Veuillez contacter votre administrateur."

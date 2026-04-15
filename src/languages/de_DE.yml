@@ -157,6 +157,7 @@ error:
 result:
   success: "Bild erfolgreich aktualisiert!"
   retry: "Bild erneut ändern"
+  try_again: "Erneut versuchen"
   error: "Bild konnte nicht aktualisiert werden. Bitte versuchen Sie es später erneut."
   csrf_failed: "Ihre Sitzung ist abgelaufen. Bitte laden Sie die Seite neu und versuchen Sie es erneut."
   contact_admin: "Bitte kontaktieren Sie Ihren Administrator."

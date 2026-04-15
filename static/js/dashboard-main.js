@@ -55,9 +55,17 @@ function setStep(n) {
 /** Mark a step in the indicator as errored (1-based). */
 function markStepError(n) {
     if (!stepIndicator || n < 1 || n > stepItems.length) return;
-    var step = stepItems[n - 1];
+    let step = stepItems[n - 1];
     step.classList.remove("active", "done");
     step.classList.add("error");
+}
+
+/** Mark a top-level step in the indicator as done (1-based, turns green). */
+function markStepDone(n) {
+    if (!stepIndicator || n < 1 || n > stepItems.length) return;
+    let step = stepItems[n - 1];
+    step.classList.remove("active", "error");
+    step.classList.add("done");
 }
 
 // Cropper.js v2 instance - created when user selects an image
@@ -82,7 +90,7 @@ function clearPreviewState() {
 }
 
 // Cropper.js v2 template
-var CROPPER_TEMPLATE = ''
+let CROPPER_TEMPLATE = ''
     + '<cropper-canvas background>'
     +   '<cropper-image scalable translatable></cropper-image>'
     +   '<cropper-shade hidden></cropper-shade>'
@@ -142,7 +150,7 @@ const STEP_STATUS_ICONS = {
  * Escape a string for safe insertion into innerHTML.
  * Also used by dashboard-remove-avatar.js and dashboard-import-common.js.
  */
-var _escapeDiv = document.createElement("div");
+let _escapeDiv = document.createElement("div");
 function escapeHTML(s) {
     _escapeDiv.textContent = s;
     return _escapeDiv.innerHTML;
@@ -150,7 +158,7 @@ function escapeHTML(s) {
 
 /** Build the inner HTML for a single progress step row. */
 function buildStepHTML(label, status, detail) {
-    var icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
+    let icon = STEP_STATUS_ICONS[status] || STEP_STATUS_ICONS.pending;
     // All dynamic values (label, detail) are escaped via escapeHTML() before
     // insertion - only static SVG icon markup is injected unescaped.
     return '<span class="step-icon">' + icon + '</span>'
@@ -160,7 +168,7 @@ function buildStepHTML(label, status, detail) {
 
 /** Append a new progress step row and return its <li> element. */
 function appendStep(label, status, detail) {
-    var stepElement = document.createElement("li");
+    let stepElement = document.createElement("li");
     stepElement.className = "step " + status;
     stepElement.innerHTML = buildStepHTML(label, status, detail);
     progressList.appendChild(stepElement);
@@ -171,6 +179,21 @@ function appendStep(label, status, detail) {
 function updateStep(stepElement, label, status, detail) {
     stepElement.className = "step " + status;
     stepElement.innerHTML = buildStepHTML(label, status, detail);
+}
+
+/**
+ * Update only the detail text of an existing step row without rebuilding its
+ * innerHTML.  Used on hot paths (e.g. upload progress) where the full
+ * buildStepHTML rebuild would fire many times per second.
+ */
+function updateStepDetail(stepElement, detail) {
+    let detailSpan = stepElement.querySelector(".step-detail");
+    if (!detailSpan) {
+        detailSpan = document.createElement("span");
+        detailSpan.className = "step-detail";
+        stepElement.appendChild(detailSpan);
+    }
+    detailSpan.textContent = detail;
 }
 
 /** Restore the preview step from the progress/result view (used by retry on failure). */
@@ -226,10 +249,10 @@ function applyUploadCooldown() {
 }
 
 /** Build and return the retry/change-avatar button element shown after a result. */
-function buildRetryButton() {
-    var btn = document.createElement("button");
+function buildRetryButton(label) {
+    let btn = document.createElement("button");
     btn.className = "btn btn-block btn-retry";
-    btn.textContent = I18N.result_retry;
+    btn.textContent = label;
     // Use addEventListener instead of an inline onclick attribute - inline handlers
     // are blocked by the CSP script-src nonce directive.
     btn.addEventListener("click", function () {
@@ -259,15 +282,15 @@ function showResultView() {
  * Display a result message with a retry button and switch to the result view.
  * Also used by dashboard-remove-avatar.js for error display.
  */
-function showResult(cssClass, messageText) {
+function showResult(cssClass, messageText, buttonLabel) {
     showResultView();
     // Use DOM methods with textContent for safe text insertion - no escaping needed.
-    var para = document.createElement("p");
+    let para = document.createElement("p");
     para.className = cssClass;
     para.textContent = messageText;
     resultMessage.textContent = "";
     resultMessage.appendChild(para);
-    resultMessage.appendChild(buildRetryButton());
+    resultMessage.appendChild(buildRetryButton(buttonLabel || I18N.result_retry));
 }
 
 /**
@@ -278,7 +301,7 @@ function showResult(cssClass, messageText) {
 function showUploadError(messageText) {
     startUploadCooldown();
     markStepError(4);
-    showResult("result-error", messageText);
+    showResult("result-error", messageText, I18N.result_try_again);
 }
 
 /**
@@ -286,10 +309,10 @@ function showUploadError(messageText) {
  * No-op if a badge is already present.
  */
 function showAvatarErrorBadge() {
-    var avatarContainer = document.querySelector(".profile-avatar");
+    let avatarContainer = document.querySelector(".profile-avatar");
     if (!avatarContainer) return;
     if (avatarContainer.querySelector(".profile-avatar__error-badge")) return;
-    var badge = document.createElement("span");
+    let badge = document.createElement("span");
     badge.className = "profile-avatar__error-badge";
     badge.setAttribute("aria-label", I18N.upload_avatar_load_error);
     badge.setAttribute("data-tooltip", I18N.upload_avatar_load_error);
@@ -299,9 +322,9 @@ function showAvatarErrorBadge() {
 
 /** Remove the error badge from the avatar container if present. */
 function clearAvatarErrorBadge() {
-    var avatarContainer = document.querySelector(".profile-avatar");
+    let avatarContainer = document.querySelector(".profile-avatar");
     if (!avatarContainer) return;
-    var badge = avatarContainer.querySelector(".profile-avatar__error-badge");
+    let badge = avatarContainer.querySelector(".profile-avatar__error-badge");
     if (badge) badge.remove();
 }
 
@@ -323,11 +346,11 @@ function attachAvatarImgHandlers(img) {
  */
 function setProfileAvatar(url) {
     logger.debug("main", "profile avatar updated in header", { url: url });
-    var avatarContainer = document.querySelector(".profile-avatar");
+    let avatarContainer = document.querySelector(".profile-avatar");
     if (!avatarContainer) return;
     // Clear any stale error badge when the avatar is being updated
     clearAvatarErrorBadge();
-    var img = avatarContainer.querySelector(".profile-avatar__img");
+    let img = avatarContainer.querySelector(".profile-avatar__img");
     if (url) {
         if (img) {
             // Already has an overlay - update the src
@@ -351,7 +374,7 @@ function setProfileAvatar(url) {
 // a broken URL reveals the initials underneath instead of a broken-image icon.
 // Cannot use an inline onerror attribute because CSP blocks inline handlers.
 (function () {
-    var existing = document.querySelector(".profile-avatar__img");
+    let existing = document.querySelector(".profile-avatar__img");
     if (!existing) return;
     // Image may have already settled before this script ran - check before attaching handlers
     if (existing.complete) {
@@ -368,7 +391,7 @@ function setProfileAvatar(url) {
 })();
 
 // Drop zone element reference
-var dropZone = document.getElementById("dropZone");
+let dropZone = document.getElementById("dropZone");
 
 /**
  * Initialize the cropper with an image source and display name.
@@ -406,7 +429,7 @@ function initCropper(imageSrc, displayName) {
     });
 
     // Scroll the cropper into view once the image is fully loaded (v2 ready equivalent)
-    var cropperImageEl = cropperInstance.getCropperImage();
+    let cropperImageEl = cropperInstance.getCropperImage();
     if (cropperImageEl) {
         cropperImageEl.$ready().then(function () {
             cropperWrapper.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -455,14 +478,14 @@ function handleFileSelection(selectedFile) {
     if (!selectedFile) return;
 
     // Extract and validate file extension (case-insensitive)
-    var fileExtension = selectedFile.name.includes(".")
+    let fileExtension = selectedFile.name.includes(".")
         ? selectedFile.name.split(".").pop().toLowerCase()
         : "";
 
     logger.debug("main", "file selected", { name: selectedFile.name, sizeBytes: selectedFile.size, type: selectedFile.type, ext: fileExtension });
 
     if (!ALLOWED_EXTENSIONS.has(fileExtension)) {
-        var allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
+        let allowedList = Array.from(ALLOWED_EXTENSIONS).join(", ");
         logger.warn("main", "file rejected - invalid extension", { ext: fileExtension, allowed: allowedList });
         alert(I18N.upload_invalid_ext
             .replace("{ext}", fileExtension)
@@ -517,7 +540,7 @@ dropZone.addEventListener("drop", function (event) {
     event.stopPropagation();
     dropZone.classList.remove("drop-zone--active");
 
-    var droppedFile = event.dataTransfer.files[0];
+    let droppedFile = event.dataTransfer.files[0];
     if (droppedFile) {
         logger.debug("main", "file dropped onto drop zone", { name: droppedFile.name });
         handleFileSelection(droppedFile);
@@ -535,8 +558,8 @@ uploadButton.addEventListener("click", async function () {
     uploadButton.textContent = I18N.upload_processing;
 
     // Crop the image to a square at the server's max avatar dimension
-    var cropperSelection = cropperInstance.getCropperSelection();
-    var croppedCanvas = await cropperSelection.$toCanvas({
+    let cropperSelection = cropperInstance.getCropperSelection();
+    let croppedCanvas = await cropperSelection.$toCanvas({
         width: MAX_AVATAR_SIZE,
         height: MAX_AVATAR_SIZE,
         beforeDraw: function (context) {
@@ -547,10 +570,10 @@ uploadButton.addEventListener("click", async function () {
     logger.debug("main", "crop complete", { width: MAX_AVATAR_SIZE, height: MAX_AVATAR_SIZE });
 
     // Compress to WebP (preferred) with JPEG as fallback
-    var imageBlob = await new Promise(function (resolve) {
+    let imageBlob = await new Promise(function (resolve) {
         croppedCanvas.toBlob(resolve, "image/webp", 0.85);
     });
-    var imageFormat = "webp";
+    let imageFormat = "webp";
 
     // Fall back to JPEG if the browser doesn't support WebP encoding
     if (!imageBlob || imageBlob.type !== "image/webp") {
@@ -610,8 +633,13 @@ previewReturnBtn.addEventListener("click", function () {
 /**
  * Send the cropped image blob to the server and stream processing progress
  * as Server-Sent Events (SSE).
+ *
+ * Uses XMLHttpRequest instead of fetch() so upload progress can be tracked
+ * separately from server-side processing.  xhr.upload.onprogress reports
+ * real transfer progress, xhr.upload.onload fires when the file has been
+ * fully sent, and xhr.onprogress delivers SSE chunks as they arrive.
  */
-async function performUpload(imageBlob, imageFormat) {
+function performUpload(imageBlob, imageFormat) {
     // Lock the UI and switch to progress view
     uploadSection.classList.add("hidden");
     progressPanel.classList.remove("hidden");
@@ -622,30 +650,163 @@ async function performUpload(imageBlob, imageFormat) {
 
     // Show crop and compress as already completed
     appendStep(I18N.step_crop, "success");
-    var fileSizeKB = (imageBlob.size / 1024).toFixed(0);
+    let fileSizeKB = (imageBlob.size / 1024).toFixed(0);
     appendStep(I18N.step_compress, "success",
         imageFormat.toUpperCase() + ", " + fileSizeKB + " KB");
 
     // Step 3: Upload the compressed image to the server
-    var uploadStepElement = appendStep(I18N.step_upload, "active");
-    var formData = new FormData();
+    let uploadStepElement = appendStep(I18N.step_upload, "active");
+    let formData = new FormData();
     formData.append("file", imageBlob, "avatar." + imageFormat);
 
     logger.info("main", "sending upload request", { endpoint: UPLOAD_ENDPOINT, sizeBytes: imageBlob.size });
 
-    try {
-        var response = await fetch(UPLOAD_ENDPOINT, {
-            method: "POST",
-            headers: { "X-CSRF-Token": CSRF_TOKEN },
-            body: formData,
+    let xhr = new XMLHttpRequest();
+    xhr.open("POST", UPLOAD_ENDPOINT);
+    xhr.setRequestHeader("X-CSRF-Token", CSRF_TOKEN);
+
+    // --- Shared state for SSE parsing ---
+    let serverStepElements = [];
+    let serverStepLabels = [];
+    let currentStepIndex = 0;
+    let lastParsedLength = 0;
+    let sseBuffer = "";
+    let finalResult = null;
+
+    /** Pre-render all expected server-side processing steps as "pending". */
+    function renderServerSteps() {
+        if (serverStepElements.length) return;
+        serverStepLabels = [
+            I18N.step_validated,
+            I18N.step_prepare,
+            I18N.step_processed,
+            I18N.step_profile_synced,
+        ];
+        if (DIR_SYNC) {
+            serverStepLabels.push(I18N.step_ldap_updated);
+        }
+        serverStepElements = serverStepLabels.map(function (label) {
+            return appendStep(label, "pending");
         });
+        // Mark the first server step as actively processing
+        updateStep(serverStepElements[0], serverStepLabels[0], "active");
+    }
+
+    /** Parse new SSE data from xhr.responseText since the last call. */
+    function parseSSEData() {
+        let newText = xhr.responseText.substring(lastParsedLength);
+        lastParsedLength = xhr.responseText.length;
+        if (!newText) return;
+
+        sseBuffer += newText;
+
+        // SSE frames are separated by double newlines
+        let sseFrames = sseBuffer.split("\n\n");
+        sseBuffer = sseFrames.pop(); // Keep the incomplete last frame
+
+        // Safety: discard only the runaway partial frame (malformed stream).
+        // Complete frames in sseFrames are still processed below.
+        if (sseBuffer.length > 65536) sseBuffer = "";
+
+        for (let frameIndex = 0; frameIndex < sseFrames.length; frameIndex++) {
+            let frameLines = sseFrames[frameIndex].split("\n");
+
+            for (let lineIndex = 0; lineIndex < frameLines.length; lineIndex++) {
+                let line = frameLines[lineIndex];
+                if (!line.startsWith("data: ")) continue;
+
+                let sseEvent = JSON.parse(line.slice(6));
+
+                // The final event signals completion with an avatar URL or error
+                if (sseEvent.done) {
+                    logger.info("main", "SSE stream complete", { hasAvatarUrl: !!sseEvent.avatar_url, error: sseEvent.error || null });
+                    finalResult = sseEvent;
+                    continue;
+                }
+
+                logger.debug("main", "SSE event received", { step: sseEvent.step, status: sseEvent.status, detail: sseEvent.detail || null });
+
+                // Update the matching pre-rendered step, or append unexpected extra steps
+                if (currentStepIndex < serverStepElements.length) {
+                    updateStep(serverStepElements[currentStepIndex],
+                        sseEvent.step, sseEvent.status, sseEvent.detail || "");
+                } else {
+                    appendStep(sseEvent.step, sseEvent.status, sseEvent.detail || "");
+                }
+                currentStepIndex++;
+
+                // Advance the spinner to the next pending step
+                if (currentStepIndex < serverStepElements.length) {
+                    updateStep(serverStepElements[currentStepIndex],
+                        serverStepLabels[currentStepIndex], "active");
+                }
+            }
+        }
+    }
+
+    // --- Upload progress: track actual file transfer ---
+    // Add a progress bar element to the upload step row for visual feedback.
+    // Updated directly via style.width to avoid rebuilding innerHTML on every
+    // progress event (which fires many times per second).
+    uploadStepElement.classList.add("has-progress");
+    let progressBar = document.createElement("span");
+    progressBar.className = "step-progress";
+    progressBar.style.width = "0%";
+    uploadStepElement.appendChild(progressBar);
+
+    // Browsers fire xhr.upload.progress at the network stack's discretion -
+    // typically only a handful of events for small payloads, so the reported
+    // percentage can appear to jump (e.g. 20% -> 50%).  The CSS transition on
+    // .step-progress smooths the bar between these jumps.
+    let lastLoggedPct = -1;
+    xhr.upload.addEventListener("progress", function (e) {
+        if (e.lengthComputable) {
+            let pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + "%";
+            updateStepDetail(uploadStepElement, pct + "%");
+            // Only log when the rounded percentage actually changes
+            if (pct !== lastLoggedPct) {
+                logger.debug("main", "upload progress", { pct: pct, loaded: e.loaded, total: e.total });
+                lastLoggedPct = pct;
+            }
+        }
+    });
+
+    // --- Upload body fully transmitted ---
+    // This fires when the request body has been sent, BEFORE the server
+    // responds.  It is the true boundary between "uploading" and "processing".
+    xhr.upload.addEventListener("load", function () {
+        logger.info("main", "file transfer complete, awaiting server processing");
+        // Clean up the progress bar before rebuilding the step as "success"
+        uploadStepElement.classList.remove("has-progress");
+        if (progressBar.parentNode) progressBar.remove();
+        updateStep(uploadStepElement, I18N.step_upload, "success");
+        // Pre-render server steps so the user immediately sees what's coming
+        renderServerSteps();
+    });
+
+    // --- Streaming response: parse SSE events as they arrive ---
+    // Cache the content-type check: the header never changes after the server
+    // starts responding, so read it at most once instead of on every tick.
+    let isSSEStream = false;
+    xhr.addEventListener("progress", function () {
+        if (!isSSEStream) {
+            let ct = xhr.getResponseHeader("content-type") || "";
+            isSSEStream = ct.includes("text/event-stream");
+        }
+        if (isSSEStream) {
+            parseSSEData();
+        }
+    });
+
+    // --- Response complete ---
+    xhr.addEventListener("load", function () {
+        let ct = xhr.getResponseHeader("content-type") || "";
+        logger.info("main", "upload response complete", { status: xhr.status, contentType: ct });
 
         // Server returns JSON for validation errors (4xx responses)
-        var contentType = response.headers.get("content-type") || "";
-        logger.info("main", "upload response received", { status: response.status, contentType: contentType });
-
-        if (contentType.includes("application/json")) {
-            var errorData = await response.json();
+        if (ct.includes("application/json")) {
+            let errorData = JSON.parse(xhr.responseText);
             // CSRF failure indicates an expired or missing session token -
             // show a specific translated message prompting a page reload.
             if (errorData.error === "csrf_failed") {
@@ -665,87 +826,13 @@ async function performUpload(imageBlob, imageFormat) {
             return;
         }
 
-        // Upload accepted - server streams processing progress as SSE
-        logger.info("main", "upload accepted, streaming SSE progress");
-        updateStep(uploadStepElement, I18N.step_upload, "success");
-
-        // Pre-render all expected server steps as "pending" so the user sees what's coming
-        var serverStepLabels = [
-            I18N.step_validated,
-            I18N.step_prepare,
-            I18N.step_processed,
-            I18N.step_profile_synced,
-        ];
-        if (DIR_SYNC) {
-            serverStepLabels.push(I18N.step_ldap_updated);
-        }
-
-        var serverStepElements = serverStepLabels.map(function (label) {
-            return appendStep(label, "pending");
-        });
-
-        // Mark the first server step as actively processing
-        var currentStepIndex = 0;
-        updateStep(serverStepElements[0], serverStepLabels[0], "active");
-
-        // Parse the SSE response stream: read chunks, split into frames,
-        // update progress steps as each server event arrives
-        var streamReader = response.body.getReader();
-        var textDecoder = new TextDecoder();
-        var sseBuffer = "";
-        var finalResult = null;
-
-        while (true) {
-            var readResult = await streamReader.read();
-            if (readResult.done) break;
-
-            sseBuffer += textDecoder.decode(readResult.value, { stream: true });
-
-            // Safety: discard if buffer grows beyond 64 KB (malformed stream)
-            if (sseBuffer.length > 65536) sseBuffer = "";
-
-            // SSE frames are separated by double newlines
-            var sseFrames = sseBuffer.split("\n\n");
-            sseBuffer = sseFrames.pop(); // Keep the incomplete last frame
-
-            for (var frameIndex = 0; frameIndex < sseFrames.length; frameIndex++) {
-                var frameLines = sseFrames[frameIndex].split("\n");
-
-                for (var lineIndex = 0; lineIndex < frameLines.length; lineIndex++) {
-                    var line = frameLines[lineIndex];
-                    if (!line.startsWith("data: ")) continue;
-
-                    var sseEvent = JSON.parse(line.slice(6));
-
-                    // The final event signals completion with an avatar URL or error
-                    if (sseEvent.done) {
-                        logger.info("main", "SSE stream complete", { hasAvatarUrl: !!sseEvent.avatar_url, error: sseEvent.error || null });
-                        finalResult = sseEvent;
-                        continue;
-                    }
-
-                    logger.debug("main", "SSE event received", { step: sseEvent.step, status: sseEvent.status, detail: sseEvent.detail || null });
-
-                    // Update the matching pre-rendered step, or append unexpected extra steps
-                    if (currentStepIndex < serverStepElements.length) {
-                        updateStep(serverStepElements[currentStepIndex],
-                            sseEvent.step, sseEvent.status, sseEvent.detail || "");
-                    } else {
-                        appendStep(sseEvent.step, sseEvent.status, sseEvent.detail || "");
-                    }
-                    currentStepIndex++;
-
-                    // Advance the spinner to the next pending step
-                    if (currentStepIndex < serverStepElements.length) {
-                        updateStep(serverStepElements[currentStepIndex],
-                            serverStepLabels[currentStepIndex], "active");
-                    }
-                }
-            }
+        // SSE stream complete - parse any remaining data
+        if (ct.includes("text/event-stream")) {
+            parseSSEData();
         }
 
         // Mark any remaining pre-rendered steps as skipped (pipeline ended early)
-        for (var i = currentStepIndex; i < serverStepElements.length; i++) {
+        for (let i = currentStepIndex; i < serverStepElements.length; i++) {
             updateStep(serverStepElements[i], serverStepLabels[i], "skipped");
         }
 
@@ -759,15 +846,13 @@ async function performUpload(imageBlob, imageFormat) {
             // session avatar so reloading the page shows the new photo without
             // requiring a re-login.  No body is sent - the server uses the value
             // it already stored, so there is nothing to forge or validate here.
-            try {
-                await fetch(UPLOAD_COMMIT_ENDPOINT, {
-                    method: "POST",
-                    headers: { "X-CSRF-Token": CSRF_TOKEN },
-                });
-            } catch (_commitErr) {
+            fetch(UPLOAD_COMMIT_ENDPOINT, {
+                method: "POST",
+                headers: { "X-CSRF-Token": CSRF_TOKEN },
+            }).catch(function () {
                 // Non-fatal: the avatar was updated successfully; the session
                 // commit is a best-effort convenience for post-reload display.
-            }
+            });
 
             // Success: release the preview blob (no longer needed) and show result
             clearPreviewState();
@@ -775,32 +860,51 @@ async function performUpload(imageBlob, imageFormat) {
 
             setStep(5);
             // All steps complete - mark the final step as done (green) instead of active (blue)
-            stepItems[4].classList.replace("active", "done");
+            markStepDone(5);
 
             // Update the profile avatar in the header with the new URL
             setProfileAvatar(finalResult.avatar_url);
         } else {
             // Failure: show the error with a retry button
-            var errorCode = finalResult && finalResult.error;
+            let errorCode = finalResult && finalResult.error;
             logger.error("main", "avatar upload failed", { error: errorCode || null });
-            var errorMessage = (errorCode === 'contact_admin')
+            let errorMessage = (errorCode === 'contact_admin')
                 ? I18N.step_save_failed + ' ' + I18N.result_contact_admin
                 : (errorCode ? errorCode : I18N.result_error);
             showUploadError(errorMessage);
         }
-    } catch (networkError) {
-        // Network failure or stream read error
-        logger.error("main", "network or stream error during upload", { message: networkError.message });
-        var lastStep = progressList.lastChild;
-        if (lastStep && lastStep.classList.contains("pending")) {
-            lastStep.remove();
-        }
-        appendStep(I18N.step_upload, "failed", networkError.message);
+    });
 
+    // --- Network failure ---
+    xhr.addEventListener("error", function () {
+        logger.error("main", "network error during upload");
+        // Clean up the upload progress bar if the upload was still in flight
+        uploadStepElement.classList.remove("has-progress");
+        if (progressBar.parentNode) progressBar.remove();
+
+        // Mark the currently active step as failed.  Before the upload body
+        // has fully transmitted, that is the upload step itself; afterwards
+        // it is whichever pre-rendered server step was last advanced to
+        // "active" by the SSE parser.
+        if (uploadStepElement.classList.contains("active")) {
+            updateStep(uploadStepElement, I18N.step_upload, "failed");
+        } else if (currentStepIndex < serverStepElements.length) {
+            updateStep(serverStepElements[currentStepIndex],
+                serverStepLabels[currentStepIndex], "failed");
+            // Drop any remaining pre-rendered pending steps
+            for (let i = currentStepIndex + 1; i < serverStepElements.length; i++) {
+                serverStepElements[i].remove();
+            }
+        }
+
+        // Re-enable the upload button so the retry flow can return to preview
+        resetUploadButton();
         // Show the error with a retry button
         showUploadError(I18N.result_network_error);
-    }
-    // Note: preview state is intentionally NOT cleared in a finally block.
+    });
+
+    xhr.send(formData);
+    // Note: preview state is intentionally NOT cleared here.
     // It is released on the success path only (see clearPreviewState() above),
     // so the retry button can return to the preview step without re-selecting
     // or re-cropping the image.
