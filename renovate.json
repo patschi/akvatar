@@ -47,6 +47,12 @@
             "automerge": true
         },
         {
+            "description": "Disable digest pinning for the UV_VERSION CI variable - it is a plain version string consumed by shell commands (uvx, pip install uv==${UV_VERSION}), not an image reference. Appending @sha256:... would break those commands. Digest pinning still applies to the Dockerfile COPY --from line via config:best-practices, which is where it actually belongs.",
+            "matchDepNames": ["ghcr.io/astral-sh/uv"],
+            "matchFileNames": [".gitlab-ci.yml"],
+            "pinDigests": false
+        },
+        {
             "description": "Automerge ruff updates - linting tool with no runtime impact.",
             "matchDepNames": ["ruff"],
             "automerge": true
