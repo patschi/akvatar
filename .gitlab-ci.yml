@@ -18,7 +18,7 @@ variables:
   SAST_EXCLUDED_PATHS: "static, data, docs"
   # uv version used in all lint jobs. Renovate tracks this via PyPI and updates
   # it in the same PR as the matching COPY --from=ghcr.io/astral-sh/uv in Dockerfile.
-  UV_VERSION: "0.11.6"
+  UV_VERSION: "0.11.7"
   # ruff version used in lint jobs. Renovate tracks this via PyPI.
   RUFF_VERSION: "0.15.11"
 
