@@ -17,14 +17,15 @@
     },
     "customManagers": [
         {
-            "description": "Track uv version in UV_VERSION CI variable via PyPI. Groups with the Dockerfile COPY --from=ghcr.io/astral-sh/uv docker ref so both update in one PR.",
+            "description": "Track uv version in UV_VERSION CI variable as the SAME Docker image ref as the Dockerfile COPY --from line. Using identical datasource + depName means Renovate treats both occurrences as one dep, so they are structurally guaranteed to update atomically in a single PR regardless of release age or preset changes.",
             "customType": "regex",
             "managerFilePatterns": [
                 "/^\\.gitlab-ci\\.yml$/"
             ],
             "matchStrings": ["UV_VERSION: \"(?<currentValue>[^\"]+)\""],
-            "depNameTemplate": "uv",
-            "datasourceTemplate": "pypi"
+            "depNameTemplate": "ghcr.io/astral-sh/uv",
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "semver"
         },
         {
             "description": "Track ruff version in RUFF_VERSION CI variable via PyPI.",
@@ -39,10 +40,10 @@
     ],
     "packageRules": [
         {
-            "description": "Group Dockerfile uv image and CI uv PyPI pin into one PR so they always stay in sync. Minor and patch only - major changes need manual review.",
-            "matchDepNames": ["ghcr.io/astral-sh/uv", "uv"],
-            "groupName": "uv",
+            "description": "Automerge uv minor and patch updates. Both the Dockerfile COPY --from and the CI UV_VERSION resolve to the same ghcr.io/astral-sh/uv Docker dep (see customManagers above), so Renovate naturally bundles them into one PR without needing a groupName. Major updates require manual review.",
+            "matchDepNames": ["ghcr.io/astral-sh/uv"],
             "matchUpdateTypes": ["minor", "patch"],
+            "minimumReleaseAge": "3 days",
             "automerge": true
         },
         {

@@ -16,8 +16,11 @@ variables:
   GITHUB_PROJECT_URL: "https://github.com/patschi/akvatar"
   # Exclude non-Python paths from SAST to reduce noise and scan time
   SAST_EXCLUDED_PATHS: "static, data, docs"
-  # uv version used in all lint jobs. Renovate tracks this via PyPI and updates
-  # it in the same PR as the matching COPY --from=ghcr.io/astral-sh/uv in Dockerfile.
+  # uv version used in all lint jobs. Renovate tracks this as the same
+  # ghcr.io/astral-sh/uv Docker dep as the Dockerfile COPY --from line
+  # (see customManagers in renovate.json), so both values are structurally
+  # guaranteed to update together in one atomic PR - there is no code
+  # path that can update them separately.
   UV_VERSION: "0.11.7"
   # ruff version used in lint jobs. Renovate tracks this via PyPI.
   RUFF_VERSION: "0.15.11"
