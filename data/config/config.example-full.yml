@@ -255,6 +255,11 @@ authentik:
   avatar_format: "jpg"
   # Authentik user attribute to store the avatar URL in
   avatar_attribute: "avatar"
+  # Authentik user attribute to store the pure avatar ID (filename base) in.
+  # Contains only the newest avatar's filename - no URL, no hostname, no extension.
+  # Useful for consumers that compose their own URL or key other data off the
+  # avatar identity.  Rolled back and cleared in lockstep with avatar_attribute.
+  avatar_id_attribute: "avatar_id"
   # Skip TLS certificate verification (set to true for self-signed certificates)
   skip_cert_verify: false
 

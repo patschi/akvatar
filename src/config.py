@@ -119,6 +119,7 @@ img_png_compress_level: int = int(img_cfg.get("png_compress_level", 6))
 ak_base_url: str = ak_cfg.get("base_url", "")
 ak_api_token: str = ak_cfg.get("api_token", "")
 ak_avatar_attribute: str = ak_cfg.get("avatar_attribute", "avatar")
+ak_avatar_id_attribute: str = ak_cfg.get("avatar_id_attribute", "avatar_id")
 ak_skip_cert_verify: bool = bool(ak_cfg.get("skip_cert_verify", False))
 
 # OIDC

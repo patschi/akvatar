@@ -17,6 +17,7 @@ from src.config import (
     EXTERNAL_REQUEST_TIMEOUT,
     ak_api_token,
     ak_avatar_attribute,
+    ak_avatar_id_attribute,
     ak_base_url,
     ak_skip_cert_verify,
     dry_run,
@@ -233,15 +234,26 @@ def retrieve_user(username: str) -> dict:
     return {"pk": pk, "avatar": avatar}
 
 
-def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
+def update_avatar_url(
+    pk: int, avatar_url: str, avatar_id: str
+) -> tuple[dict, str | None, str | None]:
     """
-    PATCH the user's avatar attribute in Authentik and return the user's
-    full ``attributes`` dict together with the previous avatar URL.
+    PATCH the user's avatar attributes in Authentik and return the user's
+    full ``attributes`` dict together with the previous avatar URL and ID.
 
-    Returns ``(attrs, old_url)`` where *old_url* is the attribute value
-    before this call (``None`` if it was not set).  The caller can use
-    *old_url* to revert the change via :func:`revert_avatar_url` if a
-    later pipeline step fails.
+    Two sibling attributes are written in a single PATCH:
+
+    - ``ak_avatar_attribute`` (default ``avatar``): the full public URL of
+      the canonical avatar image (hostname, size, extension).
+    - ``ak_avatar_id_attribute`` (default ``avatar_id``): the pure filename
+      base of the newest avatar (no URL, no extension, no hostname) - useful
+      for consumers that prefer to compose their own URL or key other data
+      off the avatar identity.
+
+    Returns ``(attrs, old_url, old_id)`` where *old_url* / *old_id* are the
+    attribute values before this call (``None`` if either was not set).  The
+    caller can use these to revert via :func:`revert_avatar_url` if a later
+    pipeline step fails.
 
     Accepts the Authentik PK directly so no username->PK lookup is needed.
 
@@ -249,9 +261,15 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
     inspect the returned attributes.  Only the PATCH is skipped in
     dry-run mode.
     """
-    # Fetch current user, merge the avatar attribute, and PATCH back
+    # Fetch current user, merge both avatar attributes, and PATCH back
     pre_patch, post_patch = _patch_user(
-        pk, {"attributes": {ak_avatar_attribute: avatar_url}}
+        pk,
+        {
+            "attributes": {
+                ak_avatar_attribute: avatar_url,
+                ak_avatar_id_attribute: avatar_id,
+            }
+        },
     )
 
     current_attrs = pre_patch.get("attributes")
@@ -262,59 +280,99 @@ def update_avatar_url(pk: int, avatar_url: str) -> tuple[dict, str | None]:
         )
 
     old_url = current_attrs.get(ak_avatar_attribute)
-    log.debug("Previous %s: %s", ak_avatar_attribute, old_url or "(not set)")
+    old_id = current_attrs.get(ak_avatar_id_attribute)
+
+    # Parallel (attr, old, new) triples - iterated for both the pre-patch debug
+    # log and the post-patch verification/success log so the two attributes
+    # stay in lockstep without duplicating formatter strings.
+    attr_updates = (
+        (ak_avatar_attribute, old_url, avatar_url),
+        (ak_avatar_id_attribute, old_id, avatar_id),
+    )
+    for attr_name, old_value, _new_value in attr_updates:
+        log.debug("Previous %s: %s", attr_name, old_value or "(not set)")
 
     # Verify the API accepted the change by checking the response body
     # (skipped in dry-run mode where post_patch == pre_patch)
     if not dry_run:
         patched_attrs = post_patch.get("attributes", {})
-        actual_value = patched_attrs.get(ak_avatar_attribute)
-        if actual_value != avatar_url:
-            log.warning(
-                "Authentik PATCH returned %s=%r instead of expected %r.",
-                ak_avatar_attribute,
-                actual_value,
-                avatar_url,
+        for attr_name, old_value, new_value in attr_updates:
+            actual_value = patched_attrs.get(attr_name)
+            if actual_value != new_value:
+                log.warning(
+                    "Authentik PATCH returned %s=%r instead of expected %r.",
+                    attr_name,
+                    actual_value,
+                    new_value,
+                )
+            log.info(
+                "Authentik %s updated for pk=%d: %s -> %s",
+                attr_name,
+                pk,
+                old_value or "(not set)",
+                new_value,
             )
-        log.info(
-            "Authentik %s updated for pk=%d: %s -> %s",
-            ak_avatar_attribute,
-            pk,
-            old_url or "(not set)",
-            avatar_url,
-        )
 
     result_attrs = post_patch.get("attributes", current_attrs)
-    return result_attrs, old_url
+    return result_attrs, old_url, old_id
 
 
 def remove_avatar_url(pk: int) -> None:
     """
-    Reset the user's custom avatar attribute to null in Authentik.
+    Reset the user's custom avatar attributes to null in Authentik.
 
-    Sets the avatar attribute to null (rather than removing the key entirely)
-    so Authentik falls back to its default avatar (e.g. Gravatar or initials).
+    Sets both the avatar URL and avatar ID attributes to null (rather than
+    removing the keys entirely) so Authentik falls back to its default
+    avatar (e.g. Gravatar or initials) and the ID is cleared in lockstep.
     Respects dry-run mode.
     """
-    # Partial update: set the avatar attribute to null
-    _patch_user(pk, {"attributes": {ak_avatar_attribute: None}})
+    # Partial update: set both avatar attributes to null in a single PATCH
+    _patch_user(
+        pk,
+        {
+            "attributes": {
+                ak_avatar_attribute: None,
+                ak_avatar_id_attribute: None,
+            }
+        },
+    )
 
     if not dry_run:
-        log.info("Authentik %s set to null for pk=%d.", ak_avatar_attribute, pk)
+        log.info(
+            "Authentik %s and %s set to null for pk=%d.",
+            ak_avatar_attribute,
+            ak_avatar_id_attribute,
+            pk,
+        )
 
 
-def revert_avatar_url(pk: int, old_url: str | None) -> None:
+def revert_avatar_url(pk: int, old_url: str | None, old_id: str | None) -> None:
     """
-    Restore the user's avatar attribute to *old_url* (or set it to null if
-    *old_url* is ``None``).  Used during rollback when a later pipeline
-    step fails after Authentik was already updated.
+    Restore the user's avatar attributes to *old_url* / *old_id* (or set
+    them to null if the respective previous value was ``None``).  Used
+    during rollback when a later pipeline step fails after Authentik was
+    already updated.
     """
-    # Partial update: set the avatar attribute to the old value (or null)
-    display = old_url or "(null)"
-    log.info(
-        "Rolling back Authentik %s for pk=%d to: %s", ak_avatar_attribute, pk, display
+    # Partial update: set both avatar attributes back to their pre-patch values
+    for attr_name, old_value in (
+        (ak_avatar_attribute, old_url),
+        (ak_avatar_id_attribute, old_id),
+    ):
+        log.info(
+            "Rolling back Authentik %s for pk=%d to: %s",
+            attr_name,
+            pk,
+            old_value or "(null)",
+        )
+    _patch_user(
+        pk,
+        {
+            "attributes": {
+                ak_avatar_attribute: old_url,
+                ak_avatar_id_attribute: old_id,
+            }
+        },
     )
-    _patch_user(pk, {"attributes": {ak_avatar_attribute: old_url}})
     log.info("Authentik rollback successful for pk=%d.", pk)
 
 

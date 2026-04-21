@@ -88,7 +88,10 @@ image or a default placeholder.
 
 1. **Authentik avatar source setting.** In the Authentik admin panel, ensure the user's avatar source is set to use the
    attribute configured in [`authentik.avatar_attribute`](configuration.md#authentikavatar_attribute) (default:
-   `avatar`). Authentik may be using a different source (Gravatar, initials) that takes precedence.
+   `avatar`). Authentik may be using a different source (Gravatar, initials) that takes precedence. Note that a
+   companion pure-ID attribute is written alongside the URL under
+   [`authentik.avatar_id_attribute`](configuration.md#authentikavatar_id_attribute) (default: `avatar_id`); Authentik
+   itself should still be pointed at the URL attribute, not the ID attribute.
 2. **Browser cache.** Hard-refresh (`Ctrl+Shift+R` / `Cmd+Shift+R`) the Authentik page to bypass cached images.
 3. **Public avatar URL.** Verify that [`app.public_avatar_url`](configuration.md#apppublic_avatar_url) points to a URL
    that is actually reachable from the browser. If the URL is only reachable from the server (e.g., an internal Docker

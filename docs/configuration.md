@@ -93,6 +93,7 @@ effect.
 | [`authentik.avatar_size`](#authentikavatar_size)                                 | Integer | Image size (px) used for the Authentik avatar URL   |
 | [`authentik.avatar_format`](#authentikavatar_format)                             | String  | Image format used for the Authentik avatar URL      |
 | [`authentik.avatar_attribute`](#authentikavatar_attribute)                       | String  | Authentik user attribute to store the avatar URL    |
+| [`authentik.avatar_id_attribute`](#authentikavatar_id_attribute)                 | String  | Authentik user attribute to store the avatar ID     |
 | [`authentik.skip_cert_verify`](#authentikskip_cert_verify)                       | Boolean | Skip TLS certificate verification for API requests  |
 | [`ldap.enabled`](#ldapenabled)                                                   | Boolean | Enable LDAP photo attribute updates                 |
 | [`ldap.servers`](#ldapservers)                                                   | String  | LDAP server URL(s), comma-separated                 |
@@ -1100,6 +1101,32 @@ high-efficiency encoding, or `avif` for modern clients where maximum compression
 The Authentik user attribute name where the avatar URL is stored. The application sets
 `attributes.<this-value>` on the user object via the API. Change this if your Authentik
 configuration uses a different attribute name for avatar URLs.
+
+### `authentik.avatar_id_attribute`
+
+| Property    | Value         |
+|-------------|---------------|
+| **Type**    | String        |
+| **Default** | `"avatar_id"` |
+
+The Authentik user attribute name where the **pure avatar ID** (filename base) of the newest
+avatar is stored. The application sets `attributes.<this-value>` on the user object via the API.
+
+Unlike [`authentik.avatar_attribute`](#authentikavatar_attribute), which stores the full public
+URL (with hostname, size path, and file extension), this attribute stores only the opaque
+filename base - for example `a1b2c3d4...-xYzAbc...-1729512345123456789`. It carries no URL,
+no hostname, and no extension.
+
+This is intended for downstream consumers that need a stable identifier for the avatar without
+parsing URLs - for example to build their own URL variants (different size/format), or to key
+other data off the avatar identity.
+
+Both attributes are written in a single API call and are kept in lockstep:
+
+- When an avatar is uploaded, both attributes are updated together.
+- When the avatar is reset via the "Remove avatar" action, both attributes are set to `null`.
+- When a later pipeline step fails after the Authentik update, both attributes are rolled back
+  to their previous values in a single API call.
 
 ### `authentik.skip_cert_verify`
 
