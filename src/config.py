@@ -5,6 +5,7 @@ Reads config.yml once at import time so every other module can simply
 `from src.config import cfg`.
 """
 
+import io as _io
 import logging
 import os
 import ssl
@@ -12,6 +13,7 @@ import sys
 from urllib.parse import urlparse
 
 import yaml
+from PIL import Image as _PilImage
 
 from src import APP_NAME, APP_VERSION
 from src.image_formats import FORMAT_MAP as _FORMAT_MAP
@@ -27,6 +29,31 @@ def _fatal_unless(condition: bool, msg: str) -> None:
     """Exit with a FATAL error if *condition* is false."""
     if not condition:
         _fatal(msg)
+
+
+def _verify_pillow_format_support(formats: list[str]) -> None:
+    """Verify Pillow runtime support for every configured image format.
+
+    Attempts a minimal encode for each format by saving a 1x1 RGB image to a
+    BytesIO buffer - if the encoder raises, the codec is missing or broken.
+    This gives a clear FATAL message at startup instead of a cryptic error on
+    the first upload (e.g. Pillow built without libwebp or libavif).
+    """
+    log.debug("Verifying Pillow runtime support for configured image formats...")
+    test_img = _PilImage.new("RGB", (1, 1), (0, 0, 0))
+    for fmt in formats:
+        pillow_fmt = _FORMAT_MAP[fmt.lower()][0]
+        try:
+            buf = _io.BytesIO()
+            test_img.save(buf, format=pillow_fmt)
+            log.debug("Pillow %s (%s) encode check passed.", fmt, pillow_fmt)
+        except Exception as enc_exc:
+            _fatal(
+                f"images.formats includes {fmt!r} but Pillow cannot encode "
+                f"{pillow_fmt!r} on this system: {enc_exc}. "
+                f"Install Pillow with the required library support or remove "
+                f"{fmt!r} from images.formats."
+            )
 
 
 CONFIG_PATH = os.environ.get("CONFIG_PATH", "data/config/config.yml")
@@ -521,30 +548,7 @@ _fatal_unless(
 # Exported as a typed tuple for modules that need the RGBA background color
 img_rgba_background_color: tuple[int, int, int] = tuple(_rgba_bg)
 
-# Verify Pillow runtime support for every configured format by attempting a
-# minimal encode.  A 1x1 RGB image is encoded to a BytesIO buffer for each
-# format - if the encoder raises, the codec is missing or broken.  This gives
-# a clear FATAL message at startup instead of a cryptic error on the first
+# Verify Pillow runtime support for every configured format.  Fails fast at
+# startup with a clear FATAL message instead of a cryptic error on the first
 # upload (e.g. Pillow built without libwebp or libavif).
-try:
-    import io as _io
-
-    from PIL import Image as _PilImage
-
-    log.debug("Verifying Pillow runtime support for configured image formats...")
-    _test_img = _PilImage.new("RGB", (1, 1), (0, 0, 0))
-    for _fmt in img_formats:
-        _pillow_fmt = _FORMAT_MAP[_fmt.lower()][0]
-        try:
-            _buf = _io.BytesIO()
-            _test_img.save(_buf, format=_pillow_fmt)
-            log.debug("Pillow %s (%s) encode check passed.", _fmt, _pillow_fmt)
-        except Exception as _enc_exc:
-            _fatal(
-                f"images.formats includes {_fmt!r} but Pillow cannot encode "
-                f"{_pillow_fmt!r} on this system: {_enc_exc}. "
-                f"Install Pillow with the required library support or remove "
-                f"{_fmt!r} from images.formats."
-            )
-except ImportError:
-    pass  # Defensive: PIL is a required dependency and should always be present
+_verify_pillow_format_support(img_formats)

@@ -342,7 +342,7 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
             yield _sse({"done": True, "error": t("result.error")})
             return
 
-        # Step 7: Persist metadata
+        # Persist metadata
         _save_metadata(filename_base, user_pk, total_bytes)
 
         # Session update is handled by the caller via /api/upload/commit:
