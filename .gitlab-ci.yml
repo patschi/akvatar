@@ -206,25 +206,20 @@ push-container-gitlab:
       when: always
     - when: never
 
-# temporary disabled for now. do not remove.
 # Copy container from GitLab to GitHub Container Registry, adding GitHub-specific label
-#push-container-ghcr:
-#  stage: build-container
-#  image:
-#    name: gcr.io/go-containerregistry/crane:debug
-#    entrypoint: [""]
-#  needs:
-#    - push-container-gitlab
-#  before_script: []
-#  script:
-#    - mkdir -p /root/.docker
-#    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"},\"ghcr.io\":{\"auth\":\"$(printf "%s:%s" "${GHCR_USER}" "${GHCR_TOKEN}" | base64 | tr -d '\n')\"}}}" > /root/.docker/config.json
-#    - >
-#      crane mutate
-#      --label="org.opencontainers.image.source=$GITHUB_PROJECT_URL"
-#      --tag="$GHCR_IMAGE:$CI_APPLICATION_TAG"
-#      "$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
-#  rules:
-#    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
-#      when: always
-#    - when: never
+push-container-ghcr:
+  stage: build-container
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [""]
+  needs:
+    - push-container-gitlab
+  before_script: []
+  script:
+    - mkdir -p /root/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"},\"ghcr.io\":{\"auth\":\"$(printf "%s:%s" "${GHCR_USER}" "${GHCR_TOKEN}" | base64 | tr -d '\n')\"}}}" > /root/.docker/config.json
+    - >
+      crane mutate
+      --label="org.opencontainers.image.source=$GITHUB_PROJECT_URL"
+      --tag="$GHCR_IMAGE:$CI_APPLICATION_TAG"
+      "$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
