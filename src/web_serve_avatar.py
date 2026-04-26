@@ -152,6 +152,12 @@ def serve_avatar_file(dimensions, basename, ext):
 
 _METADATA_ACCESS_MODE = metadata_access
 
+# Reserved filename in the metadata namespace: a synthetic health-probe target
+# that returns a static {"status":"ok"} payload instead of reading from disk.
+# Shadows any real file of the same name in METADATA_ROOT (the route check
+# runs before send_from_directory / load_metadata_file).
+_CHECK_METADATA_FILENAME = "CHECK.meta.json"
+
 
 @serve_avatar_bp.route("/user-avatars/_metadata/<filename>", methods=["GET"])
 def serve_avatar_metadata(filename):
@@ -165,19 +171,44 @@ def serve_avatar_metadata(filename):
     - public: no authentication required; missing files are handled by send_from_directory.
 
     Both owner_only and authed_user redirect unauthenticated visitors to the login page.
+
+    Special-case: the reserved filename CHECK.meta.json never reads from disk and
+    always returns a static {"status":"ok"} payload, but still passes through the
+    same authentication gate as the regular metadata route (the ownership check
+    is skipped since there is no underlying file).
     """
+    # Hoisted auth gate - applies to every metadata request (including the
+    # static CHECK probe) so unauthenticated callers cannot use this endpoint
+    # to verify reachability. Runs before the CHECK short-circuit and the
+    # traversal check so both downstream branches can assume auth has already
+    # been validated; public mode bypasses the gate entirely.
+    if _METADATA_ACCESS_MODE in ("owner_only", "authed_user") and (
+        "user" not in session
+    ):
+        log.debug(
+            "Unauthenticated metadata request for %r - redirecting to login.",
+            filename,
+        )
+        return redirect(url_for("routes.login_page"))
+
+    # Static health-probe endpoint: short-circuits before any disk lookup.
+    # Compared before _check_path_traversal so probe traffic does not pay for
+    # the two Path.resolve() syscalls that traversal validation performs - the
+    # literal filename contains no separators, so traversal cannot apply.
+    if filename == _CHECK_METADATA_FILENAME:
+        log.debug(
+            "Serving static CHECK metadata response (access=%s).",
+            _METADATA_ACCESS_MODE,
+        )
+        resp = jsonify({"status": "ok"})
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     if not _check_path_traversal(METADATA_ROOT, filename):
         log.warning("Metadata path traversal blocked: %s", filename)
         abort(404)
 
     if _METADATA_ACCESS_MODE in ("owner_only", "authed_user"):
-        if "user" not in session:
-            log.debug(
-                "Unauthenticated metadata request for %r - redirecting to login.",
-                filename,
-            )
-            return redirect(url_for("routes.login_page"))
-
         meta = load_metadata_file(filename)
 
         if _METADATA_ACCESS_MODE == "owner_only":
