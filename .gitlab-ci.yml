@@ -213,7 +213,8 @@ push-container-ghcr:
     name: gcr.io/go-containerregistry/crane:debug@sha256:22de5fee4326edae01a568c5a53b69c755901c5f5aa1c06a7c907bef18937356
     entrypoint: [""]
   needs:
-    - push-container-gitlab
+    - job: push-container-gitlab
+      optional: true
   before_script: []
   script:
     - mkdir -p /root/.docker
@@ -223,3 +224,19 @@ push-container-ghcr:
       --label="org.opencontainers.image.source=$GITHUB_PROJECT_URL"
       --tag="$GHCR_IMAGE:$CI_APPLICATION_TAG"
       "$CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG"
+  # Mirror push-container-gitlab's rules so ghcr only runs when the gitlab
+  # push job actually produced an image. Without this, ghcr ran on every
+  # pipeline (e.g. MR pipelines) and the hard `needs` reference to a skipped
+  # job caused: "needs 'push-container-gitlab', but ... does not exist in the pipeline".
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+      changes:
+        - "**/*.py"
+        - "Dockerfile"
+        - "pyproject.toml"
+        - "uv.lock"
+        - ".gitlab-ci.yml"
+        - "static/**"
+        - "src/**"
+      when: always
+    - when: never
