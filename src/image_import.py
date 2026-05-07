@@ -357,9 +357,11 @@ def fetch_remote_image(url: str) -> tuple[bytes, str]:
       FetchFailed         - network or HTTP error during the fetch.
     """
     try:
-        resp = safe_fetch(url)
-        resp.raise_for_status()
-        data, content_type = _validate_and_read(resp)
+        # `with` releases the streamed response back to the session pool after
+        # the body has been read (or on any exception inside the block).
+        with safe_fetch(url) as resp:
+            resp.raise_for_status()
+            data, content_type = _validate_and_read(resp)
         return data, content_type
 
     except (ValueError, ImageTooLarge, UnsupportedContentType):
