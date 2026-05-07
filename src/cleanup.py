@@ -290,25 +290,26 @@ def run_cleanup() -> int:
         # Cross-process guard: open (or create) the lockfile and attempt a
         # non-blocking exclusive lock.  A separate process running run_cleanup.py
         # concurrently will fail here and exit cleanly rather than corrupting
-        # avatar files mid-cleanup.
+        # avatar files mid-cleanup.  The `with` block guarantees the fd is closed
+        # (and the OS-level flock released) on every exit path, including
+        # exceptions inside _run_cleanup_impl().
         try:
-            lockfile = open(_CLEANUP_LOCKFILE, "w")
+            lockfile_ctx = open(_CLEANUP_LOCKFILE, "w")
         except OSError as exc:
             log.warning(
                 "Could not open cleanup lockfile %s: %s", _CLEANUP_LOCKFILE, exc
             )
             return 0
-        try:
-            fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            lockfile.close()
-            log.warning("Cleanup already in progress (another process) - skipping.")
-            return 0
-        try:
-            return _run_cleanup_impl()
-        finally:
-            fcntl.flock(lockfile.fileno(), fcntl.LOCK_UN)
-            lockfile.close()
+        with lockfile_ctx as lockfile:
+            try:
+                fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                log.warning("Cleanup already in progress (another process) - skipping.")
+                return 0
+            try:
+                return _run_cleanup_impl()
+            finally:
+                fcntl.flock(lockfile.fileno(), fcntl.LOCK_UN)
     finally:
         _cleanup_lock.release()
 
