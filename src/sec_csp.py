@@ -203,7 +203,7 @@ def build_csp_header(nonce: str) -> str | None:
     # browsers.  report-to (CSP Level 3 / Reporting API) is the modern
     # replacement.  Both are emitted in parallel for maximum compatibility.
     if _CSP_REPORT_URI:
-        policy += "; report-to csp-endpoint"
+        policy += f"; report-uri {_CSP_REPORT_URI}; report-to csp-endpoint"
     return policy
 
 
