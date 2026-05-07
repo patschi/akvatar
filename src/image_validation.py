@@ -41,7 +41,8 @@ MAGIC_SIGNATURES = {
     "WEBP_RIFF": (0, b"RIFF"),  # RIFF container ...
     "WEBP_SIG": (8, b"WEBP"),  # ... with WEBP fourcc at offset 8
     "AVIF_FTYP": (4, b"ftyp"),  # ISO Base Media file type box (AVIF/HEIF/MP4)
-    "AVIF_BRAND": (8, b"avif"),  # AVIF major brand ("avis" also valid for sequences)
+    "AVIF_BRAND": (8, b"avif"),  # AVIF major brand for still images
+    "AVIF_BRAND_SEQ": (8, b"avis"),  # AVIF major brand for image sequences
 }
 
 # Dimension guardrails.
@@ -75,7 +76,9 @@ def check_magic_bytes(raw_bytes: bytes) -> str | None:
     )
     # AVIF is an ISO Base Media file: bytes 4-7 are "ftyp", bytes 8-11 are the
     # major brand.  "avif" covers still images; "avis" covers AVIF image sequences.
-    is_avif = raw_bytes[4:8] == b"ftyp" and raw_bytes[8:12] in (b"avif", b"avis")
+    is_avif = raw_bytes[4:8] == MAGIC_SIGNATURES["AVIF_FTYP"][1] and raw_bytes[
+        8:12
+    ] in (MAGIC_SIGNATURES["AVIF_BRAND"][1], MAGIC_SIGNATURES["AVIF_BRAND_SEQ"][1])
 
     if not (is_jpeg or is_png or is_webp or is_avif):
         return "File does not start with a valid JPEG, PNG, WebP, or AVIF signature."
