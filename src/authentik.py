@@ -130,6 +130,11 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
     Returns ``(pre_patch, post_patch)`` - the user data before and after the
     update.  In dry-run mode *post_patch* equals *pre_patch* (no PATCH is
     sent).  Respects dry-run mode.
+
+    Concurrency note: read-modify-write without ETag/If-Match - two
+    concurrent calls for the same *pk* can race (last writer wins).
+    Per-user cooldowns make this rare in practice.  This is currently
+    a limitation of the Authentik API.
     """
     url = f"{_users_url}{pk}/"
 

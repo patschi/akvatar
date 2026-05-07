@@ -101,7 +101,7 @@ import:
   ok: "Bild verwenden"
   cancel: "Abbrechen"
   webcam: "Webcam"
-  webcam_hint: "Nimm ein Bild mit Deiner Kamera auf. Das Bild verbleibt in Deinem Browser, bis Du es bestätigst."
+  webcam_hint: "Nimm ein Bild mit Deiner Kamera auf. Das Bild verbleibt in Deinem Browser, bis Sie es bestätigen."
   webcam_placeholder: "Kameravorschau erscheint hier"
   webcam_start: "Kamera starten"
   webcam_starting: "Wird gestartet…"
@@ -142,7 +142,8 @@ error:
   too_small: "Das Bild ist zu klein ({w}×{h} px). Das Minimum beträgt {min_dim}×{min_dim} px."
   too_large: "Das Bild ist zu groß ({w}×{h} px). Das Maximum beträgt {max_dim}×{max_dim} px."
   no_file: "Es wurde kein Bild empfangen. Bitte wählen Sie eine Datei aus und versuchen Sie es erneut."
-  rate_limited: "Du lädst zu häufig hoch. Bitte warte einen Moment, bevor du es erneut versuchst."
+  rate_limited: "Sie laden zu häufig hoch. Bitte warte Sie einen Moment, bevor Sie es erneut versuchen."
+  pending_avatar_missing: "Ihr Bild konnte nicht gespeichert werden. Bitte versuchen Sie, es erneut hochzuladen."
   # Import-spezifische Fehler
   import:
     gravatar_disabled: "Der Gravatar-Import ist nicht aktiviert."

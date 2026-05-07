@@ -50,6 +50,7 @@ from src.sec_csrf import csrf_required
 from src.upload import (
     build_canonical_url,
     generate_sse,
+    pending_avatar_file_exists,
 )
 
 log = logging.getLogger("routes")
@@ -192,7 +193,11 @@ def api_upload():
     # cookie-based sessions.  The client calls /api/upload/commit after
     # receiving the done event to promote _pending_avatar to the active avatar.
     filename_base = generate_filename()
-    session["_pending_avatar"] = build_canonical_url(filename_base)
+    # Store only the filename base - the canonical URL is derived from it
+    # via build_canonical_url() at commit time, so there is no need to keep
+    # both in the session cookie.  Keeping the cookie small matters because
+    # Flask cookie sessions have a hard 4 KB browser limit.
+    session["_pending_avatar"] = filename_base
 
     # Stream processing progress as SSE
     return Response(
@@ -208,25 +213,41 @@ def api_upload():
 @csrf_required
 def api_upload_commit():
     """
-    Commit the pending avatar URL from the session into the active user record.
+    Commit the pending avatar from the session into the active user record.
 
-    During api_upload, the canonical URL is stored under session["_pending_avatar"]
+    During api_upload, the filename base is stored under session["_pending_avatar"]
     before the SSE stream begins so it is captured in the cookie header of that
     request.  The client calls this endpoint (with no body) after the done event
-    so the pending URL is promoted to session["user"]["avatar"] in a normal
-    request/response cycle where Set-Cookie is properly written.
+    so the canonical URL (derived from the filename via build_canonical_url) is
+    promoted to session["user"]["avatar"] in a normal request/response cycle
+    where Set-Cookie is properly written.
     """
-    # Promote the pending avatar URL (stored before the SSE stream started) to
+    # Promote the pending avatar (stored before the SSE stream started) to
     # the active session avatar.  Using pop() atomically reads and removes the
     # key so a second call for the same upload returns 400 rather than a stale value.
-    pending_url = session.pop("_pending_avatar", None)
-    if not pending_url:
+    pending_filename = session.pop("_pending_avatar", None)
+    if not pending_filename:
         log.warning(
             "Session avatar commit rejected - no pending avatar for user %r.",
             session["user"].get("username", "?"),
         )
         return jsonify({"error": "no_pending_avatar"}), 400
 
+    # Stale-pending check: the SSE rollback path may have deleted the
+    # generated files after the pending entry was already committed to the
+    # cookie.  Refuse to promote a URL pointing at nothing rather than
+    # silently writing a self-broken avatar to Authentik on the next
+    # heartbeat or page load.
+    if not pending_avatar_file_exists(pending_filename):
+        log.warning(
+            "Session avatar commit rejected - pending file missing for user %r (filename=%r); "
+            "likely promoted after an SSE rollback deleted the generated files.",
+            session["user"].get("username", "?"),
+            pending_filename,
+        )
+        return jsonify({"error": "pending_avatar_missing"}), 400
+
+    pending_url = build_canonical_url(pending_filename)
     session["user"] = {**session["user"], "avatar": pending_url}
     log.debug(
         "Session avatar committed for user %r.", session["user"].get("username", "?")

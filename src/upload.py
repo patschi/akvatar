@@ -31,6 +31,7 @@ from src.i18n import t
 from src.image_formats import FORMAT_MAP
 from src.imaging import (
     AVATAR_BASE_URL,
+    AVATAR_ROOT,
     METADATA_ROOT,
     cleanup_avatar_files,
     normalize_image,
@@ -72,6 +73,24 @@ def build_canonical_url(filename_base: str) -> str:
     return (
         f"{AVATAR_BASE_URL}/{_CANONICAL_SIZE_KEY}/{filename_base}.{_CANONICAL_FORMAT}"
     )
+
+
+def pending_avatar_file_exists(filename_base: str) -> bool:
+    """Return True if the canonical avatar file for *filename_base* is present on disk.
+
+    Used by /api/upload/commit to detect a stale ``_pending_avatar`` entry
+    that survived an SSE-driven rollback.  The pending URL is committed to
+    the cookie session before the SSE stream starts (because Flask cannot
+    mutate the session from inside a streaming generator); if a later
+    pipeline step fails, the rollback in ``generate_sse`` deletes the
+    on-disk files but leaves the cookie value behind.  A misbehaving or
+    malicious client that calls /api/upload/commit anyway would otherwise
+    promote a URL pointing at deleted files into the active avatar.
+    """
+    canonical_path = (
+        AVATAR_ROOT / _CANONICAL_SIZE_KEY / f"{filename_base}.{_CANONICAL_FORMAT}"
+    )
+    return canonical_path.is_file()
 
 
 def _sse(data: dict) -> str:

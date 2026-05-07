@@ -143,6 +143,7 @@ error:
   too_large: "La imagen es demasiado grande ({w}×{h} px). El máximo es {max_dim}×{max_dim} px."
   no_file: "No se recibió ninguna imagen. Por favor, selecciona un archivo e inténtalo de nuevo."
   rate_limited: "Estás subiendo imágenes con demasiada frecuencia. Por favor, espera un momento antes de intentarlo de nuevo."
+  pending_avatar_missing: "Tu imagen no se pudo guardar. Por favor, intenta subirla de nuevo."
   # Errores específicos de importación
   import:
     gravatar_disabled: "La importación de Gravatar no está habilitada."
