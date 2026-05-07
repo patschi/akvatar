@@ -517,14 +517,42 @@ def _cleanup_loop() -> None:
             log.exception("Cleanup iteration failed.")
 
 
+def _startup_only_runner() -> None:
+    """One-shot startup cleanup runner used when on_startup is set without a schedule."""
+    log.info("cleanup.on_startup is enabled (no schedule) - running cleanup in 60 s.")
+    time.sleep(60)
+    try:
+        run_cleanup()
+    except Exception:
+        log.exception("Startup cleanup failed.")
+
+
 def start_cleanup_thread() -> None:
     """
-    Start the background cleanup thread if a cron schedule is configured.
+    Start the background cleanup thread.
+
+    Behavior depends on the configured combination of cleanup.interval and
+    cleanup.on_startup:
+      - schedule set:               run the regular cron loop (which itself
+                                    honors on_startup before the first tick).
+      - schedule empty, on_startup: run a one-shot cleanup at startup, then exit.
+      - both empty:                 cleanup is fully disabled.
 
     Uses a daemon thread so it is automatically terminated when the main
     process exits - no explicit shutdown logic needed.
     """
     if not _cron_expr:
+        if _run_on_startup:
+            # Honor on_startup even when no recurring schedule is configured -
+            # otherwise the flag would silently do nothing.
+            thread = threading.Thread(
+                target=_startup_only_runner,
+                name="cleanup-startup",
+                daemon=True,
+            )
+            thread.start()
+            log.info("Cleanup thread started (one-shot startup run, no schedule).")
+            return
         log.info("Cleanup is disabled (cleanup.interval is empty).")
         return
 
