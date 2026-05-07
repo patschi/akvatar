@@ -20,6 +20,7 @@ The orchestrator collects results via ``yield from``.
 
 import json
 import logging
+import os
 from datetime import UTC, datetime
 
 from PIL import Image
@@ -274,7 +275,13 @@ def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
         "total_bytes": total_bytes,
     }
     meta_path = METADATA_ROOT / f"{filename_base}.meta.json"
-    meta_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    # Atomic publish: write to a sibling .tmp file and os.replace() into place,
+    # so a concurrent reader (cleanup, serve_avatar_metadata) never sees a
+    # half-written JSON file.  os.replace() is atomic on POSIX and on Windows
+    # when the source and destination are on the same filesystem.
+    tmp_path = meta_path.with_suffix(meta_path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp_path, meta_path)
     log.debug("Metadata saved to %s.", meta_path)
 
 
