@@ -11,6 +11,7 @@ Handles:
 """
 
 import hashlib
+import http.cookiejar
 import ipaddress
 import logging
 import socket
@@ -38,6 +39,28 @@ log = logging.getLogger("img_import")
 MAX_FETCH_SIZE_MB = max_upload_size_mb
 _MAX_FETCH_SIZE = MAX_FETCH_SIZE_MB * 1024 * 1024  # MB -> bytes
 FETCH_TIMEOUT = EXTERNAL_REQUEST_TIMEOUT  # seconds
+
+# Pre-build a requests.Session for TCP+TLS connection pooling across remote
+# image fetches.  Without a session, every Gravatar/URL fetch pays a fresh
+# handshake to the remote host (often hundreds of ms).  Mirrors the pattern
+# used by src/authentik.py for its API calls.
+#
+# The session is shared across ALL users in this worker process.  Image fetches
+# are anonymous (no per-user auth state travels on the wire), so cookies serve
+# no legitimate purpose here AND a shared cookie jar would replay one user's
+# Set-Cookie response to another user's subsequent fetch.  This is especially
+# risky for fetch_remote_image, which follows arbitrary user-supplied URLs - a
+# malicious target could plant a cookie that travels with another user's later
+# request to the same domain.
+#
+# Install a DefaultCookiePolicy with allowed_domains=[] so every Set-Cookie is
+# rejected at the cookie-jar layer, eliminating cross-user cookie pollution by
+# construction.  Connection pooling (the actual reason for the Session) is
+# unaffected.
+_NO_COOKIES_POLICY = http.cookiejar.DefaultCookiePolicy(allowed_domains=[])
+_session = http_requests.Session()
+_session.cookies = http_requests.cookies.RequestsCookieJar(policy=_NO_COOKIES_POLICY)
+_session.headers.update({"User-Agent": USER_AGENT})
 
 # Config: per-source enable flags and URL security settings
 GRAVATAR_ENABLED = gravatar_enabled
@@ -146,12 +169,11 @@ def safe_fetch(url: str) -> http_requests.Response:
                 f"Redirect to private/internal address blocked: {parsed.hostname!r}"
             )
 
-        resp = http_requests.get(
+        resp = _session.get(
             url,
             timeout=FETCH_TIMEOUT,
             stream=True,
             allow_redirects=False,  # Manual redirect following for per-hop SSRF checks
-            headers={"User-Agent": USER_AGENT},
         )
 
         # Follow 3xx redirects manually (up to MAX_REDIRECTS hops)
@@ -307,27 +329,28 @@ def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
       GravatarNotFound   - Gravatar returned HTTP 404 (no avatar for this email).
       ImageTooLarge      - response body exceeds MAX_FETCH_SIZE_MB.
       UnsupportedContentType - Content-Type is not in the proxy allowlist.
-      FetchFailed        - network or HTTP error during the fetch.
+      FetchFailed        - network or HTTP error, DNS failure, or SSRF
+                           rejection during the fetch.
     """
     gravatar_url, md5_hash = build_gravatar_url(email)
     log.debug("Fetching Gravatar: %s", gravatar_url)
 
     try:
-        resp = http_requests.get(
-            gravatar_url,
-            timeout=FETCH_TIMEOUT,
-            stream=True,
-            headers={"User-Agent": USER_AGENT},
-        )
-        # d=404 tells Gravatar to return HTTP 404 when no avatar exists
-        # for this email, instead of serving a generic default image.
-        if resp.status_code == 404:
-            resp.close()
-            log.debug("No Gravatar found for the requested email.")
-            raise GravatarNotFound()
-        resp.raise_for_status()
+        # Route through safe_fetch so DNS pinning, scheme validation, and
+        # per-hop SSRF checks apply uniformly to every outbound image fetch.
+        # The Gravatar URL is hardcoded today, but using the same code path
+        # means future changes (e.g. a configurable Gravatar host or a
+        # Gravatar-side redirect) cannot accidentally bypass the SSRF
+        # defenses applied to the user-supplied URL fetch.
+        with safe_fetch(gravatar_url) as resp:
+            # d=404 tells Gravatar to return HTTP 404 when no avatar exists
+            # for this email, instead of serving a generic default image.
+            if resp.status_code == 404:
+                log.debug("No Gravatar found for the requested email.")
+                raise GravatarNotFound()
+            resp.raise_for_status()
 
-        data, content_type = _validate_and_read(resp)
+            data, content_type = _validate_and_read(resp)
 
         # Build a filename from the hash + content-type extension so the
         # client can display a meaningful name (e.g. "d41d8cd9...f00d.jpg")
@@ -336,6 +359,14 @@ def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
 
     except (GravatarNotFound, ImageTooLarge, UnsupportedContentType):
         raise
+    except ValueError as exc:
+        # safe_fetch raises ValueError for SSRF/scheme/DNS-resolution
+        # failures.  For the hardcoded Gravatar host these are extremely
+        # unlikely (e.g. an operator running with DNS that cannot reach
+        # public networks), but treat them as fetch failures rather than
+        # letting them bubble up to a 500 from the route handler.
+        log.warning("Gravatar fetch validation failed: %s", exc)
+        raise FetchFailed(str(exc)) from exc
     except http_requests.RequestException as exc:
         log.warning("Gravatar fetch failed: %s", exc)
         raise FetchFailed(str(exc)) from exc
