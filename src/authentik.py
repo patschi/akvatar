@@ -383,21 +383,25 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     ``active_only=True`` adds ``is_active=true`` to the request, returning
     only non-deactivated users.  The default returns every user regardless
     of active status.
+
+    Authentik's ``pagination.next`` is an integer page number (0 = no more
+    pages), not a URL.  This is set by Django REST Framework's
+    ``PageNumberPagination`` in authentik/api/pagination.py.  Iteration is
+    therefore driven by the ``page`` query parameter rather than by following
+    a server-supplied URL.
     """
     pks: set[int] = set()
-    page = 0
+    page = 1
 
-    url: str | None = _users_url
-    params: dict | None = {"page_size": 100}
+    base_params: dict = {"page_size": 100}
     if active_only:
-        params["is_active"] = "true"
+        base_params["is_active"] = "true"
 
-    # Paginate through all result pages, collecting PKs from each page
-    while url:
-        page += 1
-        log.debug("GET %s (page %d) - fetching user list.", url, page)
+    while True:
+        params = {**base_params, "page": page}
+        log.debug("GET %s (page %d) - fetching user list.", _users_url, page)
         resp = _retry_request(
-            lambda u=url, p=params: _session.get(u, params=p, timeout=_TIMEOUT_LIST)
+            lambda p=params: _session.get(_users_url, params=p, timeout=_TIMEOUT_LIST)
         )
         resp.raise_for_status()
 
@@ -421,10 +425,13 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
             len(pks),
         )
 
-        # Authentik embeds the full next-page URL including query params,
-        # so we only pass our own params on the first request.
-        url = data.get("pagination", {}).get("next")
-        params = None
+        # Authentik returns 0 for `next` on the final page; any positive value
+        # is the next page number.  Guard against a non-increasing value to
+        # avoid pathological infinite loops if the server misbehaves.
+        next_page = data.get("pagination", {}).get("next", 0) or 0
+        if not isinstance(next_page, int) or next_page <= page:
+            break
+        page = next_page
 
     return pks
 
