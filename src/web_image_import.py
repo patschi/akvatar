@@ -38,7 +38,7 @@ from src.image_import import (
     validate_import_url,
 )
 from src.rate_limit import check_gravatar_import_cooldown, check_url_import_cooldown
-from src.sec_csrf import validate_csrf_token
+from src.sec_csrf import csrf_required
 
 log = logging.getLogger("import_img")
 
@@ -50,6 +50,7 @@ import_bp = Blueprint("import", __name__)
 
 @import_bp.route("/api/fetch-gravatar", methods=["POST"])
 @login_required
+@csrf_required
 def api_fetch_gravatar():
     """
     Fetch a Gravatar image for the authenticated user's email address.
@@ -61,10 +62,6 @@ def api_fetch_gravatar():
     """
     if not GRAVATAR_ENABLED:
         return jsonify({"error": t("error.import.gravatar_disabled")}), 403
-
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
 
     user = session.get("user", {})
 
@@ -121,6 +118,7 @@ def api_fetch_gravatar():
 
 @import_bp.route("/api/fetch-url", methods=["POST"])
 @login_required
+@csrf_required
 def api_fetch_url():
     """
     Fetch an image from a user-provided remote URL.
@@ -134,10 +132,6 @@ def api_fetch_url():
     """
     if not URL_ENABLED:
         return jsonify({"error": t("error.import.url_disabled")}), 403
-
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
 
     # Per-user import cooldown - prevents abuse as an outbound HTTP proxy
     user = session.get("user", {})

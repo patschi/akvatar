@@ -14,6 +14,7 @@ Usage:
 
 import logging
 import secrets
+from functools import wraps
 
 from flask import jsonify, request, session
 
@@ -69,3 +70,32 @@ def validate_csrf_token():
         )
         return jsonify({"error": "csrf_failed"}), 403
     return None
+
+
+def csrf_required(view):
+    """
+    Decorator that runs ``validate_csrf_token`` before the wrapped view and
+    short-circuits with the standard JSON 403 if the token is missing or wrong.
+
+    Replaces boilerplate that otherwise needs to live at the top of every
+    state-changing endpoint.
+
+    Decorator ordering matters: place ``@csrf_required`` BELOW
+    ``@login_required`` so unauthenticated requests hit the auth gate first
+    (a missing session has no token to validate against, so going through
+    auth produces a clearer error than a generic CSRF rejection).
+
+    Not used by routes that need a non-default failure mode (e.g. the logout
+    handler, which logs a custom warning and redirects to the login page
+    rather than returning JSON).  Those continue to call ``validate_csrf_token``
+    directly so they can shape the failure response themselves.
+    """
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        rejection = validate_csrf_token()
+        if rejection:
+            return rejection
+        return view(*args, **kwargs)
+
+    return wrapper

@@ -11,7 +11,7 @@ from flask import Blueprint, jsonify, session
 
 from src.auth import login_required
 from src.authentik import remove_avatar_url
-from src.sec_csrf import validate_csrf_token
+from src.sec_csrf import csrf_required
 
 log = logging.getLogger("reset_img")
 
@@ -20,13 +20,9 @@ reset_avatar_bp = Blueprint("reset_avatar", __name__)
 
 @reset_avatar_bp.route("/api/remove-avatar", methods=["POST"])
 @login_required
+@csrf_required
 def api_remove_avatar():
     """Remove the user's custom avatar attribute from Authentik and clear it from the session."""
-    # CSRF token validation (returns JSON 403 on failure)
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
     user = session["user"]
     log.info(
         "Avatar removal requested by user %r (pk=%s).", user["username"], user["pk"]

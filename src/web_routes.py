@@ -46,7 +46,7 @@ from src.imaging import (
 )
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.rate_limit import check_upload_cooldown
-from src.sec_csrf import validate_csrf_token
+from src.sec_csrf import csrf_required
 from src.upload import (
     build_canonical_url,
     generate_sse,
@@ -140,6 +140,7 @@ def api_heartbeat():
 # Upload & process API (Server-Sent Events for real-time progress)
 @routes_bp.route("/api/upload", methods=["POST"])
 @login_required
+@csrf_required
 def api_upload():
     """
     Accept a cropped image blob, validate it synchronously, then stream
@@ -149,11 +150,6 @@ def api_upload():
     Once validation passes the response switches to ``text/event-stream``
     and each processing step is pushed as it completes.
     """
-    # CSRF token validation (returns JSON 403 on failure)
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
     user = session["user"]
     log.info("Upload request from user %r.", user["username"])
 
@@ -209,6 +205,7 @@ def api_upload():
 # Upload commit (called by the client after a successful SSE upload stream)
 @routes_bp.route("/api/upload/commit", methods=["POST"])
 @login_required
+@csrf_required
 def api_upload_commit():
     """
     Commit the pending avatar URL from the session into the active user record.
@@ -219,10 +216,6 @@ def api_upload_commit():
     so the pending URL is promoted to session["user"]["avatar"] in a normal
     request/response cycle where Set-Cookie is properly written.
     """
-    csrf_rejection = validate_csrf_token()
-    if csrf_rejection:
-        return csrf_rejection
-
     # Promote the pending avatar URL (stored before the SSE stream started) to
     # the active session avatar.  Using pop() atomically reads and removes the
     # key so a second call for the same upload returns 400 rather than a stale value.
