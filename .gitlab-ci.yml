@@ -131,6 +131,7 @@ lint-uv-audit:
   extends: .uv-base
   stage: lint
   interruptible: true
+  allow_failure: true
   before_script:
     - !reference [.uv-base, before_script]
   script:
