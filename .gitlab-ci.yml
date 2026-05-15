@@ -158,7 +158,7 @@ push-container-gitlab:
   stage: build-container
   interruptible: true
   image:
-    name: martizih/kaniko:v1.27.4-debug@sha256:a394e5bd9c75c93e207b3949f3d7f49fbe59f21ea91d96ba6939ddf6226233f8
+    name: martizih/kaniko:v1.27.5-debug@sha256:6f2a60489f03ce7ab78240c82c27358cfa394cfa7b91ee6b0bb72fc66f21c520
     entrypoint: [""]
   variables:
     FF_KANIKO_OCI_STAGES: 'true'
