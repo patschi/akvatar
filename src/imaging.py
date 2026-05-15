@@ -49,6 +49,34 @@ AVATAR_BASE_URL = public_avatar_url
 _RGBA_BG_COLOR: tuple[int, int, int] = img_rgba_background_color
 
 
+def _flatten_rgba_to_rgb(image: Image.Image) -> Image.Image:
+    """
+    Composite an RGBA image onto ``_RGBA_BG_COLOR`` and return an RGB image.
+    No-op when the input is already RGB.
+
+    Used before any JPEG encode (JPEG has no alpha channel).  A bare
+    ``.convert("RGB")`` would map transparent pixels to black; compositing
+    onto the configured background color produces the intended result for
+    logos/photos with transparent borders.
+
+    Assumes the input has already been through ``normalize_image()`` and is
+    therefore in either RGB or RGBA mode.  Any other mode is a contract
+    violation and raises ``ValueError`` immediately - this turns a previously
+    silent fallback (which produced black backgrounds for unrecognized modes)
+    into a loud failure that surfaces the bug at its source.
+    """
+    if image.mode == "RGB":
+        return image
+    if image.mode == "RGBA":
+        bg = Image.new("RGB", image.size, _RGBA_BG_COLOR)
+        bg.paste(image, mask=image.split()[3])
+        return bg
+    raise ValueError(
+        f"Unexpected image mode {image.mode!r} - "
+        "normalize_image() should produce RGB or RGBA only."
+    )
+
+
 def normalize_image(image: Image.Image) -> Image.Image:
     """
     Apply EXIF orientation, strip all metadata, and normalize the color mode.
@@ -157,28 +185,36 @@ def process_image(
       - total_bytes: combined size of all saved files
     """
     log.info("Starting image processing for %r.", filename_base)
-    results: dict[str, dict[str, str]] = {}
     sizes = img_sizes
     formats = img_formats
     total_bytes = 0
 
-    for size in sizes:
+    # Pre-create the results dict in the original (config) order so the
+    # returned mapping iterates in the same order as `images.sizes` regardless
+    # of the descending resize order used below.
+    results: dict[str, dict[str, str]] = {f"{s}x{s}": {} for s in sizes}
+
+    # Resize from largest to smallest, feeding each step's output into the
+    # next.  Chained downscale runs LANCZOS over fewer pixels at each step
+    # instead of resampling from the full source for every size, which is
+    # roughly 3-5x less pixel work for typical (e.g. 1024/512/256/128/64)
+    # configurations.  Output quality is comparable for the typical case
+    # where the source is significantly larger than the largest output size.
+    sizes_desc = sorted(sizes, reverse=True)
+    current = image  # source for the next downscale step
+
+    for size in sizes_desc:
         key = f"{size}x{size}"
         log.debug("Resizing to %s using LANCZOS.", key)
-        resized = image.resize((size, size), Image.LANCZOS)
-        results[key] = {}
+        resized = current.resize((size, size), Image.LANCZOS)
+        current = resized  # next iteration downscales from this result
 
         size_dir = AVATAR_ROOT / key
 
         # Pre-composite RGBA onto the configured background color once per size,
-        # producing an RGB image for JPEG output.  A bare .convert("RGB") would
-        # map transparent pixels to black; compositing gives the intended result.
-        if resized.mode == "RGBA":
-            _bg = Image.new("RGB", resized.size, _RGBA_BG_COLOR)
-            _bg.paste(resized, mask=resized.split()[3])
-            resized_rgb = _bg
-        else:
-            resized_rgb = resized
+        # producing an RGB image for JPEG output.  Done once and reused across
+        # every JPEG output of this size.
+        resized_rgb = _flatten_rgba_to_rgb(resized)
 
         for fmt in formats:
             ext = fmt.lower()
@@ -269,14 +305,10 @@ def prepare_ldap_image(
         "Resizing to %dx%d %s for LDAP attribute.", target_size, target_size, pillow_fmt
     )
     resized = source_image.resize((target_size, target_size), Image.LANCZOS)
-    # Composite RGBA onto the background color for JPEG (same logic as process_image).
-    # For WebP and AVIF, alpha is preserved natively so no compositing is needed.
-    if pillow_fmt == "JPEG" and resized.mode == "RGBA":
-        _bg = Image.new("RGB", resized.size, _RGBA_BG_COLOR)
-        _bg.paste(resized, mask=resized.split()[3])
-        resized = _bg
-    elif pillow_fmt == "JPEG" and resized.mode != "RGB":
-        resized = resized.convert("RGB")
+    # JPEG has no alpha channel, so RGBA must be flattened first.  WebP and AVIF
+    # support alpha natively so the original image is passed through untouched.
+    if pillow_fmt == "JPEG":
+        resized = _flatten_rgba_to_rgb(resized)
 
     # PNG is lossless (quality=None); JPEG/WebP/AVIF use a configurable quality level
     if pillow_fmt == "JPEG":
