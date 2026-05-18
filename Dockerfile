@@ -72,7 +72,7 @@ RUN mkdir -p /data-skel/user-avatars && \
 # gcr.io/distroless/python3 contains only the Python interpreter and its
 # core C libraries - no shell, no package manager, minimal attack surface.
 # The :nonroot tag sets the default user to 65532 (nonroot).
-FROM gcr.io/distroless/python3-debian13:nonroot@sha256:51b1acc177d535f20fa30a175a657079ee7dce6e326541cfd83a474d9928e123
+FROM gcr.io/distroless/python3-debian13:nonroot@sha256:7ea4b893a73b30ebe0d666f94bbda151a5e15ee093bda10497986a12a65a7e53
 
 # Base version and Git commit short hash passed at build time via --build-arg.
 # BASE_VERSION is parsed from src/__init__.py by the CI / build scripts so
