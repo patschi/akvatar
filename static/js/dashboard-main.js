@@ -715,7 +715,15 @@ function performUpload(imageBlob, imageFormat) {
                 let line = frameLines[lineIndex];
                 if (!line.startsWith("data: ")) continue;
 
-                let sseEvent = JSON.parse(line.slice(6));
+                // Guard the parse: a malformed frame must not throw out of the
+                // progress handler (which would freeze the step list mid-stream).
+                let sseEvent;
+                try {
+                    sseEvent = JSON.parse(line.slice(6));
+                } catch (parseErr) {
+                    logger.warn("main", "skipping malformed SSE frame", { line: line, message: parseErr.message });
+                    continue;
+                }
 
                 // The final event signals completion with an avatar URL or error
                 if (sseEvent.done) {
@@ -806,7 +814,15 @@ function performUpload(imageBlob, imageFormat) {
 
         // Server returns JSON for validation errors (4xx responses)
         if (ct.includes("application/json")) {
-            let errorData = JSON.parse(xhr.responseText);
+            // Guard the parse: an unexpected/malformed body falls back to a
+            // generic error rather than throwing out of the load handler.
+            let errorData;
+            try {
+                errorData = JSON.parse(xhr.responseText);
+            } catch (parseErr) {
+                logger.error("main", "failed to parse JSON error response", { message: parseErr.message });
+                errorData = {};
+            }
             // CSRF failure indicates an expired or missing session token -
             // show a specific translated message prompting a page reload.
             if (errorData.error === "csrf_failed") {
