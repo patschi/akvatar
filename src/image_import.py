@@ -15,7 +15,7 @@ import http.cookiejar
 import ipaddress
 import logging
 import socket
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests as http_requests
 
@@ -186,7 +186,13 @@ def safe_fetch(url: str) -> http_requests.Response:
                 resp.close()
                 raise ValueError("Redirect response missing Location header.")
             resp.close()
-            url = location
+            # Resolve the Location against the current URL so RFC-valid relative
+            # redirects (e.g. "Location: /images/foo.jpg") are turned into an
+            # absolute URL.  Without urljoin a relative target has no scheme and
+            # would be rejected as a non-HTTP(S) redirect on the next iteration.
+            # The resolved URL is re-validated (scheme, hostname, SSRF) at the
+            # top of the next loop, so this does not weaken the per-hop checks.
+            url = urljoin(resp.url, location)
             log.debug("Following redirect (hop %d/%d): %r", hop + 1, MAX_REDIRECTS, url)
             continue
 
@@ -336,8 +342,10 @@ def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
     log.debug("Fetching Gravatar: %s", gravatar_url)
 
     try:
-        # Route through safe_fetch so DNS pinning, scheme validation, and
-        # per-hop SSRF checks apply uniformly to every outbound image fetch.
+        # Route through safe_fetch so scheme validation and per-hop SSRF checks
+        # apply uniformly to every outbound image fetch.  Note these are
+        # pre-connection DNS checks, not true DNS pinning - the rebinding
+        # limitation documented on resolves_to_private_ip still applies.
         # The Gravatar URL is hardcoded today, but using the same code path
         # means future changes (e.g. a configurable Gravatar host or a
         # Gravatar-side redirect) cannot accidentally bypass the SSRF

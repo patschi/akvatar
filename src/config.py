@@ -545,8 +545,14 @@ _fatal_unless(
     "images.rgba_background_color must be a list of three integers [R, G, B] "
     "each in the range 0-255 (e.g. [255, 255, 255] for white).",
 )
-# Exported as a typed tuple for modules that need the RGBA background color
-img_rgba_background_color: tuple[int, int, int] = tuple(_rgba_bg)
+# Exported as a typed tuple for modules that need the RGBA background color.
+# Build the 3-tuple explicitly (rather than tuple(_rgba_bg)) so static type
+# checkers infer the fixed-length tuple[int, int, int] instead of tuple[int, ...].
+img_rgba_background_color: tuple[int, int, int] = (
+    _rgba_bg[0],
+    _rgba_bg[1],
+    _rgba_bg[2],
+)
 
 # Verify Pillow runtime support for every configured format.  Fails fast at
 # startup with a clear FATAL message instead of a cryptic error on the first

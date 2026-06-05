@@ -56,6 +56,36 @@ COST_NORMAL = 1
 
 
 # ---------------------------------------------------------------------------
+# Manager fork-detach helper (shared by _RateLimitManager and _UserCooldown)
+# ---------------------------------------------------------------------------
+
+
+def _detach_manager_after_fork(manager) -> None:
+    """Detach *manager*'s server process from forked gunicorn workers.
+
+    When gunicorn forks workers, they inherit the Manager server process
+    reference.  Python's atexit handler then tries to join() it on worker
+    exit, which fails with AssertionError ("can only join a child process")
+    because the server is a child of the master, not of the worker.  This
+    registers a post-fork hook that runs in each child to:
+      1. Remove the server from the inherited child registry so atexit does
+         not attempt to join it.
+      2. Cancel the Manager's shutdown finalizer so the worker does not
+         terminate the shared server process on exit (which would break the
+         master's shared state).
+    """
+
+    def _release_manager_in_child():
+        _mp_process._children.discard(manager._process)
+        try:
+            manager.finalizer.cancel()
+        except AttributeError:
+            pass
+
+    os.register_at_fork(after_in_child=_release_manager_in_child)
+
+
+# ---------------------------------------------------------------------------
 # Limiter configuration (bundles the scalar config for a single endpoint type)
 # ---------------------------------------------------------------------------
 
@@ -263,26 +293,9 @@ class _RateLimitManager:
         # data; workers and the master access it via proxy objects over IPC.
         self._mp_manager = multiprocessing.Manager()
 
-        # When gunicorn forks workers, they inherit the Manager server process
-        # reference.  Python's atexit handler then tries to join() it on worker
-        # exit, which fails with AssertionError ("can only join a child process")
-        # because the server is a child of the master, not of the worker.
-        # Register a post-fork hook to detach the Manager from each worker:
-        #   1. Remove the server from the inherited child registry so atexit
-        #      does not attempt to join it.
-        #   2. Cancel the Manager's shutdown finalizer so the worker does not
-        #      terminate the shared server process on exit (which would break
-        #      the master's rate limiting state).
-        _mgr = self._mp_manager
-
-        def _release_manager_in_child():
-            _mp_process._children.discard(_mgr._process)
-            try:
-                _mgr.finalizer.cancel()
-            except AttributeError:
-                pass
-
-        os.register_at_fork(after_in_child=_release_manager_in_child)
+        # Detach the Manager server process from forked gunicorn workers so they
+        # do not try to join or terminate it on exit (see helper for details).
+        _detach_manager_after_fork(self._mp_manager)
 
         # Parse IP whitelist (individual IPs become /32 or /128)
         self._whitelist = []
@@ -429,18 +442,9 @@ class _UserCooldown:
         self._window = window
         self._mp_manager = multiprocessing.Manager()
 
-        # Detach the Manager server from forked workers (same pattern as in
-        # _RateLimitManager) so workers do not attempt to join or terminate it.
-        _mgr = self._mp_manager
-
-        def _release_manager_in_child():
-            _mp_process._children.discard(_mgr._process)
-            try:
-                _mgr.finalizer.cancel()
-            except AttributeError:
-                pass
-
-        os.register_at_fork(after_in_child=_release_manager_in_child)
+        # Detach the Manager server from forked workers so they do not attempt
+        # to join or terminate it (shared helper; same handling everywhere).
+        _detach_manager_after_fork(self._mp_manager)
 
         # {user_pk: monotonic_timestamp_of_last_allowed_action}
         self._last_action = self._mp_manager.dict()

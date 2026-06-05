@@ -36,8 +36,9 @@ def api_remove_avatar():
         )
         return jsonify({"error": "remove_failed"}), 500
 
-    # Clear the avatar from the session so the UI reflects the change immediately
-    session["user"]["avatar"] = ""
-    session.modified = True
+    # Clear the avatar from the session so the UI reflects the change immediately.
+    # Reassign the whole user dict (rather than mutating it in place) so Flask's
+    # session detects the change automatically, without needing session.modified.
+    session["user"] = {**session["user"], "avatar": ""}
     log.info("Avatar removed for user %r (pk=%s).", user["username"], user["pk"])
     return jsonify({"success": True})

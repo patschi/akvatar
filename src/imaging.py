@@ -69,7 +69,9 @@ def _flatten_rgba_to_rgb(image: Image.Image) -> Image.Image:
         return image
     if image.mode == "RGBA":
         bg = Image.new("RGB", image.size, _RGBA_BG_COLOR)
-        bg.paste(image, mask=image.split()[3])
+        # Use the alpha band as the paste mask.  getchannel("A") fetches only
+        # the alpha band, avoiding the work of splitting all four RGBA bands.
+        bg.paste(image, mask=image.getchannel("A"))
         return bg
     raise ValueError(
         f"Unexpected image mode {image.mode!r} - "
