@@ -25,6 +25,7 @@ effect.
 | Setting                                                                          | Type    | Description                                         |
 |----------------------------------------------------------------------------------|---------|-----------------------------------------------------|
 | [`dry_run`](#dry_run)                                                            | Boolean | Skip Authentik/LDAP writes; log all actions instead |
+| [`dry_run_backend`](#dry_run_backend)                                            | Boolean | Skip Authentik + LDAP writes; filesystem proceeds   |
 | [`branding.name`](#brandingname)                                                 | String  | Application name shown in the UI                    |
 | [`app.max_upload_size_mb`](#appmax_upload_size_mb)                               | Integer | Maximum upload size in MB                           |
 | [`app.avatar_storage_path`](#appavatar_storage_path)                             | String  | Directory for stored avatar images                  |
@@ -42,6 +43,8 @@ effect.
 | [`cleanup.avatar_retention_count`](#cleanupavatar_retention_count)               | Integer | Avatar sets to keep per user (0 = unlimited)        |
 | [`cleanup.when_user_deleted`](#cleanupwhen_user_deleted)                         | Boolean | Remove avatars of users deleted from Authentik      |
 | [`cleanup.when_user_deactivated`](#cleanupwhen_user_deactivated)                 | Boolean | Remove avatars of deactivated Authentik users       |
+| [`cleanup.scheduler_priority`](#cleanupscheduler_priority)                       | Integer | Niceness of the scheduled (automated) cleanup       |
+| [`cleanup.backfill_missing_images`](#cleanupbackfill_missing_images)             | Boolean | Regenerate avatars missing a configured size/format |
 | [`rate_limiting.enabled`](#rate_limitingenabled)                                 | Boolean | Master switch for rate limiting                     |
 | [`rate_limiting.ip_whitelist`](#rate_limitingip_whitelist)                       | List    | IPs/CIDRs exempt from rate limiting                 |
 | [`rate_limiting.points_cost_404`](#rate_limitingpoints_cost_404)                 | Integer | Point cost for a 404 response                       |
@@ -127,6 +130,27 @@ effect.
 When enabled, avatar images are still processed and saved to disk, but no changes are pushed to
 Authentik or LDAP. All operations that would have been performed are logged instead. Useful for
 testing the full upload pipeline without affecting real user accounts.
+
+### `dry_run_backend`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+A narrower variant of [`dry_run`](#dry_run): **write** requests to the external backends are
+skipped - both the Authentik API (the avatar attribute `PATCH`) and LDAP photo attributes.
+Everything else runs for real: images are processed and saved to disk, the backends are still
+**read** from (the user `GET` before each patch and the cleanup job's user listing), and the
+cleanup job still deletes and regenerates files on disk.
+
+This is useful for exercising the full pipeline against live backends - including on-disk output
+and cleanup - without mutating any user's avatar attributes. In the upload progress stream both the
+"profile synced" and "LDAP updated" steps are reported as `dry-run`.
+
+`dry_run` is a superset: it skips the same backend writes **and** additionally makes the cleanup /
+backfill job log-only (no filesystem changes), so there is no need to set both. When only
+`dry_run_backend` is enabled, a startup warning is logged to make the mode obvious in the logs.
 
 ---
 
@@ -377,12 +401,17 @@ enforcing and report-only mode (see [`security.csp_report_only`](#securitycsp_re
 Cron schedule for the cleanup job. Uses standard 5-field crontab syntax
 (`minute hour day month weekday`). The schedule is evaluated in UTC.
 
-The cleanup job runs four phases:
+The cleanup job runs five phases:
 
 1. Remove avatar sets for deleted (and optionally deactivated) users
 2. Enforce per-user retention (keep the N most recent uploads)
 3. Remove size directories, format files, and image files that are no longer configured
 4. Remove orphaned metadata files with no matching images on disk
+5. Backfill files missing for a configured size/format, regenerating them from the largest
+   image already on disk (see [`cleanup.backfill_missing_images`](#cleanupbackfill_missing_images))
+
+When triggered on its schedule (or at startup), the job runs at a lowered scheduling priority so it
+does not contend with request handling (see [`cleanup.scheduler_priority`](#cleanupscheduler_priority)).
 
 Set to `""` (empty string) to disable the cleanup job entirely.
 
@@ -436,6 +465,45 @@ accounts that may be re-enabled later.
 
 Enable this setting if deactivated accounts should be treated the same as deleted ones for avatar
 storage purposes.
+
+### `cleanup.scheduler_priority`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Integer |
+| **Default** | `10`    |
+
+Scheduling priority ("niceness") applied to the background thread that runs the **scheduled**
+cleanup (both the cron schedule and the optional startup run). On Linux the nice value is a
+per-thread attribute, so this deprioritizes only the cleanup work (filesystem scans and image
+regeneration); the worker threads serving avatar requests keep their normal priority.
+
+This applies to automated runs only. A manual `python run_cleanup.py` invocation runs at normal
+priority, so an operator can deliberately run cleanup at full speed when needed.
+
+Higher values mean lower priority (the Linux nice range is `-20` to `19`). Set to `0` to run at
+normal priority. Only lowering priority is attempted, which never requires elevated privileges, so
+this works in the non-root, capability-dropped container. On platforms without `setpriority` (e.g.
+Windows) the setting is ignored and cleanup runs at normal priority.
+
+### `cleanup.backfill_missing_images`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `true`  |
+
+When enabled (default), the cleanup job checks every surviving avatar set against all configured
+`images.sizes` and `images.formats` and regenerates any file that is missing. This "heals" existing
+avatars after a new size or format is added to the configuration, making them available in the new
+size/format without requiring users to re-upload.
+
+Missing files are regenerated from the largest image already on disk for that avatar set. If the
+only available source is smaller than a missing size, the image is upscaled (and a warning is
+logged), because the original full-resolution upload is not retained. Existing files are never
+overwritten.
+
+Disable this setting if you prefer that new sizes/formats apply only to future uploads.
 
 ---
 
@@ -1429,10 +1497,12 @@ entries with `type: url` also require their `image_size` to be in this list.
 | **Default** | `["jpg", "png", "webp"]` |
 
 The output formats to save for each size. Each size x format combination produces one file.
-Supported values: `jpg` (JPEG), `png`, `webp`, `avif`. Each entry is validated against the
-known format list at startup - an unrecognized value (e.g. `bmp`, `gif`) causes a FATAL error
-and prevents the application from starting. Adding `avif` additionally requires Pillow compiled
-with `libavif` support; a startup warning is logged if the codec is unavailable.
+Supported values: `jpg` (JPEG), `png`, `webp`, `avif`. `jpeg` is accepted as an alias and is
+canonicalized to `jpg` at startup, so files are always stored with the `.jpg` extension. Each
+entry is validated against the known format list at startup - an unrecognized value (e.g. `bmp`,
+`gif`) causes a FATAL error and prevents the application from starting. Adding `avif` additionally
+requires Pillow compiled with `libavif` support; a startup warning is logged if the codec is
+unavailable.
 
 ### `images.jpeg_quality`
 

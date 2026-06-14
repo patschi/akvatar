@@ -20,7 +20,7 @@ from src.config import (
     ak_avatar_id_attribute,
     ak_base_url,
     ak_skip_cert_verify,
-    dry_run,
+    skip_backend_writes,
 )
 
 log = logging.getLogger("authentik")
@@ -128,8 +128,9 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
       only the specific sub-keys in *data* are updated.
 
     Returns ``(pre_patch, post_patch)`` - the user data before and after the
-    update.  In dry-run mode *post_patch* equals *pre_patch* (no PATCH is
-    sent).  Respects dry-run mode.
+    update.  When backend writes are suppressed (full ``dry_run`` or
+    ``dry_run_backend``) *post_patch* equals *pre_patch* (no PATCH is sent); the
+    GET is always performed so callers still receive the current state.
 
     Concurrency note: read-modify-write without ETag/If-Match - two
     concurrent calls for the same *pk* can race (last writer wins).
@@ -158,7 +159,7 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
 
     log.debug("PATCH %s - merged payload: %s", url, payload)
 
-    if dry_run:
+    if skip_backend_writes:
         log.info("[DRY-RUN] Would PATCH %s with: %s", url, payload)
         return current, current
 
@@ -298,8 +299,8 @@ def update_avatar_url(
         log.debug("Previous %s: %s", attr_name, old_value or "(not set)")
 
     # Verify the API accepted the change by checking the response body
-    # (skipped in dry-run mode where post_patch == pre_patch)
-    if not dry_run:
+    # (skipped when backend writes are suppressed, where post_patch == pre_patch)
+    if not skip_backend_writes:
         patched_attrs = post_patch.get("attributes", {})
         for attr_name, old_value, new_value in attr_updates:
             actual_value = patched_attrs.get(attr_name)
@@ -329,7 +330,8 @@ def remove_avatar_url(pk: int) -> None:
     Sets both the avatar URL and avatar ID attributes to null (rather than
     removing the keys entirely) so Authentik falls back to its default
     avatar (e.g. Gravatar or initials) and the ID is cleared in lockstep.
-    Respects dry-run mode.
+    The PATCH is suppressed when backend writes are disabled (full
+    ``dry_run`` or ``dry_run_backend``).
     """
     # Partial update: set both avatar attributes to null in a single PATCH
     _patch_user(
@@ -342,7 +344,7 @@ def remove_avatar_url(pk: int) -> None:
         },
     )
 
-    if not dry_run:
+    if not skip_backend_writes:
         log.info(
             "Authentik %s and %s set to null for pk=%d.",
             ak_avatar_attribute,

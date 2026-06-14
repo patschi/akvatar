@@ -7,6 +7,14 @@
 # changes are pushed to Authentik or LDAP.  All operations that would have
 # been performed are logged instead.  Useful for testing.
 dry_run: false
+# Backend-write dry-run.  A narrower variant of dry_run: write requests to the
+# external backends - the Authentik API (the avatar attribute PATCH) and LDAP
+# photo attributes - are skipped.  Everything else runs for real: images are
+# saved to disk, the cleanup job still deletes/regenerates files, and the
+# backends are still read from.  Useful for testing the full pipeline against
+# live backends without mutating user profiles.  Implied by dry_run, which
+# additionally makes the cleanup job log-only (no need to set both).
+dry_run_backend: false
 
 # --- Branding ---
 # Customize the name shown in the browser title bar and navigation header.
@@ -102,6 +110,17 @@ cleanup:
   # Remove avatar sets for users that exist in Authentik but are deactivated.
   # Disabled by default so avatars are preserved for temporarily disabled accounts.
   when_user_deactivated: false
+  # Scheduling priority ("niceness") applied to the scheduled (automated)
+  # cleanup so its CPU- and I/O-heavy work yields to request handling.  Higher =
+  # lower priority (Linux nice range is -20..19).  Set to 0 to run at normal
+  # priority.  Only lowering priority is attempted, which never requires elevated
+  # privileges.  Manual `run_cleanup.py` runs are unaffected.
+  scheduler_priority: 10
+  # Regenerate avatar files that are missing for a configured size/format.  When
+  # a new size or format is added to images.sizes / images.formats, the cleanup
+  # job fills it in for existing avatars (from the largest image already on
+  # disk) so users do not have to re-upload.  Existing files are never touched.
+  backfill_missing_images: true
 
 # --- Rate Limiting ---
 # Throttle avatar and metadata serving endpoints by client IP address to

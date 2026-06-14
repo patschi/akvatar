@@ -28,7 +28,6 @@ import ldap3
 import ldap3.utils.conv
 
 from src.config import (
-    dry_run,
     ldap_bind_dn,
     ldap_bind_password,
     ldap_enabled,
@@ -39,6 +38,7 @@ from src.config import (
     ldap_server_urls,
     ldap_skip_cert_verify,
     ldap_use_ssl,
+    skip_backend_writes,
 )
 
 log = logging.getLogger("ldap")
@@ -251,7 +251,7 @@ def update_photos(ldap_uniq: str, updates: list[dict]) -> None:
                 f'LDAP update[{i}] is missing required key "attribute" or "value": {update!r}'
             )
 
-    if dry_run:
+    if skip_backend_writes:
         for update in updates:
             log.info(
                 "[DRY-RUN] Would update LDAP %s for ldap_uniq=%s (%s).",

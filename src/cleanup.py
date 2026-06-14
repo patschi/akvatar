@@ -25,6 +25,19 @@ Orphan cleanup:
     are deleted.
   - Image files whose filename base has no matching .meta.json are deleted.
 
+Backfill (the inverse of orphan cleanup):
+  - For every surviving avatar set, any file missing for a configured
+    size/format is regenerated from the largest image already on disk.  This
+    heals existing avatars after a new size or format is added to config,
+    without requiring users to re-upload.  Controlled by
+    ``cleanup.backfill_missing_images`` (default true).
+
+Priority:
+  - The *scheduled* cleanup runs at a lowered scheduling priority (Linux
+    ``nice``) so its filesystem scans and image regeneration yield CPU to the
+    latency-sensitive request threads.  Manual ``run_cleanup.py`` runs are not
+    deprioritized.  Controlled by ``cleanup.scheduler_priority``.
+
 Safety:
   - If the Authentik API returns zero users (e.g. due to an expired token or
     network error), the cleanup aborts entirely to prevent accidental mass
@@ -39,8 +52,10 @@ This module is used in two ways:
 
 import fcntl
 import logging
+import os
 import re
 import shutil
+import sys
 import threading
 import time
 from collections import defaultdict
@@ -50,19 +65,21 @@ from croniter import croniter
 
 from src.authentik import list_active_user_pks, list_all_user_pks
 from src.config import (
+    cleanup_backfill_missing,
     cleanup_interval,
     cleanup_on_startup,
     cleanup_retention_count,
+    cleanup_scheduler_priority,
     cleanup_when_deactivated,
     cleanup_when_deleted,
     dry_run,
     img_formats,
     img_sizes,
 )
-from src.image_formats import FORMAT_MAP
 from src.imaging import (
     AVATAR_ROOT,
     METADATA_ROOT,
+    backfill_avatar_set,
     cleanup_avatar_files,
     get_all_avatar_metadata,
 )
@@ -87,14 +104,63 @@ _run_on_startup = cleanup_on_startup
 _retention_count = cleanup_retention_count
 _cleanup_when_deleted = cleanup_when_deleted
 _cleanup_when_deactivated = cleanup_when_deactivated
+_scheduler_priority = cleanup_scheduler_priority
+_backfill_missing = cleanup_backfill_missing
 
 # Currently configured sizes and on-disk file extensions (used to detect orphans).
-# Formats are resolved through FORMAT_MAP so that e.g. config "jpeg" matches ".jpg" files.
+# img_formats entries are already canonical on-disk extensions (config.py
+# resolves them through FORMAT_MAP, e.g. "jpeg" -> "jpg"), so they can be used
+# directly - the same naming process_image() and backfill_avatar_set() use.
 _configured_sizes = {f"{s}x{s}" for s in img_sizes}
-_configured_formats = {FORMAT_MAP[f.lower()][1] for f in img_formats}
+_configured_formats = set(img_formats)
 
 # Regex to match size directory names like "128x128", "1024x1024"
 _SIZE_DIR_RE = re.compile(r"^\d+x\d+$")
+
+
+def _apply_thread_priority() -> None:
+    """
+    Lower the scheduling priority ("niceness") of the calling thread so the
+    scheduled cleanup yields CPU to the latency-sensitive web request threads.
+
+    Called once from the background cleanup thread(s) - the cron loop and the
+    one-shot startup runner - so only the *automated* cleanup is deprioritized.
+    Manual ``run_cleanup.py`` invocations call ``run_cleanup()`` directly and
+    keep normal priority.
+
+    On Linux the nice value is a per-thread attribute, so adjusting it here
+    affects only the cleanup thread; the gunicorn worker threads serving avatar
+    requests keep their normal priority.  ``os.setpriority`` is used with an
+    absolute target, so the call is idempotent (unlike ``os.nice()``, whose
+    effect is cumulative).  This is therefore restricted to Linux - see the
+    inline note below; other platforms run cleanup at normal priority.
+
+    Raising the nice value (i.e. lowering priority) never requires elevated
+    privileges, so this works inside the non-root, ``cap_drop: ALL`` container.
+    A restricted syscall is logged at debug level and ignored; cleanup then
+    simply runs at normal priority.
+    """
+    # 0 (or negative) means "leave priority unchanged" - raising priority would
+    # need CAP_SYS_NICE, which the container does not grant.
+    if _scheduler_priority <= 0:
+        return
+
+    # Linux only: nice is a per-thread attribute there, so this deprioritizes
+    # only the cleanup thread.  On other Unix (macOS/BSD) PRIO_PROCESS would
+    # lower the whole process, slowing the request threads too; on Windows
+    # setpriority does not exist.  Both cases run cleanup at normal priority.
+    if not sys.platform.startswith("linux"):
+        log.debug("Per-thread nice is Linux-only - cleanup runs at normal priority.")
+        return
+
+    try:
+        # who=0 targets the calling thread; PRIO_PROCESS + nice is per-thread on Linux.
+        os.setpriority(os.PRIO_PROCESS, 0, _scheduler_priority)
+        log.debug("Cleanup thread niceness set to %d.", _scheduler_priority)
+    except OSError as exc:
+        log.debug(
+            "Could not lower cleanup priority to %d: %s", _scheduler_priority, exc
+        )
 
 
 def _try_unlink(path, label: str) -> tuple[int, int]:
@@ -452,6 +518,40 @@ def _run_cleanup_impl() -> int:
     total_deleted += orph_deleted
     total_failed += orph_failed
 
+    # Phase 4: backfill missing sizes/formats for surviving avatar sets.
+    # Runs after Phase 3 so obsolete sizes are already gone and we only operate
+    # on sets that still have valid metadata (won't regenerate files for an
+    # avatar that was just deleted).  This is the inverse of orphan cleanup:
+    # where a new size/format was added to config, existing avatars are filled
+    # in on-demand from the largest image already on disk.
+    backfill_generated = 0
+    backfill_failed = 0
+    backfill_skipped = 0
+    if _backfill_missing:
+        for filename in surviving_filenames:
+            gen, fail, skip = backfill_avatar_set(filename)
+            backfill_generated += gen
+            backfill_failed += fail
+            backfill_skipped += skip
+        # Real backfill write failures are genuine cleanup failures - fold them
+        # into the run-level total so the final summary reflects them.  Skipped
+        # sets (missing files with no readable source) are reported below but
+        # never counted as failures: nothing the job does can resolve them.
+        total_failed += backfill_failed
+        if backfill_generated or backfill_failed or backfill_skipped:
+            # Report all three counts the same way in dry-run and real runs so a
+            # preview never hides unrecoverable or failed sets.  Failed/skipped
+            # are only appended when non-zero to keep the common case terse.
+            verb = "would generate" if dry_run else "generated"
+            details = [f"{verb} {backfill_generated} missing file(s)"]
+            if backfill_skipped:
+                details.append(f"{backfill_skipped} unrecoverable (no source)")
+            if backfill_failed:
+                details.append(f"{backfill_failed} failed")
+            log.info("Backfill: %s.", ", ".join(details))
+    else:
+        log.debug("Phase 4 backfill skipped (cleanup.backfill_missing_images=false).")
+
     if dry_run:
         dry_run_total = dry_run_sets * _FILES_PER_SET + orph_expected
         if dry_run_total:
@@ -488,6 +588,11 @@ def _cleanup_loop() -> None:
     Called as the target of a daemon thread - it exits automatically when the
     main process shuts down.
     """
+    # Deprioritize this background thread so the scheduled cleanup yields to
+    # request handling.  Applied per-thread here (not in run_cleanup) so manual
+    # run_cleanup.py invocations keep normal priority.
+    _apply_thread_priority()
+
     if _run_on_startup:
         log.info("cleanup.on_startup is enabled - running cleanup in 60 s.")
         time.sleep(60)
@@ -519,6 +624,9 @@ def _cleanup_loop() -> None:
 
 def _startup_only_runner() -> None:
     """One-shot startup cleanup runner used when on_startup is set without a schedule."""
+    # Same per-thread deprioritization as the cron loop: this is an automated
+    # (startup-triggered) run, so it yields to request handling.
+    _apply_thread_priority()
     log.info("cleanup.on_startup is enabled (no schedule) - running cleanup in 60 s.")
     time.sleep(60)
     try:

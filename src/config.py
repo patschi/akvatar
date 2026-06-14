@@ -69,6 +69,16 @@ except yaml.YAMLError as exc:
 
 # Convenience references for each config section
 dry_run = cfg.get("dry_run", False)
+# Backend-write dry-run: skip write requests to the external backends - the
+# Authentik API (the PATCH in _patch_user) and LDAP photo attributes.  Everything
+# else proceeds for real: images are saved to disk, the cleanup job mutates the
+# filesystem, and the backends are still read from.  Useful for testing the
+# pipeline against live backends without mutating user profiles.
+dry_run_backend = bool(cfg.get("dry_run_backend", False))
+# Derived: True when writes to the external backends (Authentik + LDAP) must be
+# suppressed.  Full dry_run is a superset of dry_run_backend (it additionally
+# makes the cleanup/backfill job log-only).  Backend reads always proceed.
+skip_backend_writes = bool(dry_run) or dry_run_backend
 branding_cfg = cfg.get("branding", {})
 app_cfg = cfg.get("app", {})
 security_cfg = cfg.get("security", {})
@@ -216,6 +226,14 @@ cleanup_on_startup: bool = bool(cleanup_cfg.get("on_startup", False))
 cleanup_retention_count: int = int(cleanup_cfg.get("avatar_retention_count", 2))
 cleanup_when_deleted: bool = bool(cleanup_cfg.get("when_user_deleted", True))
 cleanup_when_deactivated: bool = bool(cleanup_cfg.get("when_user_deactivated", False))
+# Niceness applied to the scheduled (automated) cleanup thread so it yields CPU
+# to request handling.  Higher = lower priority (Linux nice range is -20..19);
+# 0 disables the change.  Only lowering priority is attempted, which never
+# requires elevated privileges.  Manual `run_cleanup.py` runs are unaffected.
+cleanup_scheduler_priority: int = int(cleanup_cfg.get("scheduler_priority", 10))
+# Regenerate avatar files that are missing for a configured size/format. Lets the
+# cleanup job heal existing avatars after a new size or format is added to config.
+cleanup_backfill_missing: bool = bool(cleanup_cfg.get("backfill_missing_images", True))
 
 # Image import
 gravatar_enabled: bool = bool(import_cfg.get("gravatar", {}).get("enabled", True))
@@ -327,6 +345,12 @@ if dry_run:
     log.warning(
         "DRY-RUN MODE is enabled - no changes will be pushed to Authentik or LDAP."
     )
+elif dry_run_backend:
+    # Only warn for the standalone backend mode; full dry_run already covers it.
+    log.warning(
+        "BACKEND DRY-RUN MODE is enabled - Authentik API and LDAP writes are "
+        "skipped, but filesystem writes (including cleanup) still happen."
+    )
 
 # Warn when security.metadata_access had an unrecognized value and fell back to owner_only
 if metadata_access != _raw_metadata_access:
@@ -426,8 +450,6 @@ _fatal_unless(
     f"authentik.avatar_size={ak_avatar_size} is not in images.sizes={img_sizes}.",
 )
 
-_valid_formats_lower = {f.lower() for f in img_formats}
-
 # Validate each entry in images.formats against known format keys.
 # Catches typos (e.g. "jpge") and unsupported formats (e.g. "bmp") at
 # startup rather than at runtime when the first upload triggers a KeyError
@@ -438,6 +460,19 @@ for _fmt in img_formats:
         f"images.formats contains unsupported format {_fmt!r}. "
         f"Supported values: {sorted(_FORMAT_MAP.keys())}.",
     )
+
+# Canonicalize every format to its on-disk extension ("jpeg" -> "jpg") so all
+# consumers - file naming in process_image(), URL serving, orphan detection and
+# backfill in the cleanup job - agree on a single extension per format.
+# Without this, a config value of "jpeg" makes process_image() write ".jpeg"
+# files that the cleanup job (which compares against the canonical extension
+# from FORMAT_MAP) deletes as obsolete-format orphans and the backfill phase
+# then regenerates, on every cleanup run.  Order is preserved; aliases that
+# resolve to the same extension ("jpeg" and "jpg") are de-duplicated.
+img_formats = list(dict.fromkeys(_FORMAT_MAP[_f.lower()][1] for _f in img_formats))
+
+# All entries are canonical lower-case extensions after the step above.
+_valid_formats_lower = set(img_formats)
 
 _ak_avatar_format = ak_cfg.get("avatar_format", "jpg")
 _fatal_unless(

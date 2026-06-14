@@ -8,6 +8,7 @@ square sizes, and saving in every configured format (jpg, png, webp, avif).
 import io
 import json
 import logging
+from collections import defaultdict
 from pathlib import Path
 from secrets import token_urlsafe
 from time import time_ns
@@ -17,6 +18,7 @@ from PIL import Image, ImageOps
 
 from src.config import (
     avatar_storage_path,
+    dry_run,
     img_avif_quality,
     img_formats,
     img_jpeg_quality,
@@ -26,7 +28,7 @@ from src.config import (
     img_webp_quality,
     public_avatar_url,
 )
-from src.image_formats import FORMAT_MAP
+from src.image_formats import BACKFILL_SOURCE_PREFERENCE, FORMAT_MAP
 
 log = logging.getLogger("imaging")
 
@@ -426,6 +428,184 @@ def cleanup_avatar_files(filename_base: str) -> tuple[int, int]:
         failed += 1
     log.info("Cleanup: %d deleted, %d failed for %s.", deleted, failed, filename_base)
     return deleted, failed
+
+
+# Backfill (regenerate missing sizes/formats)
+#
+# Rank lookup derived from BACKFILL_SOURCE_PREFERENCE so image_formats.py stays
+# the single source of truth for format metadata (adding a format only requires
+# touching that file).  Lower rank = preferred regeneration source; extensions
+# not listed there sort last but still work.
+_SOURCE_EXT_RANK: dict[str, int] = {
+    ext: rank for rank, ext in enumerate(BACKFILL_SOURCE_PREFERENCE)
+}
+
+
+def _load_largest_source_image(filename_base: str) -> tuple[Image.Image, int] | None:
+    """
+    Load the highest-resolution on-disk image for one avatar set, to use as the
+    source when regenerating missing sizes/formats.
+
+    Searches the configured sizes from largest to smallest and, within each
+    size, prefers lossless / higher-fidelity formats (BACKFILL_SOURCE_PREFERENCE
+    in image_formats.py) so a lossless PNG is chosen over a lossy JPEG at the
+    same resolution.
+
+    Returns ``(image, source_size)`` for the first file that decodes
+    successfully, or ``None`` when no file for this set can be read.
+    """
+    # Candidate extensions are the configured formats ordered by fidelity.
+    # img_formats entries are already canonical on-disk extensions (config.py
+    # resolves them through FORMAT_MAP), matching process_image()'s file naming.
+    source_exts = sorted(
+        img_formats,
+        key=lambda e: _SOURCE_EXT_RANK.get(e, len(BACKFILL_SOURCE_PREFERENCE)),
+    )
+    for size in sorted(img_sizes, reverse=True):
+        size_dir = AVATAR_ROOT / f"{size}x{size}"
+        for ext in source_exts:
+            candidate = size_dir / f"{filename_base}.{ext}"
+            if not candidate.is_file():
+                continue
+            try:
+                # Open inside a context manager and force-decode with load() so
+                # the returned copy is detached from the (now closed) file.
+                with Image.open(candidate) as img:
+                    img.load()
+                    return img.copy(), size
+            except Exception as exc:
+                log.warning(
+                    "Could not decode %s as a backfill source: %s", candidate, exc
+                )
+    return None
+
+
+def backfill_avatar_set(filename_base: str) -> tuple[int, int, int]:
+    """
+    Ensure one avatar set has a file for every configured size x format,
+    regenerating only the ones that are missing.
+
+    When ``images.sizes`` or ``images.formats`` gains a new entry, avatars that
+    were uploaded before the change have no file for the new size/format.  This
+    regenerates the missing files from the largest image already on disk for the
+    set, so existing avatars become available in the new size/format without
+    requiring users to re-upload.  Existing files are never overwritten.
+
+    If the only available source is smaller than a missing size, the image is
+    upscaled (logged as a warning): the original full-resolution upload is not
+    retained, so the largest stored size is the best source available.
+
+    Returns ``(generated, failed, skipped)``:
+      - generated: files successfully created (or, in dry-run, that would be).
+      - failed: files that could not be created because a resize/encode/write
+        raised - a genuine error worth counting against the run.
+      - skipped: files left missing because the set has no readable source
+        image to regenerate from.  This is an anomaly (metadata survives but
+        the pixels are gone), reported but deliberately not counted as a
+        failure, since no amount of retrying can resolve it.
+    Returns ``(0, 0, 0)`` when the set is already complete.
+    Respects dry_run mode (logs intent, writes nothing).
+    """
+    # Group the missing outputs by size so each size is resized only once and
+    # the result is reused across that size's formats.  Each entry is the Pillow
+    # save format and the target path.  img_formats entries are already the
+    # canonical on-disk extensions (config.py resolves them through FORMAT_MAP),
+    # so the naming matches process_image() and the cleanup job's orphan check.
+    missing_by_size: dict[int, list[tuple[str, Path]]] = defaultdict(list)
+    for size in img_sizes:
+        size_dir = AVATAR_ROOT / f"{size}x{size}"
+        for ext in img_formats:
+            out_path = size_dir / f"{filename_base}.{ext}"
+            if not out_path.exists():
+                missing_by_size[size].append((FORMAT_MAP[ext][0], out_path))
+
+    if not missing_by_size:
+        return 0, 0, 0
+
+    total_missing = sum(len(combos) for combos in missing_by_size.values())
+
+    # Load the best available source once and reuse it for every missing size.
+    source = _load_largest_source_image(filename_base)
+    if source is None:
+        # Metadata survives but no decodable image remains: nothing to
+        # regenerate from.  Report as "skipped" (not "failed") - retrying can
+        # never fix it, so it must not inflate the run's failure count.
+        log.warning(
+            "Cannot backfill %d missing file(s) for %s - no readable source image.",
+            total_missing,
+            filename_base,
+        )
+        return 0, 0, total_missing
+
+    source_image, source_size = source
+    # The source is one of our own outputs: process_image() already ran the full
+    # normalize_image() treatment (EXIF orientation, metadata strip) before the
+    # file was written, so repeating its unconditional pixel-buffer rebuild here
+    # would be pure waste.  Only the mode guard is kept - a no-op for our own
+    # RGB/RGBA outputs, it protects against legacy or hand-placed files.  It is
+    # wrapped so one odd image skips this set instead of aborting the whole
+    # backfill phase of the cleanup run.
+    if source_image.mode not in ("RGB", "RGBA"):
+        try:
+            source_image = source_image.convert("RGBA")
+        except Exception:
+            log.exception(
+                "Could not convert backfill source for %s (mode %r) - skipping set.",
+                filename_base,
+                source_image.mode,
+            )
+            return 0, 0, total_missing
+
+    generated = 0
+    failed = 0
+    for size, combos in missing_by_size.items():
+        if size > source_size:
+            log.warning(
+                "Backfilling %dx%d for %s by upscaling from %dx%d - the original "
+                "upload is not retained, so output quality is limited.",
+                size,
+                size,
+                filename_base,
+                source_size,
+                source_size,
+            )
+        try:
+            resized = source_image.resize((size, size), Image.LANCZOS)
+        except Exception:
+            log.exception(
+                "Failed to resize %s to %dx%d during backfill.",
+                filename_base,
+                size,
+                size,
+            )
+            failed += len(combos)
+            continue
+
+        # Flatten RGBA -> RGB lazily and once per size; shared by all JPEG outputs.
+        resized_rgb: Image.Image | None = None
+        for pillow_fmt, out_path in combos:
+            try:
+                if pillow_fmt == "JPEG":
+                    if resized_rgb is None:
+                        resized_rgb = _flatten_rgba_to_rgb(resized)
+                    target_img = resized_rgb
+                else:
+                    target_img = resized
+
+                rel = f"{size}x{size}/{out_path.name}"
+                if dry_run:
+                    log.info("[DRY-RUN] Would backfill missing avatar file %s.", rel)
+                else:
+                    _save_image(target_img, out_path, pillow_fmt)
+                    log.info("Backfilled missing avatar file %s.", rel)
+                generated += 1
+            except Exception:
+                log.exception("Failed to backfill %s.", out_path)
+                failed += 1
+
+    # skipped is 0 here: a readable source existed, so every missing file was
+    # either generated or counted as a hard failure above.
+    return generated, failed, 0
 
 
 def _read_meta(path: Path) -> dict | None:

@@ -40,8 +40,10 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **LDAP / Active Directory**: writes one or more photo attributes (binary bytes or URL
   string); optional, toggle in config
 - **Automatic cleanup**: cron-scheduled job removes avatars of deleted users, enforces
-  per-user retention limits, and clears orphaned files from obsolete sizes or formats;
-  concurrent runs are skipped (non-blocking lock guard)
+  per-user retention limits, clears orphaned files from obsolete sizes or formats, and
+  backfills files missing for a newly added size or format (regenerated from the largest
+  image on disk); runs at a lowered scheduling priority (`nice`) so it yields to request
+  handling, and concurrent runs are skipped (non-blocking lock guard)
 - **Real-time progress**: Server-Sent Events stream each processing step with
   success / failed / skipped / dry-run status
 - **Configurable branding**: customize the application name in the UI
@@ -50,7 +52,8 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
 - **Optional built-in TLS**: serve HTTPS directly without a reverse proxy; HTTP/2 is supported when
   TLS is configured (ALPN negotiation, enabled by default)
 - **Dry-run mode**: processes and saves images but skips all Authentik and LDAP writes;
-  logs what would have happened instead
+  logs what would have happened instead. A narrower `dry_run_backend` variant skips the same
+  backend writes (Authentik + LDAP) but keeps the cleanup job's on-disk changes real
 - **CSRF protection**: per-session token validated server-side via `X-CSRF-Token` header
   with `secrets.compare_digest()` on all state-changing requests
 - **Client-side session liveness check**: dashboard polls `/api/heartbeat` every 60 s and

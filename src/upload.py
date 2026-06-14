@@ -26,7 +26,13 @@ from datetime import UTC, datetime
 from PIL import Image
 
 from src.authentik import revert_avatar_url, update_avatar_url
-from src.config import ak_avatar_ext, ak_avatar_size, dry_run, img_formats, img_sizes
+from src.config import (
+    ak_avatar_ext,
+    ak_avatar_size,
+    img_formats,
+    img_sizes,
+    skip_backend_writes,
+)
 from src.i18n import t
 from src.image_formats import FORMAT_MAP
 from src.imaging import (
@@ -175,7 +181,8 @@ def _step_sync_authentik(user_pk: int, canonical_url: str, avatar_id: str):
         yield _sse(
             {
                 "step": t("step.profile_synced"),
-                "status": "dry-run" if dry_run else "success",
+                # Authentik write is suppressed under full dry_run or dry_run_backend.
+                "status": "dry-run" if skip_backend_writes else "success",
             }
         )
         return ak_attrs, old_url, old_id, False
@@ -270,7 +277,8 @@ def _step_sync_ldap(
         yield _sse(
             {
                 "step": t("step.ldap_updated"),
-                "status": "dry-run" if dry_run else "success",
+                # LDAP write is suppressed under full dry_run or dry_run_backend.
+                "status": "dry-run" if skip_backend_writes else "success",
             }
         )
         return False
@@ -354,8 +362,10 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
         # Rollback on any backend failure
         if ak_failed or ldap_failed:
             log.warning("Backend update failed - rolling back for %s.", filename_base)
-            # Revert Authentik if it was already updated successfully
-            if not ak_failed and not dry_run:
+            # Revert Authentik only if a real PATCH was actually sent: it
+            # succeeded (not ak_failed) and writes were not suppressed (neither
+            # full dry_run nor dry_run_backend).  Otherwise there is nothing to undo.
+            if not ak_failed and not skip_backend_writes:
                 try:
                     revert_avatar_url(user_pk, old_avatar_url, old_avatar_id)
                     log.debug("Authentik avatar reverted for pk=%s.", user_pk)

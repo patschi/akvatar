@@ -52,6 +52,13 @@ NEGOTIATION_PREFERENCE: list[tuple[str, str]] = [
     ("image/jpeg", "jpg"),
 ]
 
+# Preference order for choosing the regeneration source when the cleanup job
+# backfills missing avatar files.  Uses canonical file extensions (FORMAT_MAP
+# values).  Lossless PNG best preserves fidelity; among the lossy formats the
+# order is a pragmatic quality preference.  Earlier = preferred; extensions not
+# listed here still work but sort last.
+BACKFILL_SOURCE_PREFERENCE: list[str] = ["png", "avif", "webp", "jpg"]
+
 # Allowlist of MIME types accepted from remote servers - derived from
 # MIME_TO_EXT so both stay in sync automatically: adding a new MIME type to
 # MIME_TO_EXT automatically permits it here too.  Types absent from
