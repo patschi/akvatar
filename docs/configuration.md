@@ -884,6 +884,13 @@ IP.
 Set to `false` only when running without a reverse proxy (direct exposure to the internet or local
 access only). When disabled, any forwarded headers sent by clients are ignored.
 
+> **Security**: when `proxy_mode` is enabled, `ProxyFix` trusts the last hop's `X-Forwarded-For`
+> value as the client IP, and that IP drives rate limiting and the rate-limit IP whitelist. Make
+> sure the application port is reachable **only** through the trusted reverse proxy. If the port is
+> also exposed directly, a client can send a forged `X-Forwarded-For` header to spoof its IP -
+> bypassing the whitelist or evading per-IP limits by rotating fake addresses. Bind the app to an
+> internal interface or firewall the port so only the proxy can reach it.
+
 ### `webserver.trusted_hosts`
 
 | Property    | Value                   |

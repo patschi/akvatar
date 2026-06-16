@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, session
 
 from src.auth import login_required
 from src.authentik import remove_avatar_url
+from src.config import skip_backend_writes
 from src.sec_csrf import csrf_required
 
 log = logging.getLogger("reset_img")
@@ -35,6 +36,18 @@ def api_remove_avatar():
             "Failed to remove avatar for user %r (pk=%s).", user["username"], user["pk"]
         )
         return jsonify({"error": "remove_failed"}), 500
+
+    # Under a suppressed backend write (full dry_run or dry_run_backend) the
+    # Authentik avatar attribute was NOT actually cleared, so the session must
+    # keep reflecting the real backend state.  Report dry_run so the client does
+    # not claim a real removal (mirrors the upload pipeline's "dry-run" status).
+    if skip_backend_writes:
+        log.info(
+            "[DRY-RUN] Avatar removal for user %r (pk=%s) suppressed - no backend write.",
+            user["username"],
+            user["pk"],
+        )
+        return jsonify({"success": True, "dry_run": True})
 
     # Clear the avatar from the session so the UI reflects the change immediately.
     # Reassign the whole user dict (rather than mutating it in place) so Flask's

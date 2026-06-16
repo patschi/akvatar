@@ -339,7 +339,10 @@ def run_cleanup() -> int:
     Run all cleanup phases:
       1. Remove avatar sets for deleted users (and optionally deactivated users).
       2. Enforce per-user retention for remaining users.
-      3. Remove orphaned files (obsolete sizes/formats, images without metadata).
+      3. Remove orphaned files for obsolete sizes and formats.
+      4. Remove orphaned metadata files with no matching images on disk.
+      5. Backfill files missing for a configured size/format, regenerated from
+         the largest image on disk (cleanup.backfill_missing_images).
 
     Matching is done by ``user_pk`` (Authentik's integer primary key), which
     is immutable - unlike usernames, it survives renames and reveals no PII.
@@ -511,16 +514,17 @@ def _run_cleanup_impl() -> int:
     # Filenames that should still exist on disk after phases 1 and 2
     surviving_filenames = all_filenames - deleted_filenames
 
-    # Phase 3: remove orphaned files (obsolete sizes, formats, no metadata).
+    # Phases 3-4: remove orphaned files (obsolete sizes/formats, images without
+    # metadata, and metadata without images).
     orph_expected, orph_deleted, orph_failed = _cleanup_orphaned_files(
         surviving_filenames
     )
     total_deleted += orph_deleted
     total_failed += orph_failed
 
-    # Phase 4: backfill missing sizes/formats for surviving avatar sets.
-    # Runs after Phase 3 so obsolete sizes are already gone and we only operate
-    # on sets that still have valid metadata (won't regenerate files for an
+    # Phase 5: backfill missing sizes/formats for surviving avatar sets.
+    # Runs after the orphan phases so obsolete sizes are already gone and we only
+    # operate on sets that still have valid metadata (won't regenerate files for an
     # avatar that was just deleted).  This is the inverse of orphan cleanup:
     # where a new size/format was added to config, existing avatars are filled
     # in on-demand from the largest image already on disk.
@@ -550,30 +554,46 @@ def _run_cleanup_impl() -> int:
                 details.append(f"{backfill_failed} failed")
             log.info("Backfill: %s.", ", ".join(details))
     else:
-        log.debug("Phase 4 backfill skipped (cleanup.backfill_missing_images=false).")
+        log.debug("Phase 5 backfill skipped (cleanup.backfill_missing_images=false).")
+
+    # Backfill counts are reported on their own "Backfill: ..." line above; also
+    # fold the generated count into the final summary so a run that only
+    # generated files is never summarized as "nothing to remove" (LOG-01).
+    gen_clause = ""
+    if backfill_generated:
+        gen_verb = "would generate" if dry_run else "generated"
+        gen_clause = f", {gen_verb} {backfill_generated} file(s)"
 
     if dry_run:
         dry_run_total = dry_run_sets * _FILES_PER_SET + orph_expected
         if dry_run_total:
             log.info(
-                "Cleanup complete: would remove ~%d file(s) (%d avatar set(s), %d orphan(s)).",
+                "Cleanup complete: would remove ~%d file(s) (%d avatar set(s), %d orphan(s))%s.",
                 dry_run_total,
                 dry_run_sets,
                 orph_expected,
+                gen_clause,
             )
+        elif gen_clause:
+            log.info("Cleanup complete: nothing to remove%s.", gen_clause)
         else:
             log.info("Cleanup complete: nothing to remove.")
     elif total_deleted or total_failed:
         total_targeted = total_deleted + total_failed
         if total_failed:
             log.info(
-                "Cleanup complete: %d deleted, %d failed (%d targeted).",
+                "Cleanup complete: %d deleted, %d failed (%d targeted)%s.",
                 total_deleted,
                 total_failed,
                 total_targeted,
+                gen_clause,
             )
         else:
-            log.info("Cleanup complete: %d file(s) deleted.", total_deleted)
+            log.info(
+                "Cleanup complete: %d file(s) deleted%s.", total_deleted, gen_clause
+            )
+    elif gen_clause:
+        log.info("Cleanup complete: nothing to remove%s.", gen_clause)
     else:
         log.info("Cleanup complete: nothing to remove.")
 

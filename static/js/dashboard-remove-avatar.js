@@ -69,8 +69,19 @@
                 return;
             }
 
-            logger.info("remove-avatar", "avatar removed successfully");
+            // Parse the response so a dry-run removal (full dry_run or
+            // dry_run_backend) does not falsely update the UI: the backend
+            // avatar attribute was not actually cleared, so the header must keep
+            // showing the existing avatar.
+            var data = await resp.json().catch(function () { return {}; });
             removeDialog.close();
+
+            if (data && data.dry_run) {
+                logger.info("remove-avatar", "avatar removal was a dry-run - backend unchanged, avatar kept");
+                return;
+            }
+
+            logger.info("remove-avatar", "avatar removed successfully");
 
             // Revert the profile avatar in the header to the placeholder circle
             setProfileAvatar(null);

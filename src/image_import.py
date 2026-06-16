@@ -118,9 +118,16 @@ def resolves_to_private_ip(hostname: str) -> bool:
     try:
         results = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
-        # DNS resolution failed - not a private IP issue; let the HTTP
-        # request fail naturally with a more descriptive error.
-        return False
+        # DNS resolution failed: we cannot verify the target is safe, so fail
+        # closed and treat it as disallowed.  A name that fails resolution here
+        # but resolves to an internal IP at connect time must not slip through;
+        # the cost is that a genuinely transient DNS failure surfaces to the user
+        # as a blocked URL rather than an SSRF hole.
+        log.warning(
+            "Blocked URL import: hostname %r could not be resolved for the SSRF check.",
+            hostname,
+        )
+        return True
 
     for result in results:
         # Strip IPv6 scope/zone ID (e.g. '%eth0') which ipaddress does not accept

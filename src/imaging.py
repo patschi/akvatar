@@ -178,6 +178,34 @@ def _save_image(
         raise ValueError(f"Unsupported Pillow format: {pillow_fmt!r}")
 
 
+class _ResizedAvatar:
+    """
+    Wraps one resized avatar image and returns the correct pixel buffer per
+    output format, flattening RGBA -> RGB exactly once (lazily) and reusing it
+    across every JPEG output of this size.
+
+    Centralizes the format -> image decision shared by process_image() (fresh
+    uploads) and backfill_avatar_set() (regenerating missing files) so the two
+    code paths cannot drift in how they handle alpha and JPEG flattening.
+    """
+
+    def __init__(self, resized: Image.Image) -> None:
+        self._resized = resized
+        self._rgb: Image.Image | None = None
+
+    def for_format(self, pillow_fmt: str) -> Image.Image:
+        """
+        Return the image to encode for *pillow_fmt*: a flattened RGB copy for
+        JPEG (which has no alpha channel), or the resized image as-is for
+        formats that support alpha (PNG/WebP/AVIF).
+        """
+        if pillow_fmt != "JPEG":
+            return self._resized
+        if self._rgb is None:
+            self._rgb = _flatten_rgba_to_rgb(self._resized)
+        return self._rgb
+
+
 def process_image(
     image: Image.Image, filename_base: str
 ) -> tuple[dict[str, dict[str, str]], int]:
@@ -215,10 +243,10 @@ def process_image(
 
         size_dir = AVATAR_ROOT / key
 
-        # Pre-composite RGBA onto the configured background color once per size,
-        # producing an RGB image for JPEG output.  Done once and reused across
-        # every JPEG output of this size.
-        resized_rgb = _flatten_rgba_to_rgb(resized)
+        # Shared renderer: flattens RGBA -> RGB once (lazily) and reuses it
+        # across this size's JPEG outputs.  Same primitive backfill_avatar_set()
+        # uses, so the two paths cannot drift in how alpha/JPEG is handled.
+        rendered = _ResizedAvatar(resized)
 
         for fmt in formats:
             ext = fmt.lower()
@@ -226,8 +254,7 @@ def process_image(
             out_path = size_dir / f"{filename_base}.{ext}"
             log.debug("Saving %s as %s.", key, ext.upper())
 
-            target_img = resized_rgb if pillow_fmt == "JPEG" else resized
-            _save_image(target_img, out_path, pillow_fmt)
+            _save_image(rendered.for_format(pillow_fmt), out_path, pillow_fmt)
 
             file_size = out_path.stat().st_size
             total_bytes += file_size
@@ -440,6 +467,16 @@ _SOURCE_EXT_RANK: dict[str, int] = {
     ext: rank for rank, ext in enumerate(BACKFILL_SOURCE_PREFERENCE)
 }
 
+# Configured formats ordered by regeneration-source preference, computed once.
+# The candidate list _load_largest_source_image() walks is identical for every
+# avatar set (img_formats is fixed at import time), so there is no need to
+# re-sort it on each call.  img_formats entries are already canonical on-disk
+# extensions; extensions absent from BACKFILL_SOURCE_PREFERENCE sort last.
+_SOURCE_EXTS_BY_PREFERENCE: list[str] = sorted(
+    img_formats,
+    key=lambda e: _SOURCE_EXT_RANK.get(e, len(BACKFILL_SOURCE_PREFERENCE)),
+)
+
 
 def _load_largest_source_image(filename_base: str) -> tuple[Image.Image, int] | None:
     """
@@ -454,16 +491,13 @@ def _load_largest_source_image(filename_base: str) -> tuple[Image.Image, int] | 
     Returns ``(image, source_size)`` for the first file that decodes
     successfully, or ``None`` when no file for this set can be read.
     """
-    # Candidate extensions are the configured formats ordered by fidelity.
-    # img_formats entries are already canonical on-disk extensions (config.py
-    # resolves them through FORMAT_MAP), matching process_image()'s file naming.
-    source_exts = sorted(
-        img_formats,
-        key=lambda e: _SOURCE_EXT_RANK.get(e, len(BACKFILL_SOURCE_PREFERENCE)),
-    )
+    # Candidate extensions are the configured formats ordered by fidelity
+    # (precomputed in _SOURCE_EXTS_BY_PREFERENCE).  img_formats entries are
+    # already canonical on-disk extensions (config.py resolves them through
+    # FORMAT_MAP), matching process_image()'s file naming.
     for size in sorted(img_sizes, reverse=True):
         size_dir = AVATAR_ROOT / f"{size}x{size}"
-        for ext in source_exts:
+        for ext in _SOURCE_EXTS_BY_PREFERENCE:
             candidate = size_dir / f"{filename_base}.{ext}"
             if not candidate.is_file():
                 continue
@@ -581,22 +615,19 @@ def backfill_avatar_set(filename_base: str) -> tuple[int, int, int]:
             failed += len(combos)
             continue
 
-        # Flatten RGBA -> RGB lazily and once per size; shared by all JPEG outputs.
-        resized_rgb: Image.Image | None = None
+        # Same shared renderer process_image() uses: flatten RGBA -> RGB once
+        # per size, reused across this size's JPEG outputs.
+        rendered = _ResizedAvatar(resized)
         for pillow_fmt, out_path in combos:
             try:
-                if pillow_fmt == "JPEG":
-                    if resized_rgb is None:
-                        resized_rgb = _flatten_rgba_to_rgb(resized)
-                    target_img = resized_rgb
-                else:
-                    target_img = resized
-
                 rel = f"{size}x{size}/{out_path.name}"
                 if dry_run:
                     log.info("[DRY-RUN] Would backfill missing avatar file %s.", rel)
                 else:
-                    _save_image(target_img, out_path, pillow_fmt)
+                    # Create the size directory in case a newly-added size has no
+                    # directory yet, so the save does not raise (BUG-01).
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    _save_image(rendered.for_format(pillow_fmt), out_path, pillow_fmt)
                     log.info("Backfilled missing avatar file %s.", rel)
                 generated += 1
             except Exception:
