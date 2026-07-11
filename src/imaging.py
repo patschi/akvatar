@@ -554,9 +554,18 @@ def backfill_avatar_set(filename_base: str) -> tuple[int, int, int]:
                 missing_by_size[size].append((FORMAT_MAP[ext][0], out_path))
 
     if not missing_by_size:
+        # Set already has every configured size x format on disk - nothing to do.
+        log.debug("Backfill check: %s is complete, no missing files.", filename_base)
         return 0, 0, 0
 
     total_missing = sum(len(combos) for combos in missing_by_size.values())
+
+    # A configured size/format is missing for this set: it needs backfilling.
+    log.debug(
+        "Backfill check: %s is missing %d file(s), regenerating from largest source.",
+        filename_base,
+        total_missing,
+    )
 
     # Load the best available source once and reuse it for every missing size.
     source = _load_largest_source_image(filename_base)

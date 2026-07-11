@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 
 from PIL import Image
 
+from src import APP_NAME, APP_VERSION
 from src.authentik import revert_avatar_url, update_avatar_url
 from src.config import (
     ak_avatar_ext,
@@ -47,6 +48,7 @@ from src.imaging import (
 from src.ldap_client import get_photos_config as ldap_photos_config
 from src.ldap_client import is_enabled as ldap_is_enabled
 from src.ldap_client import update_photos as update_ldap_photos
+from src.webhooks import fire_webhooks
 
 log = logging.getLogger("upload")
 
@@ -380,6 +382,24 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
 
         # Persist metadata
         _save_metadata(filename_base, user_pk, total_bytes)
+
+        # Fire outgoing webhooks (non-blocking) now that the update is a full
+        # success.  Delivery runs in a background thread; failures are logged
+        # inside fire_webhooks and never affect the user's result.
+        fire_webhooks(
+            {
+                "username": username,
+                "name": user.get("name", ""),
+                "email": user.get("email", ""),
+                "user_pk": user_pk,
+                "avatar_url": canonical_url,
+                "avatar_id": filename_base,
+                "total_bytes": total_bytes,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "app_name": APP_NAME,
+                "app_version": APP_VERSION,
+            }
+        )
 
         # Session update is handled by the caller via /api/upload/commit:
         # the client calls that endpoint after receiving this done event, which

@@ -6,9 +6,11 @@ Reads config.yml once at import time so every other module can simply
 """
 
 import io as _io
+import json as _json
 import logging
 import os
 import ssl
+import string as _string
 import sys
 from urllib.parse import urlparse
 
@@ -90,6 +92,7 @@ img_cfg = cfg.get("images", {})
 cleanup_cfg = cfg.get("cleanup", {})
 import_cfg = cfg.get("image_import", {})
 sentry_cfg = cfg.get("sentry", {})
+webhooks_cfg = cfg.get("webhooks", {})  # May be absent if disabled
 access_log = bool(web_cfg.get("access_log", False))
 http2_cfg = web_cfg.get("http2", {})
 
@@ -119,6 +122,30 @@ DEFAULT_LOCALE: str = "en_US"
 # Pillow decompression bomb pixel limit.  A small file on disk can expand to an
 # enormous bitmap in memory; 25 MP at 4 bytes/pixel ≈ 100 MB of RAM.
 MAX_IMAGE_PIXELS: int = 25_000_000
+
+# ---------------------------------------------------------------------------
+# Outgoing webhook placeholders - the complete set of {tokens} allowed in a
+# webhook body/header template.  src/webhooks.py builds its runtime event
+# context from exactly these keys, so this frozenset is the single source of
+# truth that keeps config validation and runtime substitution from drifting.
+# ---------------------------------------------------------------------------
+WEBHOOK_PLACEHOLDERS: frozenset[str] = frozenset(
+    {
+        "username",  # Authentik username
+        "name",  # display name
+        "email",  # email address
+        "user_pk",  # Authentik integer PK (JSON number when used as a lone token)
+        "avatar_url",  # canonical avatar URL pushed to Authentik
+        "avatar_id",  # avatar filename base (no host/extension)
+        "total_bytes",  # combined byte size of all generated files (JSON number)
+        "timestamp",  # ISO-8601 UTC time of the successful update
+        "app_name",  # application name (akvatar)
+        "app_version",  # application version
+    }
+)
+
+# HTTP methods permitted for a webhook endpoint.
+WEBHOOK_ALLOWED_METHODS: frozenset[str] = frozenset({"POST", "PUT", "PATCH", "GET"})
 
 # ---------------------------------------------------------------------------
 # Per-setting named exports - defaults resolved centrally; re-use in modules
@@ -552,6 +579,102 @@ if ldap_enabled:
         ldap_port,
     )
     log.info("LDAP configured with %d photo attribute(s).", len(ldap_photos))
+
+# Outgoing webhooks (optional) - fired after a fully successful avatar update.
+webhooks_enabled: bool = bool(webhooks_cfg.get("enabled", False))
+webhooks_endpoints: list = webhooks_cfg.get("endpoints", [])
+
+
+def _webhook_template_tokens(value) -> set[str]:
+    """Recursively collect every {placeholder} token used in a template value.
+
+    Walks dicts, lists, and strings.  Uses the same field parser as str.format
+    so config validation matches the runtime substitution in src/webhooks.py
+    exactly.  Raises ValueError on a malformed template (e.g. an unbalanced brace).
+    """
+    tokens: set[str] = set()
+    if isinstance(value, dict):
+        for _v in value.values():
+            tokens |= _webhook_template_tokens(_v)
+    elif isinstance(value, list):
+        for _v in value:
+            tokens |= _webhook_template_tokens(_v)
+    elif isinstance(value, str):
+        # Formatter.parse yields (literal_text, field_name, format_spec, conversion)
+        for _literal, _field, _spec, _conv in _string.Formatter().parse(value):
+            if _field:
+                tokens.add(_field)
+    return tokens
+
+
+if webhooks_enabled:
+    if not webhooks_endpoints:
+        log.warning(
+            "Webhooks are enabled but no endpoints are configured (webhooks.endpoints is empty)."
+        )
+
+    for _i, _wh in enumerate(webhooks_endpoints):
+        _pfx = f"webhooks.endpoints[{_i}]"
+
+        # url is required and must be an absolute http(s) URL
+        _url = _wh.get("url", "")
+        _fatal_unless(bool(_url), f'{_pfx} is missing required key "url".')
+        _wp = urlparse(_url)
+        _fatal_unless(
+            _wp.scheme in ("http", "https") and bool(_wp.netloc),
+            f"{_pfx}.url={_url!r} must be an absolute http(s) URL.",
+        )
+        if _wp.scheme != "https":
+            log.warning(
+                "%s.url uses plain HTTP - the webhook payload (including any "
+                "secrets in headers) will be sent unencrypted.",
+                _pfx,
+            )
+
+        # method (optional) must be one of the allowed HTTP methods
+        _method = str(_wh.get("method", "POST")).upper()
+        _fatal_unless(
+            _method in WEBHOOK_ALLOWED_METHODS,
+            f"{_pfx}.method={_method!r} must be one of {sorted(WEBHOOK_ALLOWED_METHODS)}.",
+        )
+
+        # timeout (optional) must be a positive integer number of seconds
+        if "timeout" in _wh:
+            _fatal_unless(
+                isinstance(_wh["timeout"], int) and _wh["timeout"] > 0,
+                f"{_pfx}.timeout={_wh['timeout']!r} must be a positive integer (seconds).",
+            )
+
+        # headers (optional) must be a mapping
+        _headers = _wh.get("headers", {})
+        _fatal_unless(
+            isinstance(_headers, dict),
+            f"{_pfx}.headers must be a mapping of header name to value.",
+        )
+
+        # body (optional) must be JSON-serializable
+        _body = _wh.get("body", None)
+        if _body is not None:
+            try:
+                _json.dumps(_body)
+            except (TypeError, ValueError) as _exc:
+                _fatal(f"{_pfx}.body is not JSON-serializable: {_exc}.")
+
+        # Every {placeholder} used in body/headers must be a known token
+        try:
+            _used = _webhook_template_tokens(_headers) | _webhook_template_tokens(
+                _body if _body is not None else {}
+            )
+        except ValueError as _exc:
+            _fatal(f"{_pfx} has a malformed template: {_exc}.")
+        _unknown = _used - WEBHOOK_PLACEHOLDERS
+        _fatal_unless(
+            not _unknown,
+            f"{_pfx} uses unknown placeholder(s) {sorted(_unknown)}; "
+            f"allowed placeholders are {sorted(WEBHOOK_PLACEHOLDERS)}.",
+        )
+
+    log.info("Webhooks configured with %d endpoint(s).", len(webhooks_endpoints))
 
 # Validate Flask secret key
 secret_key: str = security_cfg.get("secret_key", "")

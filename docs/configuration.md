@@ -108,6 +108,8 @@ effect.
 | [`ldap.search_base`](#ldapsearch_base)                                           | String  | Base DN for user searches                           |
 | [`ldap.search_filter`](#ldapsearch_filter)                                       | String  | LDAP filter to locate the user object               |
 | [`ldap.photos`](#ldapphotos)                                                     | List    | LDAP photo attributes to update (see details below) |
+| [`webhooks.enabled`](#webhooksenabled)                                           | Boolean | Master switch for outgoing webhooks                 |
+| [`webhooks.endpoints`](#webhooksendpoints)                                       | List    | Webhook endpoints fired on successful update        |
 | [`images.sizes`](#imagessizes)                                                   | List    | Square output sizes to generate (px)                |
 | [`images.formats`](#imagesformats)                                               | List    | Output formats to save for each size                |
 | [`images.jpeg_quality`](#imagesjpeg_quality)                                     | Integer | JPEG compression quality (1-100)                    |
@@ -1390,6 +1392,102 @@ photos:
     image_type: jpg
     image_size: 648
     max_file_size: 0
+```
+
+---
+
+## Webhooks (optional)
+
+Fire one or more outgoing HTTP webhooks after an avatar upload **fully succeeds** - image
+processing, the Authentik write, and the optional LDAP write all completed without a rollback. This
+is useful for notifying automation, audit logs, chat systems, or downstream directory syncs.
+
+Behavior:
+
+- **Non-blocking**: delivery runs in a background thread, so the user's upload never waits on a
+  webhook and the progress UI completes immediately.
+- **Best-effort**: a failed webhook (connection error, timeout, non-2xx response) is logged as a
+  warning but never surfaced to the user and never rolls back the avatar.
+- **Dry-run aware**: when [`dry_run`](#dry_run) or [`dry_run_backend`](#dry_run_backend) is enabled,
+  webhooks are treated like any other backend write - nothing is sent and the intent is logged
+  instead.
+
+### `webhooks.enabled`
+
+| Property    | Value   |
+|-------------|---------|
+| **Type**    | Boolean |
+| **Default** | `false` |
+
+Master switch. When `false`, the webhook module is a no-op and no requests are made.
+
+### `webhooks.endpoints`
+
+| Property    | Value |
+|-------------|-------|
+| **Type**    | List  |
+| **Default** | `[]`  |
+
+A list of webhook endpoints. Every endpoint fires on each successful upload. Each entry is a mapping
+with the following fields:
+
+| Field              | Required | Default          | Description                                                    |
+|--------------------|----------|------------------|----------------------------------------------------------------|
+| `url`              | yes      | -                | Target URL; must be an absolute `http`/`https` URL             |
+| `name`             | no       | `endpoints[i]`   | Label used only in log messages                                |
+| `method`           | no       | `POST`           | HTTP method: `POST`, `PUT`, `PATCH`, or `GET`                  |
+| `timeout`          | no       | `10`             | Request timeout in seconds (positive integer)                 |
+| `skip_cert_verify` | no       | `false`          | Skip TLS certificate verification for this endpoint           |
+| `headers`          | no       | `{}`             | Map of extra request headers (e.g. an authorization token)    |
+| `body`             | no       | default payload  | Map serialized to JSON as the request body (see below)        |
+
+**Request body**: the `body` map is serialized to JSON and sent with `Content-Type: application/json`
+(override via `headers` if needed). String values support `{placeholder}` substitution from the
+event context. When `body` is omitted, a default JSON payload containing every field below is sent.
+
+**Typed substitution**: a string value that is *exactly* one placeholder token (e.g. `"{user_pk}"`)
+is replaced with its native typed value, so numeric fields such as `{user_pk}` and `{total_bytes}`
+serialize as JSON numbers rather than strings. Any other string (e.g. `"user {username} updated"`)
+is interpolated as text.
+
+Available placeholders:
+
+| Placeholder     | Type    | Description                                          |
+|-----------------|---------|-----------------------------------------------------|
+| `{username}`    | String  | Authentik username                                  |
+| `{name}`        | String  | Display name                                        |
+| `{email}`       | String  | Email address                                       |
+| `{user_pk}`     | Integer | Authentik integer primary key                       |
+| `{avatar_url}`  | String  | Canonical avatar URL pushed to Authentik            |
+| `{avatar_id}`   | String  | Avatar filename base (no host or extension)         |
+| `{total_bytes}` | Integer | Combined byte size of all generated image files     |
+| `{timestamp}`   | String  | ISO-8601 UTC time of the successful update          |
+| `{app_name}`    | String  | Application name                                     |
+| `{app_version}` | String  | Application version                                 |
+
+Unknown placeholders, a missing/invalid `url`, an unsupported `method`, a non-integer `timeout`, or
+a non-serializable `body` are rejected at startup with a `FATAL` error, so misconfiguration fails
+fast rather than silently at upload time. A plain `http://` URL logs a security warning (the payload,
+including any secrets in headers, is sent unencrypted).
+
+Example:
+
+```yaml
+webhooks:
+  enabled: true
+  endpoints:
+    - name: automation
+      url: "https://automation.example.com/hooks/avatar-updated"
+      method: POST
+      headers:
+        Authorization: "Bearer CHANGE-ME"
+      body:
+        event: "avatar.updated"
+        username: "{username}"
+        user_pk: "{user_pk}"
+        email: "{email}"
+        avatar_url: "{avatar_url}"
+        timestamp: "{timestamp}"
 ```
 
 ---

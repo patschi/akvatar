@@ -39,6 +39,10 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   the user object via `PATCH /api/v3/core/users/{pk}/`
 - **LDAP / Active Directory**: writes one or more photo attributes (binary bytes or URL
   string); optional, toggle in config
+- **Outgoing webhooks**: fire one or more HTTP webhooks after a fully successful avatar
+  update, with a configurable JSON body built from event placeholders (username, avatar URL,
+  timestamp, etc.); non-blocking delivery, optional, toggle in config
+  (see [`webhooks`](docs/configuration.md#webhooks-optional))
 - **Automatic cleanup**: cron-scheduled job removes avatars of deleted users, enforces
   per-user retention limits, clears orphaned files from obsolete sizes or formats, and
   backfills files missing for a newly added size or format (regenerated from the largest

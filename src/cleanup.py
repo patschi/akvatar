@@ -532,6 +532,13 @@ def _run_cleanup_impl() -> int:
     backfill_failed = 0
     backfill_skipped = 0
     if _backfill_missing:
+        # Backfill is enabled: check every surviving set for missing size/format
+        # files.  Logged at debug so operators can confirm the phase ran and see
+        # how many sets it scanned without cluttering normal INFO output.
+        log.debug(
+            "Phase 5 backfill active - checking %d surviving avatar set(s) for missing sizes/formats.",
+            len(surviving_filenames),
+        )
         for filename in surviving_filenames:
             gen, fail, skip = backfill_avatar_set(filename)
             backfill_generated += gen

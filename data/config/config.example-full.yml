@@ -404,6 +404,64 @@ images:
   # Transparent areas in the source image will appear in this color in JPEG output.
   rgba_background_color: [255, 255, 255]
 
+# --- Outgoing Webhooks (optional) ---
+# Fire one or more HTTP webhooks after an avatar upload fully succeeds (image
+# processing + Authentik write + optional LDAP write all succeeded).  Useful for
+# notifying automation, audit logs, chat, or downstream sync systems.
+#
+# Delivery is non-blocking: it runs in a background thread so the user's upload
+# never waits on a webhook.  A failing webhook is logged only - it never affects
+# the user's result and never rolls back the avatar.  In dry-run mode (dry_run or
+# dry_run_backend) webhooks are NOT sent; the intent is logged instead.
+webhooks:
+  # Master switch - set to true to enable outgoing webhooks
+  enabled: false
+  # One entry per webhook endpoint.  Every entry fires on each successful upload.
+  #
+  # Fields per entry:
+  #   url              - target URL (required, must be absolute http/https)
+  #   name             - optional label shown in logs (defaults to endpoints[i])
+  #   method           - HTTP method: POST (default), PUT, PATCH, or GET
+  #   timeout          - request timeout in seconds (default: 10)
+  #   skip_cert_verify - skip TLS certificate verification (default: false)
+  #   headers          - optional map of extra request headers (e.g. auth token)
+  #   body             - optional map serialized to JSON as the request body.
+  #                      String values support {placeholder} substitution.
+  #                      When omitted, a default JSON payload with all fields
+  #                      below is sent.
+  #
+  # Available placeholders (substituted into string body/header values):
+  #   {username}     - Authentik username
+  #   {name}         - display name
+  #   {email}        - email address
+  #   {user_pk}      - Authentik integer PK
+  #   {avatar_url}   - canonical avatar URL pushed to Authentik
+  #   {avatar_id}    - avatar filename base (no host/extension)
+  #   {total_bytes}  - combined byte size of all generated files
+  #   {timestamp}    - ISO-8601 UTC time of the successful update
+  #   {app_name}     - application name
+  #   {app_version}  - application version
+  #
+  # Typed substitution: a value that is EXACTLY one placeholder token (e.g.
+  # "{user_pk}") is sent as its native type, so numeric fields like {user_pk}
+  # and {total_bytes} serialize as JSON numbers instead of strings.
+  endpoints:
+    - name: automation
+      url: "https://automation.example.com/hooks/avatar-updated"
+      method: POST
+      timeout: 10
+      skip_cert_verify: false
+      headers:
+        Authorization: "Bearer CHANGE-ME"
+      body:
+        event: "avatar.updated"
+        username: "{username}"
+        user_pk: "{user_pk}"
+        email: "{email}"
+        avatar_url: "{avatar_url}"
+        avatar_id: "{avatar_id}"
+        timestamp: "{timestamp}"
+
 # --- Sentry Error Tracking (optional) ---
 # Sends unhandled exceptions and (optionally) performance data to Sentry.
 # Requires a valid DSN from your Sentry project settings.

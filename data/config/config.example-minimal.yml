@@ -76,6 +76,12 @@ images:
     - "jpg"
     - "webp"
 
+# --- Outgoing Webhooks (optional) ---
+# Fire HTTP webhook(s) after an avatar upload fully succeeds.  Disabled by
+# default.  See config.example-full.yml for the endpoint format, available
+# {placeholder} tokens, and body/header options.
+webhooks: {}
+
 # --- Sentry Error Tracking (optional) ---
 # Sends unhandled exceptions and (optionally) performance data to Sentry.
 # Requires a valid DSN from your Sentry project settings.
