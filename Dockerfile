@@ -100,7 +100,7 @@ ENV PYTHONDONTWRITEBYTECODE="1" \
 COPY app.py run_app.py run_cleanup.py ./
 COPY src/ src/
 COPY static/ static/
-COPY --from=ghcr.io/tarampampam/microcheck:1.3.0@sha256:79c187c05bfa67518078bf4db117771942fa8fe107dc79a905861c75ddf28dfa /bin/httpscheck /bin/httpscheck
+COPY --from=ghcr.io/tarampampam/microcheck:1.4.0@sha256:c9f79cd408626de7c10f2d487d67339f49adf0ba61dde96ede65343269db1f85 /bin/httpscheck /bin/httpscheck
 
 # Data directories - ownership inherited from builder skeletons so the
 # nonroot user can write when Docker initialises the volumes.
