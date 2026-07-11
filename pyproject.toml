@@ -24,7 +24,7 @@ dependencies = [
     "PyYAML==6.0.3",
     "gunicorn==25.3.0",
     "croniter==6.2.4",
-    "cryptography==48.0.1",
+    "cryptography==49.0.0",
     "sentry-sdk[flask]==2.64.0",
     "h2==4.3.0",
 ]
