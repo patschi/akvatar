@@ -23,7 +23,7 @@ variables:
   # path that can update them separately.
   UV_VERSION: "0.11.28"
   # ruff version used in lint jobs. Renovate tracks this via PyPI.
-  RUFF_VERSION: "0.15.21"
+  RUFF_VERSION: "0.15.22"
 
 include:
   - template: Security/SAST.gitlab-ci.yml
