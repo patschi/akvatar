@@ -59,7 +59,6 @@ upload:
   drop_hint: "Glissez-déposez une image ici, ou"
   choose: "Choisir une image…"
   disclaimer: "En téléchargeant, vous confirmez que cette image est appropriée et que vous avez le droit de l'utiliser."
-  button: "Télécharger & Mettre à jour l'image"
   preview_image: "Prévisualiser l'image"
   upload_image: "Confirmer & Télécharger"
   return_to_cropping: "Ajuster le recadrage"
@@ -143,7 +142,6 @@ error:
   too_large: "L'image est trop grande ({w}×{h} px). La taille maximale est {max_dim}×{max_dim} px."
   no_file: "Aucune image n'a été reçue. Veuillez sélectionner un fichier et réessayer."
   rate_limited: "Vous téléchargez trop fréquemment. Veuillez patienter un moment avant de réessayer."
-  pending_avatar_missing: "Votre image n'a pas pu être enregistrée. Veuillez réessayer le téléversement."
   # Erreurs spécifiques à l'importation
   import:
     gravatar_disabled: "L'import Gravatar n'est pas activé."

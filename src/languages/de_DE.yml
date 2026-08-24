@@ -59,7 +59,6 @@ upload:
   drop_hint: "Bild hierher ziehen, oder"
   choose: "Bild auswählen…"
   disclaimer: "Mit dem Hochladen bestätigen Sie, dass es sich um ein angemessenes Bild handelt und Sie berechtigt sind, es zu verwenden."
-  button: "Hochladen & Bild aktualisieren"
   preview_image: "Bildvorschau"
   upload_image: "Bestätigen & Hochladen"
   return_to_cropping: "Zuschnitt anpassen"
@@ -143,7 +142,6 @@ error:
   too_large: "Das Bild ist zu groß ({w}×{h} px). Das Maximum beträgt {max_dim}×{max_dim} px."
   no_file: "Es wurde kein Bild empfangen. Bitte wählen Sie eine Datei aus und versuchen Sie es erneut."
   rate_limited: "Sie laden zu häufig hoch. Bitte warte Sie einen Moment, bevor Sie es erneut versuchen."
-  pending_avatar_missing: "Ihr Bild konnte nicht gespeichert werden. Bitte versuchen Sie, es erneut hochzuladen."
   # Import-spezifische Fehler
   import:
     gravatar_disabled: "Der Gravatar-Import ist nicht aktiviert."

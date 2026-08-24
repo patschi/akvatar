@@ -59,7 +59,6 @@ upload:
   drop_hint: "Drag & drop an image here, or"
   choose: "Choose image…"
   disclaimer: "By uploading, you confirm this is an appropriate image and that you have the right to use it."
-  button: "Upload & Update Picture"
   preview_image: "Preview image"
   upload_image: "Confirm & Upload"
   return_to_cropping: "Adjust crop"
@@ -145,7 +144,6 @@ error:
   too_large: "Image is too large ({w}×{h} px). The maximum is {max_dim}×{max_dim} px."
   no_file: "No image was received. Please select a file and try again."
   rate_limited: "You are uploading too frequently. Please wait a moment before trying again."
-  pending_avatar_missing: "Your picture could not be saved. Please try uploading again."
   # Import-specific errors (Gravatar / URL proxy endpoints)
   import:
     gravatar_disabled: "Gravatar import is not enabled."

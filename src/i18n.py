@@ -268,13 +268,10 @@ _JS_KEYS = (
     "step.processed",
     "step.profile_synced",
     "step.ldap_updated",
-    "step.rollback",
     # UI strings
     "upload.processing",
-    "upload.button",
     "upload.preview_image",
     "upload.upload_image",
-    "upload.return_to_cropping",
     "upload.current_picture",
     "upload.avatar_load_error",
     "step.save_failed",
