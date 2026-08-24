@@ -17,6 +17,7 @@ serializes as a JSON number instead of a string.
 import logging
 import re
 import threading
+import time
 
 import requests as http_requests
 import urllib3
@@ -115,6 +116,12 @@ def _deliver_all(context: dict) -> None:
             log.warning("Webhook %r to %s failed: %s", _name, _url, _exc)
 
 
+# Delivery threads started by fire_webhooks() that may still be running.
+# Tracked so short-lived processes can join them before exiting.
+_pending_threads: list[threading.Thread] = []
+_pending_lock = threading.Lock()
+
+
 def fire_webhooks(context: dict) -> None:
     """Trigger all configured webhooks for a successful avatar update.
 
@@ -142,4 +149,32 @@ def fire_webhooks(context: dict) -> None:
     _thread = threading.Thread(
         target=_deliver_all, args=(context,), name="webhook-delivery", daemon=True
     )
+    with _pending_lock:
+        # Drop finished threads so the list cannot grow unbounded in the
+        # long-running Flask process.
+        _pending_threads[:] = [t for t in _pending_threads if t.is_alive()]
+        _pending_threads.append(_thread)
     _thread.start()
+
+
+def wait_for_pending_deliveries(timeout: float | None = None) -> None:
+    """
+    Block until every in-flight webhook delivery thread has finished.
+
+    Delivery threads are daemon threads so they never keep the Flask app alive
+    on shutdown - but a short-lived CLI process (run_sync_gravatar.py) would
+    otherwise exit and silently abandon deliveries still in ``requests.post``.
+    Such callers invoke this before returning.  ``timeout`` bounds the total
+    wait in seconds (``None`` waits indefinitely).
+    """
+    with _pending_lock:
+        threads = list(_pending_threads)
+    if not threads:
+        return
+    log.debug("Waiting for %d pending webhook delivery thread(s).", len(threads))
+    deadline = None if timeout is None else time.monotonic() + timeout
+    for _t in threads:
+        remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+        _t.join(remaining)
+        if _t.is_alive():
+            log.warning("Webhook delivery thread still running after timeout.")

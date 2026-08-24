@@ -48,6 +48,10 @@ server-side, then pushed to **Authentik** (via Admin API) and optionally to an
   backfills files missing for a newly added size or format (regenerated from the largest
   image on disk); runs at a lowered scheduling priority (`nice`) so it yields to request
   handling, and concurrent runs are skipped (non-blocking lock guard)
+- **Gravatar bulk sync**: an operator-run script (`run_sync_gravatar.py`) imports every
+  Authentik user's Gravatar image through the same pipeline as a manual upload, re-imports
+  when a user's Gravatar changes, and never overwrites a user-set avatar
+  (see [Gravatar Sync](docs/gravatar-sync.md))
 - **Real-time progress**: Server-Sent Events stream each processing step with
   success / failed / skipped / dry-run status
 - **Configurable branding**: customize the application name in the UI
@@ -235,6 +239,7 @@ For a full walkthrough with sequence diagrams and cleanup details, see
 | [Screenshots](docs/screenshots.md)                     | Visual walkthrough of the full user flow, from sign-in to uploaded avatar               |
 | [Configuration](docs/configuration.md)                 | Complete reference for all `config.yml` settings with defaults and explanations         |
 | [How It Works](docs/how-it-works.md)                   | Full lifecycle walkthrough with sequence diagrams and cleanup flow                      |
+| [Gravatar Sync](docs/gravatar-sync.md)                 | Manual bulk import of users' Gravatar avatars via `run_sync_gravatar.py`                |
 | [Flask Session Key](docs/flask-session-key.md)         | Generating and setting the Flask session secret key                                     |
 | [Authentik OIDC Setup](docs/authentik-oidc-setup.md)   | Creating the OIDC provider and application in Authentik                                 |
 | [Authentik API Token](docs/authentik-api-token.md)     | Creating an API token for the Authentik Admin API                                       |

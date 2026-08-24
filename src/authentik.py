@@ -181,6 +181,21 @@ def _patch_user(pk: int, data: dict) -> tuple[dict, dict]:
 # Public API
 
 
+def get_user(pk: int) -> dict:
+    """
+    GET one user by Authentik PK and return the raw user object.
+
+    Used by the Gravatar sync to re-check a user's live avatar state right
+    before publishing, so an avatar set through the web UI while a long bulk
+    run is in progress is never overwritten by a stale snapshot.
+    """
+    url = f"{_users_url}{pk}/"
+    log.debug("GET %s - fetching current user data.", url)
+    resp = _retry_request(lambda: _session.get(url, timeout=_TIMEOUT))
+    resp.raise_for_status()
+    return _parse_json(resp)
+
+
 def retrieve_user(username: str) -> dict:
     """
     Retrieve the Authentik user for a given username.
@@ -383,13 +398,13 @@ def revert_avatar_url(pk: int, old_url: str | None, old_id: str | None) -> None:
     log.info("Authentik rollback successful for pk=%d.", pk)
 
 
-def _list_user_pks(active_only: bool = False) -> set[int]:
+def _iter_users(active_only: bool = False):
     """
-    Paginate through Authentik's core users API and return the collected PKs.
+    Paginate through Authentik's core users API, yielding each raw user object.
 
-    ``active_only=True`` adds ``is_active=true`` to the request, returning
-    only non-deactivated users.  The default returns every user regardless
-    of active status.
+    ``active_only=True`` adds ``is_active=true`` to the request, yielding only
+    non-deactivated users.  The default yields every user regardless of active
+    status.
 
     Authentik's ``pagination.next`` is an integer page number (0 = no more
     pages), not a URL.  This is set by Django REST Framework's
@@ -397,8 +412,8 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
     therefore driven by the ``page`` query parameter rather than by following
     a server-supplied URL.
     """
-    pks: set[int] = set()
     page = 1
+    seen = 0
 
     base_params: dict = {"page_size": 100}
     if active_only:
@@ -420,16 +435,13 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
                 f"(type={type(page_results).__name__})."
             )
 
-        for user in page_results:
-            pk = user.get("pk")
-            if isinstance(pk, int):
-                pks.add(pk)
-
+        yield from page_results
+        seen += len(page_results)
         log.debug(
             "Page %d: received %d user(s), running total %d.",
             page,
             len(page_results),
-            len(pks),
+            seen,
         )
 
         # Authentik returns 0 for `next` on the final page; any positive value
@@ -440,7 +452,14 @@ def _list_user_pks(active_only: bool = False) -> set[int]:
             break
         page = next_page
 
-    return pks
+
+def _list_user_pks(active_only: bool = False) -> set[int]:
+    """
+    Return the set of integer PKs from the paginated users API.
+
+    ``active_only=True`` restricts the result to non-deactivated users.
+    """
+    return {u["pk"] for u in _iter_users(active_only) if isinstance(u.get("pk"), int)}
 
 
 def list_all_user_pks() -> set[int]:
@@ -469,3 +488,51 @@ def list_active_user_pks() -> set[int]:
     pks = _list_user_pks(active_only=True)
     log.debug("Fetched %d active user PK(s) from Authentik.", len(pks))
     return pks
+
+
+def _normalize_user(user: dict) -> dict | None:
+    """
+    Reduce a raw Authentik user object to the fields the Gravatar sync needs.
+
+    Returns ``None`` when the user has no integer PK (cannot be tracked).
+    ``email`` is normalized to a stripped, lowercased string (empty when
+    absent - Gravatar keys images on the lowercase email) and
+    ``attributes`` to a dict, so callers never have to re-check their types.
+    """
+    pk = user.get("pk")
+    if not isinstance(pk, int):
+        return None
+    attrs = user.get("attributes")
+    if not isinstance(attrs, dict):
+        attrs = {}
+    return {
+        "pk": pk,
+        "username": user.get("username", "") or "",
+        "name": user.get("name", "") or "",
+        "email": (user.get("email", "") or "").strip().lower(),
+        "is_active": bool(user.get("is_active", True)),
+        "attributes": attrs,
+    }
+
+
+def list_users(active_only: bool = False) -> list[dict]:
+    """
+    Return normalized user records for every user (or every active user).
+
+    Each record has ``pk``, ``username``, ``name``, ``email``, ``is_active``,
+    and ``attributes``.  Used by the Gravatar sync, which needs each user's
+    email address and current avatar attribute.  ``active_only=True`` restricts
+    the result to non-deactivated users via the API's ``is_active`` filter.
+    """
+    users = [u for u in (_normalize_user(r) for r in _iter_users(active_only)) if u]
+    log.debug(
+        "Fetched %d user record(s) from Authentik (active_only=%s).",
+        len(users),
+        active_only,
+    )
+    return users
+
+
+def list_active_users() -> list[dict]:
+    """Return normalized records for every *active* user in Authentik."""
+    return list_users(active_only=True)

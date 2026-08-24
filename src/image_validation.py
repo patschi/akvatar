@@ -89,19 +89,24 @@ class ValidationError(Exception):
     """Raised when the uploaded file fails a validation check."""
 
 
-def validate_upload(file) -> Image.Image:
+def validate_image_bytes(raw_bytes: bytes, filename: str) -> Image.Image:
     """
-    Run all validation checks on the uploaded file and return the decoded PIL
-    Image.  Normalization (EXIF orientation, metadata stripping, color mode)
-    is deferred to the SSE pipeline so the client sees granular progress.
+    Run all validation checks on raw image bytes and return the decoded PIL
+    Image.  ``filename`` is used only for the extension allow-list check.
+    Normalization (EXIF orientation, metadata stripping, color mode) is deferred
+    to the processing pipeline.
+
+    Shared by the web upload route (via :func:`validate_upload`) and the
+    background Gravatar sync, which validates fetched Gravatar bytes with these
+    exact checks before feeding them into the same processing pipeline.
 
     Raises ``ValidationError`` with a user-facing message on failure.
     """
     # Filename & extension check
-    if not file.filename:
+    if not filename:
         raise ValidationError(t("error.empty_filename"))
 
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise ValidationError(
             t(
@@ -111,8 +116,6 @@ def validate_upload(file) -> Image.Image:
             )
         )
 
-    # Read raw bytes and verify magic signature
-    raw_bytes = file.read()
     if not raw_bytes:
         raise ValidationError(t("error.empty_file"))
 
@@ -150,8 +153,7 @@ def validate_upload(file) -> Image.Image:
         raise ValidationError(t("error.too_large", w=w, h=h, max_dim=MAX_DIMENSION))
 
     log.info(
-        "Upload accepted: content_type=%r, size=%d bytes, %dx%d, mode=%s, format=%s.",
-        file.content_type,
+        "Image accepted: size=%d bytes, %dx%d, mode=%s, format=%s.",
         len(raw_bytes),
         w,
         h,
@@ -160,3 +162,17 @@ def validate_upload(file) -> Image.Image:
     )
 
     return image
+
+
+def validate_upload(file) -> Image.Image:
+    """
+    Validate an uploaded Werkzeug file object and return the decoded PIL Image.
+
+    Thin wrapper over :func:`validate_image_bytes`: it reads the uploaded bytes
+    and delegates every check (extension, magic bytes, decode, format,
+    dimensions) so the Gravatar sync validates fetched images identically.
+    """
+    # Read the bytes only when a filename is present; an empty filename is
+    # rejected inside validate_image_bytes with the same error as before.
+    raw_bytes = file.read() if file.filename else b""
+    return validate_image_bytes(raw_bytes, file.filename or "")

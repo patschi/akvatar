@@ -20,41 +20,35 @@ The orchestrator collects results via ``yield from``.
 
 import json
 import logging
-import os
-from datetime import UTC, datetime
 
 from PIL import Image
 
-from src import APP_NAME, APP_VERSION
 from src.authentik import revert_avatar_url, update_avatar_url
+from src.avatar_pipeline import (
+    CANONICAL_FORMAT,
+    CANONICAL_SIZE_KEY,
+    LDAP_PHOTOS_ACTIVE,
+    build_webhook_context,
+    resolve_canonical_url,
+    save_avatar_metadata,
+    sync_ldap_photos,
+)
 from src.config import (
-    ak_avatar_ext,
-    ak_avatar_size,
     img_formats,
     img_sizes,
     skip_backend_writes,
 )
 from src.i18n import t
-from src.image_formats import FORMAT_MAP
 from src.imaging import (
     AVATAR_BASE_URL,
     AVATAR_ROOT,
-    METADATA_ROOT,
     cleanup_avatar_files,
     normalize_image,
-    prepare_ldap_image,
     process_image,
 )
-from src.ldap_client import get_photos_config as ldap_photos_config
-from src.ldap_client import is_enabled as ldap_is_enabled
-from src.ldap_client import update_photos as update_ldap_photos
 from src.webhooks import fire_webhooks
 
 log = logging.getLogger("upload")
-
-# Module-level config (immutable after startup)
-_ldap_enabled = ldap_is_enabled()
-_ldap_photos = ldap_photos_config()
 
 
 # SSE helper
@@ -70,17 +64,10 @@ _ldap_photos = ldap_photos_config()
 #     to Authentik.
 # Both go through the same size/format constants so they cannot diverge.
 
-_CANONICAL_SIZE_KEY = f"{ak_avatar_size}x{ak_avatar_size}"
-# Canonical file extension comes from config validation (config.py resolves
-# "jpeg"/"jpg" to the canonical "jpg" extension via FORMAT_MAP).
-_CANONICAL_FORMAT = ak_avatar_ext
-
 
 def build_canonical_url(filename_base: str) -> str:
     """Build the canonical avatar URL for a given filename base."""
-    return (
-        f"{AVATAR_BASE_URL}/{_CANONICAL_SIZE_KEY}/{filename_base}.{_CANONICAL_FORMAT}"
-    )
+    return f"{AVATAR_BASE_URL}/{CANONICAL_SIZE_KEY}/{filename_base}.{CANONICAL_FORMAT}"
 
 
 def pending_avatar_file_exists(filename_base: str) -> bool:
@@ -96,7 +83,7 @@ def pending_avatar_file_exists(filename_base: str) -> bool:
     promote a URL pointing at deleted files into the active avatar.
     """
     canonical_path = (
-        AVATAR_ROOT / _CANONICAL_SIZE_KEY / f"{filename_base}.{_CANONICAL_FORMAT}"
+        AVATAR_ROOT / CANONICAL_SIZE_KEY / f"{filename_base}.{CANONICAL_FORMAT}"
     )
     return canonical_path.is_file()
 
@@ -148,22 +135,6 @@ def _step_process_image(image: Image.Image, filename_base: str):
     return urls, total_bytes
 
 
-def _resolve_canonical_url(urls: dict) -> str:
-    """
-    Look up the canonical avatar URL (used by Authentik) from the generated
-    URL map.  Raises RuntimeError if the expected size/format is missing.
-    """
-    canonical = urls.get(_CANONICAL_SIZE_KEY, {}).get(_CANONICAL_FORMAT)
-    if not canonical:
-        raise RuntimeError(
-            f"Canonical avatar URL not found: size={_CANONICAL_SIZE_KEY}, "
-            f"format={_CANONICAL_FORMAT}. Ensure {ak_avatar_size} is in "
-            f'images.sizes and "{_CANONICAL_FORMAT}" is in images.formats.'
-        )
-    log.debug("Canonical Authentik avatar URL: %s", canonical)
-    return canonical
-
-
 def _step_sync_authentik(user_pk: int, canonical_url: str, avatar_id: str):
     """
     Push the avatar URL and avatar ID to Authentik via API.
@@ -194,60 +165,6 @@ def _step_sync_authentik(user_pk: int, canonical_url: str, avatar_id: str):
         return {}, None, None, True
 
 
-def _build_ldap_updates(
-    image: Image.Image, urls: dict, filename_base: str
-) -> list[dict]:
-    """
-    Build LDAP attribute updates from the ``ldap.photos`` config.
-
-    For ``binary`` entries the image is encoded on-the-fly (or reused from disk).
-    For ``url`` entries the pre-generated public URL is looked up.
-    """
-    updates = []
-    for photo_cfg in _ldap_photos:
-        attr = photo_cfg["attribute"]
-        ptype = photo_cfg["type"]
-        size = photo_cfg["image_size"]
-        img_type = photo_cfg["image_type"]
-
-        if ptype == "binary":
-            img_bytes = prepare_ldap_image(
-                image,
-                filename_base,
-                size,
-                img_type,
-                photo_cfg.get("max_file_size", 0),
-            )
-            updates.append({"attribute": attr, "value": img_bytes})
-            log.info(
-                "Prepared LDAP %s: %dx%d %s, %d bytes.",
-                attr,
-                size,
-                size,
-                img_type.upper(),
-                len(img_bytes),
-            )
-
-        elif ptype == "url":
-            size_key = f"{size}x{size}"
-            ext = FORMAT_MAP[img_type][1]
-            url = urls.get(size_key, {}).get(ext)
-            if not url:
-                raise ValueError(
-                    f"No pre-generated URL for LDAP {attr}: "
-                    f"size={size_key}, ext={ext}. Check images.sizes/formats config."
-                )
-            updates.append({"attribute": attr, "value": url})
-            log.info("Prepared LDAP %s: URL → %s.", attr, url)
-
-        else:
-            log.warning(
-                "Unknown LDAP photo type %r for attribute %s - skipping.", ptype, attr
-            )
-
-    return updates
-
-
 def _step_sync_ldap(
     image: Image.Image, urls: dict, filename_base: str, ak_attrs: dict, user_pk: int
 ):
@@ -255,63 +172,34 @@ def _step_sync_ldap(
     Update LDAP photo attributes if applicable.
 
     Yields SSE frames.  Returns True on failure, False on success/skip.
-    Skips silently when LDAP is disabled or the user has no ``ldap_uniq``.
+    The enabled / ``ldap_uniq`` gate lives in the shared ``sync_ldap_photos``
+    so the Gravatar sync applies exactly the same skip logic.
     """
-    if not (_ldap_enabled and _ldap_photos):
+    if not LDAP_PHOTOS_ACTIVE:
         return False
 
-    ldap_uniq = ak_attrs.get("ldap_uniq")
-
-    # Users without ldap_uniq are Authentik-only (not synced from LDAP)
-    if not ldap_uniq:
-        log.info("User pk=%s has no ldap_uniq - skipping LDAP updates.", user_pk)
-        yield _sse({"step": t("step.ldap_updated"), "status": "skipped"})
-        return False
-
-    log.debug(
-        "User has ldap_uniq=%r - preparing %d LDAP photo update(s).",
-        ldap_uniq,
-        len(_ldap_photos),
-    )
     try:
-        ldap_updates = _build_ldap_updates(image, urls, filename_base)
-        update_ldap_photos(ldap_uniq, ldap_updates)
-        yield _sse(
-            {
-                "step": t("step.ldap_updated"),
-                # LDAP write is suppressed under full dry_run or dry_run_backend.
-                "status": "dry-run" if skip_backend_writes else "success",
-            }
-        )
-        return False
+        applied = sync_ldap_photos(image, urls, filename_base, ak_attrs, user_pk)
     except Exception:
-        log.exception("Failed to update LDAP for ldap_uniq=%s.", ldap_uniq)
+        log.exception(
+            "Failed to update LDAP for ldap_uniq=%s.", ak_attrs.get("ldap_uniq", None)
+        )
         yield _sse({"step": t("step.ldap_updated"), "status": "failed"})
         return True
 
+    if not applied:
+        # Users without ldap_uniq are Authentik-only (not synced from LDAP)
+        yield _sse({"step": t("step.ldap_updated"), "status": "skipped"})
+        return False
 
-def _save_metadata(filename_base: str, user_pk: int, total_bytes: int) -> None:
-    """
-    Persist upload metadata as JSON.  Uses the Authentik PK (immutable, no PII)
-    as the owner identifier for cleanup/retention matching.
-    """
-    metadata = {
-        "filename": filename_base,
-        "user_pk": user_pk,
-        "uploaded_at": datetime.now(UTC).isoformat(),
-        "sizes": img_sizes,
-        "formats": img_formats,
-        "total_bytes": total_bytes,
-    }
-    meta_path = METADATA_ROOT / f"{filename_base}.meta.json"
-    # Atomic publish: write to a sibling .tmp file and os.replace() into place,
-    # so a concurrent reader (cleanup, serve_avatar_metadata) never sees a
-    # half-written JSON file.  os.replace() is atomic on POSIX and on Windows
-    # when the source and destination are on the same filesystem.
-    tmp_path = meta_path.with_suffix(meta_path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp_path, meta_path)
-    log.debug("Metadata saved to %s.", meta_path)
+    yield _sse(
+        {
+            "step": t("step.ldap_updated"),
+            # LDAP write is suppressed under full dry_run or dry_run_backend.
+            "status": "dry-run" if skip_backend_writes else "success",
+        }
+    )
+    return False
 
 
 # Main SSE generator - orchestrates the full pipeline
@@ -346,7 +234,7 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
         urls, total_bytes = yield from _step_process_image(image, filename_base)
 
         # Resolve the canonical avatar URL (the single URL pushed to Authentik)
-        canonical_url = _resolve_canonical_url(urls)
+        canonical_url = resolve_canonical_url(urls)
 
         # Push the avatar URL and avatar ID (filename_base) to Authentik
         (
@@ -380,25 +268,15 @@ def generate_sse(user: dict, image: Image.Image, filename_base: str):
             yield _sse({"done": True, "error": t("result.error")})
             return
 
-        # Persist metadata
-        _save_metadata(filename_base, user_pk, total_bytes)
+        # Persist metadata (source="web": any avatar set through the web UI, so
+        # the Gravatar sync recognizes it as a user avatar and never overwrites it)
+        save_avatar_metadata(filename_base, user_pk, total_bytes, source="web")
 
         # Fire outgoing webhooks (non-blocking) now that the update is a full
         # success.  Delivery runs in a background thread; failures are logged
         # inside fire_webhooks and never affect the user's result.
         fire_webhooks(
-            {
-                "username": username,
-                "name": user.get("name", ""),
-                "email": user.get("email", ""),
-                "user_pk": user_pk,
-                "avatar_url": canonical_url,
-                "avatar_id": filename_base,
-                "total_bytes": total_bytes,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "app_name": APP_NAME,
-                "app_version": APP_VERSION,
-            }
+            build_webhook_context(user, canonical_url, filename_base, total_bytes)
         )
 
         # Session update is handled by the caller via /api/upload/commit:

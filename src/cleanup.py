@@ -50,7 +50,6 @@ This module is used in two ways:
   2. Manually via ``python run_cleanup.py`` at the project root.
 """
 
-import fcntl
 import logging
 import os
 import re
@@ -64,6 +63,7 @@ from datetime import UTC, datetime
 from croniter import croniter
 
 from src.authentik import list_active_user_pks, list_all_user_pks
+from src.avatar_pipeline import CLEANUP_LOCKFILE, exclusive_process_lock
 from src.config import (
     cleanup_backfill_missing,
     cleanup_interval,
@@ -91,11 +91,11 @@ log = logging.getLogger("cleanup")
 # Non-blocking acquire: the second caller skips rather than waiting.
 _cleanup_lock = threading.Lock()
 
-# Filesystem advisory lock for cross-process protection: ensures that a manual
-# `python run_cleanup.py` invocation cannot run while the background thread in
-# the Flask process is already executing cleanup.  fcntl.flock() is enforced by
-# the OS kernel and is automatically released when the fd closes (even on crash).
-_CLEANUP_LOCKFILE = AVATAR_ROOT / ".cleanup.lock"
+# Filesystem advisory lock for cross-process protection (CLEANUP_LOCKFILE in
+# avatar_pipeline.py): ensures that a manual `python run_cleanup.py` invocation
+# or a running Gravatar sync cannot overlap with the background thread in the
+# Flask process.  fcntl.flock() is enforced by the OS kernel and is
+# automatically released when the fd closes (even on crash).
 
 # Crontab schedule for the cleanup job (empty string = disabled).
 # Read once at import time; config is immutable after startup.
@@ -356,29 +356,14 @@ def run_cleanup() -> int:
         return 0
 
     try:
-        # Cross-process guard: open (or create) the lockfile and attempt a
-        # non-blocking exclusive lock.  A separate process running run_cleanup.py
-        # concurrently will fail here and exit cleanly rather than corrupting
-        # avatar files mid-cleanup.  The `with` block guarantees the fd is closed
-        # (and the OS-level flock released) on every exit path, including
-        # exceptions inside _run_cleanup_impl().
-        try:
-            lockfile_ctx = open(_CLEANUP_LOCKFILE, "w")
-        except OSError as exc:
-            log.warning(
-                "Could not open cleanup lockfile %s: %s", _CLEANUP_LOCKFILE, exc
-            )
-            return 0
-        with lockfile_ctx as lockfile:
-            try:
-                fcntl.flock(lockfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                log.warning("Cleanup already in progress (another process) - skipping.")
+        # Cross-process guard (shared with the Gravatar sync, which takes this
+        # same lock while it runs so cleanup can never delete files it is in
+        # the middle of publishing).  A separate process running run_cleanup.py
+        # concurrently skips cleanly rather than corrupting avatar files.
+        with exclusive_process_lock(CLEANUP_LOCKFILE, "Cleanup") as acquired:
+            if not acquired:
                 return 0
-            try:
-                return _run_cleanup_impl()
-            finally:
-                fcntl.flock(lockfile.fileno(), fcntl.LOCK_UN)
+            return _run_cleanup_impl()
     finally:
         _cleanup_lock.release()
 

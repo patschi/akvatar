@@ -97,7 +97,7 @@ ENV PYTHONDONTWRITEBYTECODE="1" \
     APP_GIT_HASH="${GIT_HASH}"
 
 # Copy application code and healthcheck binary (explicit files only)
-COPY app.py run_app.py run_cleanup.py ./
+COPY app.py run_app.py run_cleanup.py run_sync_gravatar.py ./
 COPY src/ src/
 COPY static/ static/
 COPY --from=ghcr.io/tarampampam/microcheck:1.4.0@sha256:c9f79cd408626de7c10f2d487d67339f49adf0ba61dde96ede65343269db1f85 /bin/httpscheck /bin/httpscheck

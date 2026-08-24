@@ -273,13 +273,18 @@ def build_gravatar_url(email: str, size: int = 1024) -> tuple[str, str]:
     """
     Build the Gravatar image URL and MD5 lookup hash for a given email.
 
-    Gravatar keys images by the MD5 hash of the lowercase, trimmed email.
-    ``usedforsecurity=False`` signals this is not a cryptographic use (required
-    on FIPS-enabled systems where MD5 is otherwise blocked).
+    Gravatar keys images by the MD5 hash of the lowercase, trimmed email, so
+    the normalization is applied here (every caller benefits, regardless of
+    how the email was stored in Authentik).  ``usedforsecurity=False`` signals
+    this is not a cryptographic use (required on FIPS-enabled systems where MD5
+    is otherwise blocked).
 
     Returns (gravatar_url, md5_hash).
     """
-    md5_hash = hashlib.md5(email.encode("utf-8"), usedforsecurity=False).hexdigest()
+    normalized_email = email.strip().lower()
+    md5_hash = hashlib.md5(
+        normalized_email.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
     return f"https://www.gravatar.com/avatar/{md5_hash}?s={size}&d=404", md5_hash
 
 
@@ -332,9 +337,14 @@ def _validate_and_read(resp: http_requests.Response) -> tuple[bytes, str]:
     return data, content_type
 
 
-def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
+def fetch_gravatar_image(email: str, size: int = 1024) -> tuple[bytes, str, str]:
     """
     Fetch the Gravatar image for a given email address.
+
+    ``size`` is the square pixel size requested from Gravatar (Gravatar's
+    maximum is 2048).  Defaults to 1024, matching the in-browser import; the
+    background sync passes the largest configured avatar size so the source is
+    at least as large as every generated output.
 
     Returns (image_bytes, content_type, filename).
 
@@ -345,7 +355,7 @@ def fetch_gravatar_image(email: str) -> tuple[bytes, str, str]:
       FetchFailed        - network or HTTP error, DNS failure, or SSRF
                            rejection during the fetch.
     """
-    gravatar_url, md5_hash = build_gravatar_url(email)
+    gravatar_url, md5_hash = build_gravatar_url(email, size)
     log.debug("Fetching Gravatar: %s", gravatar_url)
 
     try:

@@ -207,7 +207,12 @@ def _resolve_locale() -> str:
         return cookie_locale
 
     # 2. Session locale (set during OIDC callback)
-    loc = session.get("locale")
+    # session is request-scoped, so it is only safe to read when a request
+    # context is active.  Guarding on `request` (whose LocalProxy __bool__ is
+    # False outside a request) keeps t() usable from non-request callers such as
+    # background threads and the manual CLI scripts, where it falls back to the
+    # default locale instead of raising "Working outside of request context".
+    loc = session.get("locale") if request else None
     if loc and loc in SUPPORTED_LOCALES:
         return loc
 
