@@ -353,6 +353,10 @@ logging.basicConfig(
 logging.getLogger("hpack").setLevel(logging.WARNING)
 # Suppress PIL.Image's plugin registration DEBUG spam ("Importing XxxImagePlugin")
 logging.getLogger("PIL").setLevel(logging.WARNING)
+# Suppress urllib3's per-request connection-pool DEBUG spam ("Resetting dropped
+# connection", "Starting new HTTPS connection") - every Authentik call, Gravatar
+# or URL import, and outgoing webhook goes through it
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 log = logging.getLogger("config")
 log.info("Starting %s v%s...", APP_NAME, APP_VERSION)
