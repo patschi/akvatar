@@ -63,9 +63,71 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["src"]
+known-first-party = ["src", "tests"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+# Development dependencies - test tooling only.
+#
+# Declared as a PEP 735 dependency group so the container build (which runs
+# `uv export --frozen --no-dev`) never pulls these into the runtime image.
+# ---------------------------------------------------------------------------
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+]
+
+# ---------------------------------------------------------------------------
+# pytest - test discovery and default options
+# ---------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+# All tests live under tests/; nothing outside it is collected.
+testpaths = ["tests"]
+# -ra          : summarize every non-passing outcome at the end of the run
+# --strict-markers / --strict-config : fail on unknown markers or ini keys
+#                instead of silently ignoring a typo
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "slow: spawns a subprocess (config validation) - noticeably slower than a unit test",
+]
+
+# ---------------------------------------------------------------------------
+# coverage.py - measurement scope for the test suite
+# ---------------------------------------------------------------------------
+
+[tool.coverage.run]
+# `include` (path/glob based) is used instead of `source`: coverage *imports*
+# any `source` entry that is not a directory in order to resolve it as a package
+# name, and importing app.py at plugin-init time would load src/config.py before
+# tests/conftest.py has pointed CONFIG_PATH at the test configuration - which
+# aborts the whole run with a FATAL.
+# run_app.py is deliberately absent: importing it launches gunicorn.
+include = [
+    "src/*",
+    "app.py",
+    "run_cleanup.py",
+    "run_sync_gravatar.py",
+]
+# Keep third-party modules out of the report: the include patterns above match
+# on file name, so an installed dependency with a same-named module (e.g.
+# flask/app.py) would otherwise be measured too.
+omit = [
+    "*/site-packages/*",
+    "*/.venv/*",
+    "tests/*",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    # Entry-point guards are exercised by running the script, not by importing it.
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]

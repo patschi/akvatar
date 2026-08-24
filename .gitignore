@@ -11,6 +11,16 @@ build/
 # Virtual environments
 .venv/
 
+# Test tooling
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+junit-report.xml
+
 # OS
 .DS_Store
 Thumbs.db
