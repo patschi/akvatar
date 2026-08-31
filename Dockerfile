@@ -31,7 +31,7 @@ RUN apt-get update && \
 
 # Copy uv binary from the official image. Pin to a specific tag or SHA for
 # reproducible builds (consistent with the rest of this Dockerfile).
-COPY --from=ghcr.io/astral-sh/uv:0.12.5@sha256:e85be844203885286c60ffad8a858d48afb6c5a5c237ca0e67f12e74b8f174b1 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.7@sha256:95f2aa1fe59274951cfe9b0cbc7972e879ff1004bc8945d130a32eb0dbd85945 /uv /usr/local/bin/uv
 
 # Install Python dependencies into a staging directory (no venv needed in
 # Docker). The target path is version-independent so the Dockerfile does
