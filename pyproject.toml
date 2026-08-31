@@ -18,7 +18,7 @@ requires-python = ">=3.13"
 dependencies = [
     "Flask==3.1.3",
     "Pillow==12.3.0",
-    "authlib==1.7.2",
+    "authlib==1.8.0",
     "requests==2.34.2",
     "ldap3==2.9.1",
     "PyYAML==6.0.3",
