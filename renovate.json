@@ -5,7 +5,9 @@
     "assignees": ["pkernstock"],
     "automergeType": "branch",
     "semanticCommits": "enabled",
-    "dependencyDashboard": true,
+    "dependencyDashboard": {
+        "enabled": true
+    },
     "osvVulnerabilityAlerts": true,
     "lockFileMaintenance": {
         "enabled": true,
