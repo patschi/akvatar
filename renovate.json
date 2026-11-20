@@ -99,14 +99,14 @@
         },
         {
             "description": "Group application Python dependency patch updates (from pyproject.toml) into one PR. Safe to automerge - scoped to uv manager only so uv/ruff tool pins are unaffected.",
-            "matchManagers": ["uv"],
+            "matchManagers": ["pep621"],
             "matchUpdateTypes": ["patch"],
             "groupName": "python dependencies (patch)",
             "automerge": true
         },
         {
             "description": "Group application Python dependency minor and major updates (from pyproject.toml) into one PR for manual review.",
-            "matchManagers": ["uv"],
+            "matchManagers": ["pep621"],
             "matchUpdateTypes": ["minor", "major"],
             "groupName": "python dependencies (minor/major)"
         }
